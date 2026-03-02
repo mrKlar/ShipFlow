@@ -1,4 +1,4 @@
-# Verification Pack Ultra Pure v1 (ShipFlow)
+# Verification Pack v1 (ShipFlow)
 
 ## Canon
 Only `vp/` is human-readable and reviewed.
