@@ -3,7 +3,7 @@
 ShipFlow is a **verification-first workflow framework** where:
 - **ShipFlowPack** is the only human-readable source of truth.
 - Implementation code is treated as opaque.
-- Verifiers are **generated** from VP (ultra-pure mode) and executed to produce evidence.
+- Verifiers are **generated** from ShipFlow Packs (ultra-pure mode) and executed to produce evidence.
 - A single gate (CI or wrapper) decides merge based on evidence.
 
 This repository contains **no app-specific content**.
