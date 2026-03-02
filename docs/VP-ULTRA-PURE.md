@@ -1,4 +1,4 @@
-# VP Ultra Pure v1 (ShipFlow)
+# Verification Pack Ultra Pure v1 (ShipFlow)
 
 ## Canon
 Only `vp/` is human-readable and reviewed.
@@ -19,11 +19,11 @@ Required folders in app repo:
 ## Generated (opaque)
 - `.gen/playwright/*.spec.ts` from UI DSL
 - `.gen/k6/*.js` from NFR DSL (v1 stub)
-- `.gen/vp.lock.json` (hash of VP)
+- `.gen/vp.lock.json` (hash of the verification pack)
 
 ## Execution
 `shipflow verify` must:
-1) validate VP lock (VP unchanged since `gen`)
+1) validate verification pack lock (verification pack unchanged since `gen`)
 2) run policy gate (optional in v1; integration point exists)
 3) run generated verifiers
 4) emit evidence JSON
