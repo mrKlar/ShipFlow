@@ -1,0 +1,17 @@
+id: login-fixture
+title: Log in as test user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /login
+  - fill:
+      testid: email-input
+      value: test@example.com
+  - fill:
+      label: Password
+      value: testpass
+  - click:
+      name: Sign in
+  - wait_for:
+      ms: 300

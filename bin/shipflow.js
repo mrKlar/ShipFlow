@@ -8,8 +8,10 @@ async function main() {
   if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
     console.log(`ShipFlow v1
 Usage:
-  shipflow gen
-  shipflow verify
+  shipflow gen       Compile VP specs into runnable tests
+  shipflow verify    Run generated tests, produce evidence
+  shipflow impl      AI generates app code from VP + tests
+  shipflow run       Full loop: gen → impl → verify (repeat until green)
 `);
     process.exit(0);
   }
@@ -18,8 +20,21 @@ Usage:
     await gen({ cwd: process.cwd() });
     return;
   }
+
   if (cmd === "verify") {
-    const code = await verify({ cwd: process.cwd() });
+    const { exitCode } = await verify({ cwd: process.cwd() });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "impl") {
+    const { impl } = await import("../lib/impl.js");
+    await impl({ cwd: process.cwd() });
+    return;
+  }
+
+  if (cmd === "run") {
+    const { run } = await import("../lib/loop.js");
+    const code = await run({ cwd: process.cwd() });
     process.exit(code);
   }
 

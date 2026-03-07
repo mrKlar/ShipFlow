@@ -1,0 +1,21 @@
+id: ui-nav-menu
+title: Navigation menu works on hover
+severity: warn
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - hover:
+      role: button
+      name: Menu
+  - wait_for:
+      ms: 200
+  - click:
+      testid: nav-settings
+  - select:
+      label: Theme
+      value: dark
+assert:
+  - text_matches:
+      testid: theme-label
+      regex: "[Dd]ark"

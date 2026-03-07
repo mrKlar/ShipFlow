@@ -1,0 +1,23 @@
+id: add-todo
+title: User can add a new todo item
+severity: blocker
+setup: login-as-user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /todos
+  - fill:
+      testid: new-todo-input
+      value: Buy groceries
+  - click:
+      name: Add
+  - wait_for:
+      ms: 300
+assert:
+  - text_equals:
+      testid: todo-item-last
+      equals: Buy groceries
+  - count:
+      testid: todo-item
+      equals: 1

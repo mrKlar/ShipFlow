@@ -1,0 +1,24 @@
+id: ui-login
+title: User can log in
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /login
+  - fill:
+      testid: email-input
+      value: user@example.com
+  - fill:
+      label: Password
+      value: secret123
+  - click:
+      name: Sign in
+assert:
+  - url_matches:
+      regex: "/dashboard"
+  - visible:
+      testid: user-avatar
+  - text_equals:
+      testid: welcome-msg
+      equals: Welcome back

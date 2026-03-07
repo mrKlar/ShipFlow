@@ -1,0 +1,16 @@
+{
+  "name": "todo-app-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "shipflow:gen": "node ../../bin/shipflow.js gen",
+    "shipflow:verify": "node ../../bin/shipflow.js verify",
+    "shipflow:impl": "node ../../bin/shipflow.js impl",
+    "shipflow:run": "node ../../bin/shipflow.js run"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}

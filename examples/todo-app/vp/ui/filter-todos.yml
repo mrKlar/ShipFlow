@@ -1,0 +1,44 @@
+id: filter-todos
+title: User can filter todos by status
+severity: warn
+setup: login-as-user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /todos
+  # Add two todos
+  - fill:
+      testid: new-todo-input
+      value: Task one
+  - click:
+      name: Add
+  - fill:
+      testid: new-todo-input
+      value: Task two
+  - click:
+      name: Add
+  - wait_for:
+      ms: 200
+  # Complete the first one
+  - click:
+      testid: todo-toggle-0
+  - wait_for:
+      ms: 200
+  # Filter to active only
+  - select:
+      label: Filter
+      value: active
+  - wait_for:
+      ms: 200
+assert:
+  - count:
+      testid: todo-item
+      equals: 1
+  - text_equals:
+      testid: todo-item-0
+      equals: Task two
+  - hidden:
+      testid: no-todos-message
+  - url_matches:
+      regex: "filter=active"

@@ -1,0 +1,17 @@
+id: ui-dashboard-items
+title: Dashboard shows item count
+severity: blocker
+setup: login-fixture
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /dashboard
+  - wait_for:
+      ms: 500
+assert:
+  - count:
+      testid: item-card
+      equals: 3
+  - hidden:
+      testid: empty-state

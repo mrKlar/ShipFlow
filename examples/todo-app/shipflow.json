@@ -1,0 +1,12 @@
+{
+  "models": {
+    "spec": "claude-opus-4-6",
+    "impl": "claude-sonnet-4-6"
+  },
+  "impl": {
+    "maxTokens": 16384,
+    "maxIterations": 5,
+    "srcDir": "src",
+    "context": "Build a Node.js HTTP server using only built-in modules (http, fs, path, url). Serve HTML pages with inline CSS and JavaScript. No frameworks, no npm dependencies. The app is a simple todo list with a login page."
+  }
+}

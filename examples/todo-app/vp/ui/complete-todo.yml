@@ -1,0 +1,28 @@
+id: complete-todo
+title: User can mark a todo as complete
+severity: blocker
+setup: login-as-user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /todos
+  # Add a todo first
+  - fill:
+      testid: new-todo-input
+      value: Write tests
+  - click:
+      name: Add
+  - wait_for:
+      ms: 200
+  # Mark it complete
+  - click:
+      testid: todo-toggle-0
+  - wait_for:
+      ms: 200
+assert:
+  - visible:
+      testid: todo-completed-0
+  - text_matches:
+      testid: completed-count
+      regex: "1 completed"
