@@ -78,7 +78,7 @@ For technical checks: ensure the repository structure, manifests, workflows, arc
 ```bash
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
 shipflow implement      # Standard flow: validate, generate, implement, verify
-shipflow map            # Advanced: review repo surfaces and coverage gaps
+shipflow map "<user request>"  # Advanced: review repo surfaces and coverage gaps
 shipflow doctor         # Advanced: check local tools, runners, and adapters
 shipflow lint           # Advanced: lint verification quality
 shipflow gen            # Advanced: generate runnable tests from the pack

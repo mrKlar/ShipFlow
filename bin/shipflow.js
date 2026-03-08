@@ -23,7 +23,7 @@ Standard flow:
   shipflow implement           Standard loop: validate pack, generate tests, implement, verify
 
 Advanced / debug:
-  shipflow map                 Review repo surfaces and coverage gaps before drafting
+  shipflow map [description]   Review repo surfaces and coverage gaps before drafting
   shipflow lint                Lint verification quality before generation
   shipflow doctor              Check local tools, runners, and AI CLI adapters
   shipflow gen                 Generate runnable tests from the verification pack
@@ -78,7 +78,7 @@ Exit codes:
 
   if (cmd === "map") {
     const { map } = await import("../lib/map.js");
-    const { exitCode } = map({ cwd: process.cwd(), json: flags.has("--json") });
+    const { exitCode } = map({ cwd: process.cwd(), input, json: flags.has("--json") });
     process.exit(exitCode);
   }
 

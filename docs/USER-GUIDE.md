@@ -133,7 +133,7 @@ shipflow draft "<user request>"  # Standard flow: co-draft and refine the verifi
 shipflow implement   # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
-shipflow map
+shipflow map "<user request>"
 shipflow doctor
 shipflow lint
 shipflow gen
@@ -459,7 +459,7 @@ Canonical example:
 ### Local Draft Workflow
 
 ```bash
-shipflow map
+shipflow map "todo app with login"
 shipflow draft "todo app with login"
 shipflow draft "todo app with login" --write
 shipflow doctor
@@ -468,7 +468,7 @@ shipflow gen
 ```
 
 Recommended usage:
-1. `shipflow map` to inspect the current repo surface.
+1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
 2. `shipflow draft "..."` to see the understood coverage, request-driven gaps, ambiguities, and proposed starter files.
 3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps.
 4. Review/edit the VP files.

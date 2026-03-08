@@ -219,7 +219,7 @@ shipflow draft [description] [--write] [--ai]           # Standard flow: co-draf
 shipflow implement                                      # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
-shipflow map                                            # Review repo surfaces and coverage gaps
+shipflow map [description]                              # Review repo surfaces and coverage gaps
 shipflow doctor                                         # Check local tools, runners, and adapters
 shipflow lint                                           # Lint verification quality
 shipflow gen                                            # Generate runnable tests from the pack

@@ -22,7 +22,7 @@ shipflow init
 2. Gather context before writing:
 - read the user request
 - review existing `vp/` files
-- run `shipflow map --json` when repo context matters
+- run `shipflow map --json "<user request>"` when repo context matters
 - run `shipflow draft --json "<user request>"` when starter proposals would help
 
 3. Draft or refine the verification pack:

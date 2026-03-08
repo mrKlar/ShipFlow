@@ -62,4 +62,20 @@ describe("buildMap", () => {
       assert.ok(result.detected.ui_routes.includes("/home"));
     });
   });
+
+  it("adds request-driven gaps, recommendations, and ambiguities", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), "export const ok = true;\n");
+
+      const result = buildMap(tmpDir, "todo app with login, REST API, postgres, load test, and CI");
+      assert.deepEqual(result.request.inferred_types, ["behavior", "ui", "api", "database", "performance", "security", "technical"]);
+      assert.ok(result.request.gaps.some(gap => gap.includes("ui coverage")));
+      assert.ok(result.request.gaps.some(gap => gap.includes("technical checks")));
+      assert.ok(result.ambiguities.some(item => item.includes("no concrete endpoint")));
+      assert.ok(result.ambiguities.some(item => item.includes("no concrete routes")));
+      assert.ok(result.recommendations.some(rec => rec.type === "api" && rec.summary.includes("requested endpoints")));
+      assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("requested technical scope")));
+    });
+  });
 });

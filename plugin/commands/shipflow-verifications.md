@@ -41,7 +41,7 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" init
 - Run:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" map --json
+node "$SHIPFLOW_DIR/bin/shipflow.js" map --json "$ARGUMENTS"
 node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
 ```
 
