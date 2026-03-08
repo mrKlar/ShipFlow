@@ -16,6 +16,8 @@ Usage:
   shipflow verify      Run generated tests, produce evidence
   shipflow impl        AI generates app code from VP + tests
   shipflow run         Full loop: gen → impl → verify (repeat until green)
+  shipflow map         Analyze repo + current VP coverage before drafting checks
+  shipflow lint        Lint VP quality before generation
   shipflow init        Scaffold vp/ directories + platform config
     --claude             Setup for Claude Code (default)
     --codex              Setup for OpenAI Codex CLI
@@ -25,6 +27,7 @@ Usage:
 Flags:
   --verbose, -v        Show detailed output
   --quiet, -q          Minimal output
+  --json               Machine-readable output for map/lint
 
 Exit codes:
   0    Success (all tests pass)
@@ -55,6 +58,18 @@ Exit codes:
     const { run } = await import("../lib/loop.js");
     const code = await run({ cwd: process.cwd() });
     process.exit(code);
+  }
+
+  if (cmd === "map") {
+    const { map } = await import("../lib/map.js");
+    const { exitCode } = map({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "lint") {
+    const { lint } = await import("../lib/lint.js");
+    const { exitCode } = lint({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
   }
 
   if (cmd === "init") {

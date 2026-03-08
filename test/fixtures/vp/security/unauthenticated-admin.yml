@@ -1,0 +1,14 @@
+id: security-unauthenticated-admin
+title: Guest access to admin endpoint is rejected
+severity: blocker
+category: authz
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/admin
+assert:
+  - status: 401
+  - header_absent: { name: x-internal-token }
+  - body_not_contains: "stack trace"

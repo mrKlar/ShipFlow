@@ -24,10 +24,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(fs.existsSync(path.join(genDir, "playwright")));
   });
 
-  it("generates one test per check YAML (UI + behavior + API + DB)", () => {
+  it("generates one test per check YAML (UI + behavior + API + DB + security)", () => {
     const tests = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".test.ts"));
-    // 3 UI + 1 behavior + 1 API + 1 DB = 6
-    assert.equal(tests.length, 6);
+    // 3 UI + 1 behavior + 1 API + 1 DB + 1 security = 7
+    assert.equal(tests.length, 7);
   });
 
   it("generates vp.lock.json with correct structure", () => {
@@ -126,6 +126,18 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("toHaveLength(1)"), "should check row_count");
   });
 
+  it("security test uses request fixture and security assertions", () => {
+    const dir = path.join(genDir, "playwright");
+    const file = fs.readdirSync(dir).find(f => f.includes("security"));
+    assert.ok(file, "security test file should exist");
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    assert.ok(content.includes('{ request }'), "should use request fixture");
+    assert.ok(content.includes("Security: authz"), "should group security tests");
+    assert.ok(content.includes("request.get("), "should issue an HTTP request");
+    assert.ok(content.includes("toBe(401)"), "should assert rejection");
+    assert.ok(content.includes("toBe(false)"), "should assert missing header");
+  });
+
   it("generates k6 script for NFR check", () => {
     const k6Dir = path.join(genDir, "k6");
     assert.ok(fs.existsSync(k6Dir), ".gen/k6/ should exist");
@@ -136,6 +148,18 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("vus: 50"), "should have vus");
     assert.ok(content.includes("p(95)<500"), "should have threshold");
     assert.ok(content.includes("http.get("), "should have GET request");
+  });
+
+  it("prunes stale generated artifacts", async () => {
+    const stalePw = path.join(genDir, "playwright", "stale.test.ts");
+    const staleK6 = path.join(genDir, "k6", "stale.js");
+    fs.writeFileSync(stalePw, "// stale");
+    fs.writeFileSync(staleK6, "// stale");
+
+    await gen({ cwd: fixturesDir });
+
+    assert.equal(fs.existsSync(stalePw), false);
+    assert.equal(fs.existsSync(staleK6), false);
   });
 });
 

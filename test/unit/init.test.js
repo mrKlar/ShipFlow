@@ -25,6 +25,7 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "api")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "db")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "nfr")));
+      assert.ok(fs.existsSync(path.join(tmpDir, "vp", "security")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "policy")));
     });
   });

@@ -36,19 +36,22 @@ Execute in order. Do NOT skip steps. Do NOT report completion until verify exits
 ### 1. Read VP verifications
 
 Read silently:
-- `vp/ui/*.yml`, `vp/behavior/*.yml`, `vp/api/*.yml`, `vp/db/*.yml`
+- `vp/ui/*.yml`, `vp/behavior/*.yml`, `vp/api/*.yml`, `vp/db/*.yml`, `vp/security/*.yml`
 - `vp/ui/_fixtures/*.yml` — setup flows
 - `shipflow.json` — config (srcDir, context, base_url)
 
 ### 2. Generate tests
 
 ```bash
+node $SHIPFLOW_DIR/bin/shipflow.js lint
 node $SHIPFLOW_DIR/bin/shipflow.js gen
 ```
 
+If lint fails, stop and tell the user the verification pack needs refinement before implementation.
+
 ### 3. Read generated tests
 
-Read `.gen/playwright/*.test.ts`. Match every locator exactly:
+Read `.gen/playwright/*.test.ts`. Match every locator and every HTTP/status/header/body expectation exactly:
 
 | In the test | Your HTML must have |
 |---|---|
@@ -66,6 +69,8 @@ Read `.gen/playwright/*.test.ts`. Match every locator exactly:
 Write app code under the configured `srcDir` (default: `src/`). Read `shipflow.json` `impl.context` for tech stack.
 
 **NEVER modify**: `vp/`, `.gen/`, `evidence/`, `shipflow.json`, `playwright.config.ts`
+
+For security checks, implement the exact rejection, header, and exposure behavior expected by the generated tests.
 
 ### 5. Verify
 

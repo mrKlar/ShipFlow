@@ -29,13 +29,21 @@ Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all shipflow commands.
 
 Quickly scan what exists — do NOT narrate this to the user:
 - `shipflow.json` — project config
-- `vp/**/*.yml` — existing checks (ui, behavior, api, db)
+- `vp/**/*.yml` — existing checks (ui, behavior, api, db, nfr, security)
 - `src/` — existing app code (if any)
 - Project name, README, CLAUDE.md — for intent
 
-### Step 2: Draft verifications NOW
+Then run:
 
-From the project name, user's description (`$ARGUMENTS`), and any existing code, **immediately write VP check files**. Don't ask what to verify — infer it. Be opinionated. Cover the obvious flows.
+```bash
+node $SHIPFLOW_DIR/bin/shipflow.js map
+```
+
+Use that repo map plus `$ARGUMENTS` to decide what to cover first, which verification types are missing, and where precision is most needed.
+
+### Step 2: Build a coverage plan, then draft verifications NOW
+
+From the project name, the repo map, the user's description (`$ARGUMENTS`), and any existing code, **immediately write VP check files**. Don't ask what to verify first — infer it. Be opinionated. Cover the obvious flows and the important risks.
 
 For a new project: scaffold `shipflow.json` and the `vp/` directories too.
 
@@ -134,23 +142,56 @@ assert:
 
 Assertions: `row_count`, `cell_equals`, `cell_matches`, `column_contains`.
 
+#### Security checks — `vp/security/*.yml`
+For verifying access control, security headers, input rejection, and data exposure constraints through concrete HTTP checks.
+
+```yaml
+id: guest-admin-rejected
+title: Guest access to admin endpoint is rejected
+severity: blocker
+category: authz
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/admin
+assert:
+  - status: 401
+  - header_absent: { name: x-internal-token }
+  - body_not_contains: "stack trace"
+```
+
+Categories: `authn`, `authz`, `headers`, `input_validation`, `cors`, `session`, `exposure`, `rate_limit`, `other`.
+
+Assertions: `status`, `header_equals`, `header_matches`, `header_absent`, `body_contains`, `body_not_contains`.
+
 #### Fixtures — `vp/ui/_fixtures/*.yml`
 Reusable setup flows (login, etc.) referenced by `setup:` in UI and behavior checks.
 
 ### Step 3: Validate
 
-Run gen to confirm the checks compile:
+First lint the pack quality:
+
+```bash
+node $SHIPFLOW_DIR/bin/shipflow.js lint
+```
+
+Fix any duplicate ids, weak assertions, missing statuses, or vague checks.
+
+Then run gen to confirm the checks compile:
 
 ```bash
 node $SHIPFLOW_DIR/bin/shipflow.js gen
 ```
 
-Fix any YAML errors and retry until gen succeeds.
+Fix any YAML errors and retry until both lint and gen succeed.
 
 ### Step 4: Present to the user
 
 Show a short summary of what you drafted:
-- List each check: id, title, type (UI/behavior/API/DB), what it verifies
+- List each check: id, title, type (UI/behavior/API/database/performance/security), what it verifies
+- Mention the main gaps you intentionally left for a second pass
 - Say "These are your verifications. Tell me what to add, remove, or change."
 
 That's it. Don't ask for approval on each one. Let the user react.
@@ -171,4 +212,6 @@ Repeat until the user is satisfied, then tell them to run `/shipflow-impl` to bu
 - Use `data-testid` for element targeting, `label` for form inputs, `name` for buttons
 - `severity: blocker` for core functionality, `warn` for nice-to-have
 - If the project has no `shipflow.json`, create one with sensible defaults
-- Choose the right verification type: UI for visual, behavior for scenarios, API for endpoints, DB for data
+- Choose the right verification type: UI for visual, behavior for scenarios, API for endpoints, DB for data, NFR for load/perf, security for auth/headers/exposure
+- Prefer precise, observable checks over broad narrative checks
+- Use `shipflow map` before writing and `shipflow lint` before finishing
