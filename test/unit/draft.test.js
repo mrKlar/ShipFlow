@@ -63,6 +63,21 @@ describe("buildDraft", () => {
       assert.ok(result.ambiguities.some(item => item.includes("no concrete routes")));
     });
   });
+
+  it("proposes request-driven starter files on low-signal repos", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "todo app with login, REST API, sqlite, GitHub Actions, and Docker");
+      assert.ok(result.proposals.some(proposal => proposal.type === "ui" && proposal.path.startsWith("vp/ui/")));
+      assert.ok(result.proposals.some(proposal => proposal.type === "behavior" && proposal.path.startsWith("vp/behavior/")));
+      assert.ok(result.proposals.some(proposal => proposal.type === "api" && proposal.path.startsWith("vp/api/")));
+      assert.ok(result.proposals.some(proposal => proposal.type === "database" && proposal.path === "vp/db/requested-sqlite-smoke.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-delivery-stack.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-framework-stack.yml") === false);
+    });
+  });
 });
 
 describe("draft", () => {
