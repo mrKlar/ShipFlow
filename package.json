@@ -4,7 +4,10 @@
   "type": "module",
   "version": "0.2.0",
   "bin": {
-    "shipflow": "bin/shipflow.js"
+    "shipflow": "bin/shipflow.js",
+    "shipflow-guard": "hooks/guard-paths.js",
+    "shipflow-stop": "hooks/stop-verify.js",
+    "shipflow-gemini-guard": "hooks/gemini-guard.js"
   },
   "scripts": {
     "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/nfr.test.js test/unit/impl.test.js test/unit/verify.test.js test/unit/init.test.js test/unit/status.test.js test/integration/gen-cycle.test.js"

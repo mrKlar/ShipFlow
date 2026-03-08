@@ -7,7 +7,7 @@
           {
             "name": "shipflow-guard",
             "type": "command",
-            "command": "node tools/shipflow/hooks/gemini-guard.js",
+            "command": "shipflow-gemini-guard",
             "timeout": 5000
           }
         ]
