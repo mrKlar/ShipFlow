@@ -1,10 +1,10 @@
 {
   "draft": {
-    "provider": "local"
+    "provider": "local",
+    "aiProvider": "auto"
   },
   "impl": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
+    "provider": "auto",
     "maxTokens": 16384,
     "srcDir": "src",
     "context": "Web app with authentication, protected admin routes, and smoke performance budgets."

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { buildDraft, draft } from "../../lib/draft.js";
+import { buildDraft, draft, resolveDraftOptions } from "../../lib/draft.js";
 
 async function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-draft-"));
@@ -52,6 +52,26 @@ describe("buildDraft", () => {
 });
 
 describe("draft", () => {
+  it("keeps local drafting by default but auto-resolves the AI provider", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".gemini", "settings.json"), "{}\n");
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "local",
+          aiProvider: "auto",
+        },
+      }));
+
+      const options = resolveDraftOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "gemini",
+      });
+      assert.equal(options.provider, "local");
+      assert.equal(options.aiProvider, "gemini");
+      assert.equal(options.model, "gemini-2.5-pro");
+    });
+  });
+
   it("writes medium and high confidence starter files with --write", async () => {
     await withTmpDir(async tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });

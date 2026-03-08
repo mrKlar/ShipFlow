@@ -36,9 +36,10 @@ describe("init", () => {
       init({ cwd: tmpDir });
       const config = JSON.parse(fs.readFileSync(path.join(tmpDir, "shipflow.json"), "utf-8"));
       assert.equal(config.draft.provider, "local");
-      assert.equal(config.impl.provider, "anthropic");
+      assert.equal(config.draft.aiProvider, "auto");
+      assert.equal(config.impl.provider, "auto");
       assert.equal(config.impl.historyLimit, 50);
-      assert.equal(config.impl.model, "claude-sonnet-4-6");
+      assert.equal(Object.prototype.hasOwnProperty.call(config.impl, "model"), false);
       assert.equal(config.impl.srcDir, "src");
     });
   });

@@ -146,10 +146,25 @@ describe("resolveImplOptions", () => {
   it("uses anthropic defaults when config is absent", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
     try {
-      const options = resolveImplOptions(tmpDir, {});
-      assert.equal(options.provider, "anthropic");
-      assert.equal(options.model, "claude-sonnet-4-6");
+      const options = resolveImplOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "codex",
+      });
+      assert.equal(options.provider, "codex");
+      assert.equal(options.model, "gpt-5-codex");
       assert.equal(options.srcDir, "src");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("prefers the active CLI environment for auto provider resolution", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      const options = resolveImplOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "codex" || cmd === "claude",
+        env: { CODEX_THREAD_ID: "thread-123" },
+      });
+      assert.equal(options.provider, "codex");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

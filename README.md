@@ -272,11 +272,11 @@ assert:
 ```json
 {
   "draft": {
-    "provider": "local"
+    "provider": "local",
+    "aiProvider": "auto"
   },
   "impl": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
+    "provider": "auto",
     "maxTokens": 16384,
     "historyLimit": 50,
     "srcDir": "src",
@@ -284,6 +284,8 @@ assert:
   }
 }
 ```
+
+`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, or `gemini`), and falls back to the API provider/runtime defaults when needed.
 
 ## 🔄 CI
 

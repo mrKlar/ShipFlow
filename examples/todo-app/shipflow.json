@@ -1,9 +1,10 @@
 {
-  "models": {
-    "verification": "claude-opus-4-6",
-    "impl": "claude-sonnet-4-6"
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
   },
   "impl": {
+    "provider": "auto",
     "maxTokens": 16384,
     "maxIterations": 5,
     "srcDir": "src",

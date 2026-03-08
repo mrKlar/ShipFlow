@@ -28,17 +28,20 @@ describe("buildDoctor", () => {
 
   it("passes when required basics are available", () => {
     withTmpDir(tmpDir => {
-      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "anthropic" } }));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "auto" } }));
       fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ devDependencies: { "@playwright/test": "^1.0.0" } }));
+      fs.mkdirSync(path.join(tmpDir, ".codex"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".codex", "config.toml"), "sandbox_mode = \"workspace-write\"\n");
       const available = new Set(["node", "npm", "npx", "codex"]);
       const result = buildDoctor(tmpDir, {
         commandExists: cmd => available.has(cmd),
-        env: { ANTHROPIC_API_KEY: "test-key" },
+        env: {},
       });
       assert.equal(result.ok, true);
       assert.equal(result.checks.draft_provider, "local");
       assert.equal(result.checks.playwright_pkg, true);
       assert.equal(result.checks.codex, true);
+      assert.equal(result.checks.impl_provider, "codex");
       assert.equal(result.checks.impl_provider_ready, true);
     });
   });
