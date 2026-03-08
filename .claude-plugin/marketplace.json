@@ -13,7 +13,7 @@
       "author": {
         "name": "ShipFlow"
       },
-      "source": "./plugin",
+      "source": ".",
       "category": "development"
     }
   ]

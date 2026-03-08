@@ -12,6 +12,17 @@ You are writing executable verifications for the user's app. Be proactive: draft
 
 $ARGUMENTS
 
+## Setup
+
+Find the ShipFlow installation. Run:
+
+```bash
+SHIPFLOW_DIR="$(find ~/.claude/plugins/cache/shipflow -name 'shipflow.js' -path '*/bin/*' 2>/dev/null | head -1 | xargs dirname | xargs dirname)"
+echo "ShipFlow: $SHIPFLOW_DIR"
+```
+
+Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all shipflow commands.
+
 ## Process
 
 ### Step 1: Read context (silently)
@@ -48,7 +59,7 @@ assert:
   - text_equals: { testid: x, equals: "Expected" }
 ```
 
-Flow steps: `open`, `fill` (testid/label + value), `click` (name/testid/role), `select` (label/testid + value), `hover` (role/testid), `wait_for` (ms).
+Flow steps: `open`, `fill` (testid/label + value), `click` (name/testid/role), `select` (label/testid + value), `hover` (role/testid), `wait_for` (ms), `route_block` (path + status, to mock/block API calls).
 
 Assertions: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`.
 
@@ -100,7 +111,7 @@ assert:
 
 Methods: GET, POST, PUT, PATCH, DELETE. Optional: `headers`, `body` (string), `body_json` (object).
 
-Assertions: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches`, `json_count`.
+Assertions: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches` (with `regex` field), `json_count`.
 
 #### DB checks — `vp/db/*.yml`
 For verifying database state.
@@ -131,7 +142,7 @@ Reusable setup flows (login, etc.) referenced by `setup:` in UI and behavior che
 Run gen to confirm the checks compile:
 
 ```bash
-node <shipflow-path>/bin/shipflow.js gen
+node $SHIPFLOW_DIR/bin/shipflow.js gen
 ```
 
 Fix any YAML errors and retry until gen succeeds.

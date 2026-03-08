@@ -1,6 +1,6 @@
 {
   "name": "shipflow-framework",
-  "private": true,
+  "private": false,
   "type": "module",
   "version": "0.2.0",
   "bin": {

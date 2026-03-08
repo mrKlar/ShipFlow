@@ -1,0 +1,12 @@
+test/
+examples/
+project/
+docs/
+.github/
+.claude/
+.claude-plugin/
+*.md
+!README.md
+!templates/*.md
+!commands/*.md
+!agents/*.md

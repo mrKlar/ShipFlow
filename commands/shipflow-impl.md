@@ -12,14 +12,22 @@ You implement the app. Write code that passes all VP verification tests. Loop un
 
 $ARGUMENTS
 
-## Find ShipFlow
+## Setup
 
-Locate the shipflow CLI. Check in order:
-1. `shipflow.json` field `shipflowDir`
-2. Glob for `**/bin/shipflow.js` (exclude node_modules)
-3. Try `npx shipflow`
+Find the ShipFlow installation. Run:
 
-Store the path as `SHIPFLOW` for all commands below.
+```bash
+SHIPFLOW_DIR="$(find ~/.claude/plugins/cache/shipflow -name 'shipflow.js' -path '*/bin/*' 2>/dev/null | head -1 | xargs dirname | xargs dirname)"
+echo "ShipFlow: $SHIPFLOW_DIR"
+```
+
+Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all shipflow commands.
+
+If the project has no `.claude/hooks.json`, set up hooks:
+
+```bash
+cd "$(pwd)" && node "$SHIPFLOW_DIR/bin/shipflow.js" init
+```
 
 ## The Loop
 
@@ -28,14 +36,14 @@ Execute in order. Do NOT skip steps. Do NOT report completion until verify exits
 ### 1. Read VP verifications
 
 Read silently:
-- `vp/ui/*.yml` — behavior checks
+- `vp/ui/*.yml`, `vp/behavior/*.yml`, `vp/api/*.yml`, `vp/db/*.yml`
 - `vp/ui/_fixtures/*.yml` — setup flows
 - `shipflow.json` — config (srcDir, context, base_url)
 
 ### 2. Generate tests
 
 ```bash
-node $SHIPFLOW gen
+node $SHIPFLOW_DIR/bin/shipflow.js gen
 ```
 
 ### 3. Read generated tests
@@ -62,7 +70,7 @@ Write app code under the configured `srcDir` (default: `src/`). Read `shipflow.j
 ### 5. Verify
 
 ```bash
-node $SHIPFLOW verify
+node $SHIPFLOW_DIR/bin/shipflow.js verify
 ```
 
 ### 6. Result
