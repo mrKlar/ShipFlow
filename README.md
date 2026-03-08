@@ -70,6 +70,14 @@ That's it. The installer **auto-detects** every AI coding agent on your machine 
 | 🟢 **Codex CLI** | Installs **skills** + exec policy rules + global instructions |
 | 🔵 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
 
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/uninstall.sh | bash
+```
+
+Cleanly removes all integrations — plugin, skills, extension, hooks, symlinks, and global package.
+
 ---
 
 ## 🚀 Usage
