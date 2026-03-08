@@ -54,31 +54,37 @@ This is a **first-principles failure.** If you have an agent that can write, tes
 
 ---
 
-## 🎬 30-Second Demo
+## 🎬 Install — One Command, Fully Automatic
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | bash
 ```
 
-> ☝️ Auto-detects Claude Code, Codex CLI, and Gemini CLI on your machine.
+That's it. The installer **auto-detects** every AI coding agent on your machine and **installs native integrations** for each one — plugin, skills, extension, hooks, guards. No manual configuration. No `init` commands. Just install and go.
 
-Open any project:
+### What gets installed automatically
 
-```bash
-# Claude Code
-/shipflow-verifications a kawaii calculator with a fox mascot
-/shipflow-impl
+| Platform | What the installer does |
+|---|---|
+| 🟣 **Claude Code** | Installs the ShipFlow **plugin** + anti-cheat hooks |
+| 🟢 **Codex CLI** | Installs **skills** + exec policy rules + global instructions |
+| 🔵 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
 
-# Codex CLI
-$shipflow-verifications a kawaii calculator with a fox mascot
-$shipflow-impl
+---
 
-# Gemini CLI
-/shipflow:verifications a kawaii calculator with a fox mascot
-/shipflow:impl
-```
+## 🚀 Usage
 
-The AI drafts **50+ verifications in seconds**. Review them. Run impl. ☕ Walk away. Come back to a **working app** with every behavior verified.
+Open any project in your AI coding agent and use the **native commands:**
+
+| | Describe your app | Build it |
+|---|---|---|
+| 🟣 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
+| 🟢 Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-impl` |
+| 🔵 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
+
+**Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
+
+**Step 2** — Run impl. ☕ Walk away. Come back to a **working app** with every behavior verified.
 
 ---
 
@@ -132,26 +138,21 @@ ShipFlow makes it **structurally impossible** for the AI to game the tests:
 
 ---
 
-## 🌐 Multi-Agent Support
+## 🌐 Native Integration — Not a Wrapper
 
-Works with **every major AI coding agent:**
+ShipFlow doesn't just "support" AI agents. It installs **native extensions** that speak each platform's language:
 
-| Platform | Integration | Commands | Anti-cheat |
-|---|---|---|---|
-| 🟣 **Claude Code** | Plugin | `/shipflow-verifications` `/shipflow-impl` | PreToolUse + Stop hooks |
-| 🟢 **OpenAI Codex CLI** | Skills | `$shipflow-verifications` `$shipflow-impl` | Sandbox + exec rules |
-| 🔵 **Google Gemini CLI** | Extension | `/shipflow:verifications` `/shipflow:impl` | BeforeTool hooks |
+| Platform | Integration type | Anti-cheat mechanism |
+|---|---|---|
+| 🟣 **Claude Code** | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
+| 🟢 **Codex CLI** | Skills (`$skill` invocation) | Sandbox + exec policy rules |
+| 🔵 **Gemini CLI** | Extension (slash commands + context) | BeforeTool guard hooks |
 
-```bash
-shipflow init                        # 🟣 Claude Code (default)
-shipflow init --codex                # 🟢 Codex CLI
-shipflow init --gemini               # 🔵 Gemini CLI
-shipflow init --claude --codex       # 🟣+🟢 Multiple
-```
+Every integration includes the **full verification schema**, **implementation loop instructions**, and **platform-specific anti-cheat enforcement.** The AI knows exactly what to do, and it can't cheat.
 
 ---
 
-## 📋 Five Verification Types
+## 📋 Six Verification Types
 
 | | Type | Path | What it tests |
 |---|---|---|---|
@@ -160,8 +161,9 @@ shipflow init --claude --codex       # 🟣+🟢 Multiple
 | 🌐 | **API Checks** | `vp/api/*.yml` | HTTP request/response |
 | 🗄️ | **DB Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
 | ⚡ | **NFR Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
+| 📜 | **Policy Gates** | `vp/policy/*.rego` | Organizational rules via OPA |
 
-Plus 🧩 **fixtures** (`vp/ui/_fixtures/*.yml`) for reusable setup flows and 📜 **policy gates** (`vp/policy/*.rego`) for organizational rules via OPA.
+Plus 🧩 **fixtures** (`vp/ui/_fixtures/*.yml`) for reusable setup flows.
 
 ---
 
@@ -186,7 +188,6 @@ your-app/
 ## 🛠️ CLI
 
 ```bash
-shipflow init [--claude|--codex|--gemini]   # 📦 Scaffold project
 shipflow gen                                 # ⚙️  Compile verifications → tests
 shipflow verify                              # ✅ Run tests → evidence
 shipflow status                              # 📊 Show project state
