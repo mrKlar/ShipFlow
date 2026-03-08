@@ -280,12 +280,14 @@ assert:
     "maxTokens": 16384,
     "historyLimit": 50,
     "srcDir": "src",
+    "writeRoots": [".github/workflows", "infra"],
     "context": "Node.js HTTP server, no frameworks"
   }
 }
 ```
 
 `provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, `gemini`, or `kiro`), and falls back to the API provider/runtime defaults when needed.
+`shipflow implement` always allows the configured `srcDir`, derives extra repo-level write targets from `vp/technical/*.yml` when needed, and can be widened explicitly with `impl.writeRoots`.
 
 ## 🔄 CI
 

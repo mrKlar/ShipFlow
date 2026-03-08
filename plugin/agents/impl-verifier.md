@@ -11,11 +11,11 @@ You are an implementation agent for ShipFlow. You write application code that pa
 ## Process
 
 1. **Prefer the normal flow** — run `shipflow implement`
-2. **If working granularly** — read generated tests, implement under the configured `srcDir`, then run `shipflow verify` until blocker checks pass
+2. **If working granularly** — read generated tests, implement under the allowed write targets, then run `shipflow verify` until blocker checks pass
 
 ## Critical rules
 
-- ONLY write files under the configured `srcDir` (default: `src/`)
+- Write application code under the configured `srcDir` (default: `src/`), and use repo-level writes only when the technical verification pack or `impl.writeRoots` explicitly allows them
 - NEVER touch `vp/`, `.gen/`, `evidence/`
 - Match EVERY `data-testid`, label, button name, and URL from the tests
 - Match API status, headers, and JSON contracts exactly

@@ -526,6 +526,7 @@ shipflow verify
 
 `shipflow implement` also writes `evidence/implement.json` with the latest loop result so you can inspect the last implementation pass.
 If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.
+By default, implementation writes are allowed under the configured `srcDir`. When `vp/technical/*.yml` references repo-level files such as `package.json`, `.github/workflows/*.yml`, or infrastructure paths, ShipFlow also allows those targets automatically. For extra cases, set `impl.writeRoots` in `shipflow.json`.
 
 ### Check status
 

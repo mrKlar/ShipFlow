@@ -205,4 +205,43 @@ assert:
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it("never derives blocked write targets from config or technical checks", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "technical"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "technical", "blocked.yml"), `id: technical-blocked
+title: Blocked paths stay blocked
+severity: blocker
+category: other
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: "vp/ui/example.yml" }
+  - path_exists: { path: ".gen/manifest.json" }
+  - path_exists: { path: "evidence/run.json" }
+`);
+      const policy = resolveWritePolicy(tmpDir, {
+        impl: {
+          srcDir: "src",
+          writeRoots: ["vp", ".gen", "evidence", "docs"],
+        },
+      });
+      assert.equal(policy.roots.includes("vp"), false);
+      assert.equal(policy.roots.includes(".gen"), false);
+      assert.equal(policy.roots.includes("evidence"), false);
+      assert.equal(policy.roots.includes("docs"), true);
+      assert.equal(policy.files.includes("vp/ui/example.yml"), false);
+      assert.equal(policy.files.includes(".gen/manifest.json"), false);
+      assert.equal(policy.files.includes("evidence/run.json"), false);
+      assert.equal(isAllowedImplPath("vp/ui/example.yml", policy), false);
+      assert.equal(isAllowedImplPath("docs/README.md", policy), true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

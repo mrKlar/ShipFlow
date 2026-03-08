@@ -51,7 +51,7 @@ If the loop fails, inspect:
 - `evidence/implement.json`
 - `evidence/run.json`
 - generated tests under `.gen/`
-- the current code under the configured `srcDir`
+- the current code under the configured `srcDir` plus any repo-level technical targets allowed by the pack
 
 Drop to granular commands only for debugging:
 
@@ -67,5 +67,5 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" status
 
 - Treat the reviewed verification pack as ground truth
 - Match generated expectations exactly: UI locators, routes, HTTP status/headers/body, database state, security behavior, technical constraints, and performance budgets
-- Never edit `vp/`, `.gen/`, `evidence/`, `shipflow.json`, or `playwright.config.ts`
+- Never edit protected paths: `vp/`, `.gen/`, `evidence/`, `shipflow.json`, `playwright.config.ts`
 - If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow-verifications`
