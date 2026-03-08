@@ -2,80 +2,59 @@
 
 ## What is ShipFlow?
 
-ShipFlow is a verification-first workflow framework. You write **what the app must do** in human-readable YAML files (the Verification Pack). ShipFlow compiles those into executable tests and runs them to produce evidence. The implementer — human or AI agent — never touches the specs or tests.
+ShipFlow is a verification-first framework. You describe what your app must do in YAML files. ShipFlow compiles those into Playwright tests and runs them. The AI implements the code and loops until every test passes.
 
 ```
-You write         ShipFlow generates       ShipFlow runs
-vp/ui/*.yml  -->  .gen/playwright/*.ts -->  evidence/run.json
+vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.spec.ts  →  shipflow verify  →  evidence/run.json
 ```
+
+The only files you write and review are under `vp/`. Everything else is generated.
 
 ## Installation
 
-### Option A: git submodule (recommended)
+```bash
+git clone <shipflow-repo-url>
+cd ShipFlow
+./install.sh
+```
+
+This installs ShipFlow as a Claude Code plugin. Restart Claude Code after installing.
+
+To scaffold a project with CLAUDE.md, hooks, and vp/ directories:
 
 ```bash
-cd your-app-repo
-git submodule add <shipflow-repo-url> tools/shipflow
-npm install --prefix tools/shipflow
+./install.sh /path/to/your-project
 ```
 
-Then call ShipFlow via:
+Your project needs Playwright:
 
 ```bash
-node tools/shipflow/bin/shipflow.js gen
-node tools/shipflow/bin/shipflow.js verify
+cd your-project
+npm install -D @playwright/test
+npx playwright install
 ```
 
-Or add convenience scripts to your app's `package.json`:
+## Usage
 
-```json
-{
-  "scripts": {
-    "shipflow:gen": "node tools/shipflow/bin/shipflow.js gen",
-    "shipflow:verify": "node tools/shipflow/bin/shipflow.js verify"
-  }
-}
-```
-
-### Option B: copy into your repo
-
-Copy `bin/` and `lib/` from ShipFlow into your project (e.g. under `tools/shipflow/`), then install its dependencies (`js-yaml`, `zod`).
-
-## Project structure
-
-ShipFlow expects these directories in your app repo:
+In Claude Code, open your project and run:
 
 ```
-your-app/
-  vp/                     # Verification Pack (human-written, reviewed)
-    ui/
-      feature-a.yml
-      feature-b.yml
-      _fixtures/          # Reusable setup flows
-        login.yml
-  .gen/                   # Generated tests (do NOT edit)
-    playwright/
-      vp_ui_feature-a.spec.ts
-      vp_ui_feature-b.spec.ts
-    vp.lock.json
-  evidence/               # Verification results (do NOT edit)
-    run.json
+/shipflow-verifications a todo app with login
 ```
 
-The only files you write and review are under `vp/`.
+The AI drafts verifications immediately. Review, add, or remove checks. Then:
 
-## Writing UI checks
+```
+/shipflow-impl
+```
 
-Each file in `vp/ui/` defines one check. A check has:
+The AI implements the entire app autonomously, looping until all tests pass.
 
-- **id**: unique identifier
-- **title**: human-readable description
-- **severity**: `blocker` (must pass) or `warn` (advisory)
-- **app**: the target application
-- **flow**: sequence of user actions
-- **assert**: expected outcomes
+## Writing Verifications
 
-### Minimal example
+### UI Checks — `vp/ui/*.yml`
+
+One file per behavior. Each check defines a flow (user actions) and assertions (expected results).
 
 ```yaml
 id: homepage-title
@@ -87,325 +66,225 @@ app:
 flow:
   - open: /
 assert:
-  - text_equals:
-      testid: app-title
-      equals: My App
+  - text_equals: { testid: app-title, equals: "My App" }
 ```
 
-### Flow steps
+#### Flow Steps
 
-#### open
-
-Navigate to a path (appended to `base_url`).
+**open** — Navigate to a path.
 
 ```yaml
 - open: /dashboard
 ```
 
-#### click
-
-Click an element. Three locator strategies are available:
+**click** — Click an element. Role defaults to `button` if only `name` is given.
 
 ```yaml
-# By accessible role (role defaults to "button")
-- click:
-    name: Submit
-
-# By explicit role
-- click:
-    role: link
-    name: Home
-
-# By data-testid
-- click:
-    testid: nav-settings
-
-# By label
-- click:
-    label: Accept terms
-
-# With regex name matching
-- click:
-    name: "Delete.*"
-    name_regex: true
+- click: { name: "Submit" }            # button by name
+- click: { role: link, name: "Home" }  # explicit role
+- click: { testid: nav-settings }      # by test ID
+- click: { label: "Accept terms" }     # by label
 ```
 
-#### fill
-
-Type text into an input.
+**fill** — Type text into an input.
 
 ```yaml
-# By data-testid
-- fill:
-    testid: email-input
-    value: user@example.com
-
-# By label
-- fill:
-    label: Password
-    value: secret123
-
-# By role (must specify role explicitly)
-- fill:
-    role: textbox
-    name: Search
-    value: shipflow
+- fill: { testid: email, value: "user@example.com" }
+- fill: { label: "Password", value: "secret123" }
+- fill: { role: textbox, name: "Search", value: "query" }
 ```
 
-#### select
-
-Pick an option from a dropdown.
+**select** — Pick a dropdown option.
 
 ```yaml
-# By label
-- select:
-    label: Country
-    value: FR
-
-# By data-testid
-- select:
-    testid: theme-dropdown
-    value: dark
-
-# By role
-- select:
-    role: combobox
-    name: Language
-    value: en
+- select: { label: "Country", value: "FR" }
+- select: { testid: theme-dropdown, value: "dark" }
 ```
 
-#### hover
-
-Hover over an element (menus, tooltips).
+**hover** — Hover over an element (no default role).
 
 ```yaml
-# By role (required — no default)
-- hover:
-    role: button
-    name: Menu
-
-# By data-testid
-- hover:
-    testid: info-icon
-
-# By label
-- hover:
-    label: Help
+- hover: { role: button, name: "Menu" }
+- hover: { testid: info-icon }
 ```
 
-#### wait_for
-
-Pause for a fixed duration (milliseconds). Defaults to 250ms if `ms` is omitted.
+**wait_for** — Wait for a duration. Defaults to 250ms.
 
 ```yaml
-- wait_for:
-    ms: 500
-
-# Or with default 250ms
+- wait_for: { ms: 500 }
 - wait_for: {}
 ```
 
-### Assertions
-
-#### text_equals
-
-Exact text content match by `data-testid`.
+#### Assertions
 
 ```yaml
-- text_equals:
-    testid: welcome-msg
-    equals: Welcome back
+- text_equals: { testid: msg, equals: "Welcome" }    # exact match
+- text_matches: { testid: msg, regex: "Welcome.*" }   # regex match
+- visible: { testid: avatar }                          # element visible
+- hidden: { testid: empty-state }                      # element hidden (in DOM)
+- url_matches: { regex: "/dashboard" }                 # URL pattern
+- count: { testid: card, equals: 5 }                   # element count
 ```
 
-#### text_matches
+#### Locator Strategies
 
-Regex text content match by `data-testid`.
+All steps support three locator strategies — use one per step:
 
-```yaml
-- text_matches:
-    testid: status
-    regex: "(active|pending)"
-```
-
-#### visible
-
-Assert an element is visible.
-
-```yaml
-- visible:
-    testid: user-avatar
-```
-
-#### hidden
-
-Assert an element is hidden.
-
-```yaml
-- hidden:
-    testid: empty-state
-```
-
-#### url_matches
-
-Assert the current page URL matches a regex.
-
-```yaml
-- url_matches:
-    regex: "/dashboard"
-```
-
-#### count
-
-Assert the number of matching elements.
-
-```yaml
-- count:
-    testid: todo-item
-    equals: 5
-```
-
-### Locator strategies
-
-All interaction steps (`click`, `fill`, `select`, `hover`) support three locator strategies. Use exactly one per step:
-
-| Strategy | Fields | Playwright output |
+| Strategy | Field | Playwright |
 |---|---|---|
-| Role | `role`, `name`, `name_regex?` | `page.getByRole(role, { name })` |
-| Test ID | `testid` | `page.getByTestId(id)` |
-| Label | `label` | `page.getByLabel(label)` |
+| Role | `role` + `name` | `getByRole("button", { name: "Submit" })` |
+| Test ID | `testid` | `getByTestId("my-input")` |
+| Label | `label` | `getByLabel("Email")` |
 
-`click` defaults `role` to `"button"` if only `name` is provided. All other steps require `role` to be explicit.
+### Behavior Checks — `vp/behavior/*.yml`
 
-## Fixtures (reusable setup flows)
-
-Place reusable flows in `vp/ui/_fixtures/`. A fixture has an `id` and a `flow` but no assertions.
+Given/When/Then structure for business logic scenarios. Uses the same flow steps and assertions.
 
 ```yaml
-# vp/ui/_fixtures/login.yml
-id: login-as-user
-title: Log in as default test user
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /login
-  - fill:
-      testid: email
-      value: test@example.com
-  - fill:
-      label: Password
-      value: testpass
-  - click:
-      name: Sign in
-  - wait_for:
-      ms: 300
-```
-
-Reference a fixture in a check with the `setup` field:
-
-```yaml
-id: dashboard-loads
-title: Dashboard loads after login
+id: checkout
+feature: Shopping Cart
+scenario: User completes purchase
 severity: blocker
 setup: login-as-user
 app:
   kind: web
   base_url: http://localhost:3000
-flow:
-  - open: /dashboard
+given:
+  - open: /products
+  - click: { testid: add-to-cart }
+when:
+  - click: { name: "Checkout" }
+  - fill: { label: "Card", value: "4111111111111111" }
+  - click: { name: "Pay" }
+then:
+  - url_matches: { regex: "/confirmation" }
+  - visible: { testid: success-message }
+```
+
+Generates a Playwright test with `test.describe(feature)` and Given/When/Then comments.
+
+### API Checks — `vp/api/*.yml`
+
+Verify HTTP endpoints using Playwright's request API (no browser).
+
+```yaml
+id: create-user
+title: POST /api/users creates a user
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: POST
+  path: /api/users
+  headers:
+    Authorization: "Bearer admin-token"
+  body_json:
+    name: "Bob"
+    email: "bob@test.com"
 assert:
-  - visible:
-      testid: dashboard-content
+  - status: 201
+  - json_equals: { path: "$.name", equals: "Bob" }
+```
+
+#### Request Fields
+
+| Field | Description |
+|---|---|
+| `method` | GET, POST, PUT, PATCH, DELETE |
+| `path` | URL path (appended to `base_url`) |
+| `headers` | Optional key-value pairs |
+| `body` | Optional raw string body |
+| `body_json` | Optional JSON body (object/array) |
+
+#### API Assertions
+
+```yaml
+- status: 200                                                # HTTP status
+- header_equals: { name: "x-request-id", equals: "abc" }    # exact header
+- header_matches: { name: "content-type", matches: "json" }  # regex header
+- body_contains: "success"                                    # raw body search
+- json_equals: { path: "$[0].name", equals: "Alice" }        # JSON value
+- json_matches: { path: "$.status", matches: "active" }      # JSON regex
+- json_count: { path: "$.items", count: 5 }                  # array length
+```
+
+JSON paths: `$` = response body root. `$[0].name` → `body[0].name`, `$.items` → `body.items`.
+
+### DB Checks — `vp/db/*.yml`
+
+Verify database state. Supports SQLite and PostgreSQL.
+
+```yaml
+id: users-seeded
+title: Users table has seed data
+severity: blocker
+app:
+  kind: db
+  engine: sqlite               # sqlite or postgresql
+  connection: ./test.db        # file path or connection string
+setup_sql: |
+  CREATE TABLE IF NOT EXISTS users (name TEXT, email TEXT);
+  INSERT INTO users VALUES ('Alice', 'alice@test.com');
+query: "SELECT name, email FROM users"
+assert:
+  - row_count: 1
+  - cell_equals: { row: 0, column: name, equals: "Alice" }
+  - cell_matches: { row: 0, column: email, matches: "@test\\.com$" }
+  - column_contains: { column: name, value: "Alice" }
+```
+
+Generates a Playwright test that calls `sqlite3` or `psql` via `execFileSync`, piping SQL through stdin.
+
+### Fixtures — `vp/ui/_fixtures/*.yml`
+
+Reusable setup flows referenced by `setup:` in UI and behavior checks.
+
+```yaml
+# vp/ui/_fixtures/auth.yml
+id: login-as-user
+title: Log in as test user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /login
+  - fill: { label: Email, value: "test@example.com" }
+  - fill: { label: Password, value: "testpass" }
+  - click: { name: "Sign in" }
+  - wait_for: { ms: 300 }
+```
+
+Reference it:
+
+```yaml
+setup: login-as-user
 ```
 
 The fixture's flow steps are inlined before the check's own flow in the generated test.
 
 ## Running ShipFlow
 
-### Step 1: Generate tests
+### Generate tests
 
 ```bash
-node tools/shipflow/bin/shipflow.js gen
+shipflow gen
 ```
 
-This reads all `vp/ui/*.yml` files, validates them, generates Playwright specs in `.gen/playwright/`, and creates a lock file `.gen/vp.lock.json` that captures the hash of every file in `vp/`.
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright specs into `.gen/playwright/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
 
-### Step 2: Run verification
+### Run verification
 
 ```bash
-node tools/shipflow/bin/shipflow.js verify
+shipflow verify
 ```
 
-This:
-1. Verifies the lock (ensures `vp/` hasn't changed since last `gen`)
+1. Validates the lock (VP unchanged since `gen`)
 2. Runs `npx playwright test .gen/playwright`
-3. Writes results to `evidence/run.json`
-4. Exits with the Playwright exit code (0 = all pass)
+3. Writes `evidence/run.json`
+4. Exits 0 if all tests pass
 
-### Prerequisites
-
-Your app repo needs Playwright installed:
-
-```bash
-npm install -D @playwright/test
-npx playwright install
-```
-
-And a `playwright.config.ts` at the repo root. See the example project for a minimal config.
-
-## CI integration
-
-Add ShipFlow to your CI pipeline as a merge gate:
-
-```yaml
-# .github/workflows/verify.yml
-name: ShipFlow Verify
-on: [pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npm run shipflow:gen
-      - run: npm run shipflow:verify
-```
-
-## AI agent adapter setup (Claude Code)
-
-ShipFlow's anti-cheat invariant: the implementer must not modify `vp/`, `.gen/`, or `evidence/`. When using Claude Code as the implementer, enforce this with hooks.
-
-Create `.claude/hooks.json` in your app repo:
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "command": "node tools/shipflow/hooks/block-protected-paths.js"
-      }
-    ],
-    "Stop": [
-      {
-        "command": "npm run shipflow:gen && npm run shipflow:verify"
-      }
-    ]
-  }
-}
-```
-
-The `PreToolUse` hook blocks any file edit under protected paths during implementation. The `Stop` hook runs `gen` + `verify` before Claude Code finishes, blocking the stop if tests fail.
-
-## Validation errors
-
-If a YAML file has schema errors, ShipFlow reports them with file path and field location:
+### Validation errors
 
 ```
 Validation failed in vp/ui/login.yml:
@@ -413,12 +292,42 @@ Validation failed in vp/ui/login.yml:
   flow.2.click.name: Required
 ```
 
-## Lock integrity
+### Lock integrity
 
-The lock file `.gen/vp.lock.json` records a SHA-256 hash of every file in `vp/`. If you modify any verification pack file after running `gen`, the `verify` command will fail:
+If VP files change after `gen`, `verify` fails:
 
 ```
 Error: Verification pack changed since last generation. Run shipflow gen.
 ```
 
-This ensures generated tests always match the current specs.
+## Anti-Cheat
+
+ShipFlow enforces separation between verification and implementation:
+
+| Protected | Contents | Who writes |
+|---|---|---|
+| `vp/` | Verifications (YAML) | Human + AI (verification phase only) |
+| `.gen/` | Generated Playwright tests | `shipflow gen` |
+| `evidence/` | Test results | `shipflow verify` |
+
+Claude Code hooks enforce this automatically:
+- **PreToolUse** blocks Write/Edit to protected paths
+- **Stop** runs `shipflow verify` before the AI can finish
+
+## CI Integration
+
+```yaml
+name: ShipFlow Verify
+on: [pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npx shipflow gen
+      - run: npx shipflow verify
+```

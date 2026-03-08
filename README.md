@@ -2,24 +2,21 @@
 
 **Tell the AI what to build. It writes verifications, generates tests, implements the code, and loops until everything passes.**
 
-ShipFlow is a verification-first framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). You describe your app in plain language. The AI drafts executable verifications (YAML), generates Playwright tests from them, writes all the application code, and keeps looping until every test is green. No manual coding required.
+ShipFlow is a verification-first framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). You describe your app in plain language. The AI drafts executable verifications, generates Playwright tests from them, writes all the application code, and loops until every test is green.
 
 ```
- You say              AI drafts                AI generates         AI builds & loops
-"a calculator"  -->  vp/**/*.yml  -->  .gen/playwright/*.ts  -->  src/**  -->  All tests pass
-                     (ui, behavior, api, db)
+ You describe           AI drafts              AI generates           AI builds & loops
+"a calculator"  -->  vp/**/*.yml  -->  .gen/playwright/*.ts  -->  src/**  -->  all tests pass
 ```
 
 ## How It Works
-
-ShipFlow has two phases, both driven by AI:
 
 ### Phase 1 — Verification (`/shipflow-verifications`)
 
 You describe what you want. The AI immediately drafts verifications — no interview, no spec documents. You review and refine.
 
 ```yaml
-# vp/ui/add-numbers.yml — drafted by AI, refined by you
+# vp/ui/add-numbers.yml
 id: add-numbers
 title: Adding two numbers shows the correct result
 severity: blocker
@@ -46,52 +43,39 @@ Read VP  →  Generate tests  →  Implement  →  Verify  →  Pass? Done.
                                     └──── Fix & retry ─────┘
 ```
 
-The AI **cannot cheat** — hooks block any modification to `vp/`, `.gen/`, and `evidence/` during implementation. If the code doesn't pass the tests, the only option is to fix the code.
+The AI **cannot cheat** — hooks block any modification to `vp/`, `.gen/`, and `evidence/` during implementation.
 
 ## Quick Start
 
-### Install ShipFlow
-
 ```bash
-git clone https://github.com/anthropics/ShipFlow.git
+git clone <shipflow-repo-url>
 cd ShipFlow
 ./install.sh
 ```
 
-This registers ShipFlow as a Claude Code plugin. Restart Claude Code after installing.
-
-### Use It
-
-Open any project in Claude Code and run:
+Restart Claude Code, then in any project:
 
 ```
 /shipflow-verifications a calculator app
 ```
 
-The AI drafts verifications immediately. Review them, then:
+The AI drafts verifications. Review them, then:
 
 ```
 /shipflow-impl
 ```
 
-The AI builds the entire app and loops until all verifications pass.
+The AI builds the app and loops until all verifications pass.
 
-### Setup a Project (optional)
-
-For project-specific hooks and CLAUDE.md:
+To scaffold a project with hooks and CLAUDE.md:
 
 ```bash
 ./install.sh /path/to/your-project
 ```
 
-This creates:
-- `CLAUDE.md` — instructions for the AI
-- `.claude/hooks.json` — anti-cheat hooks
-- `vp/ui/` — directory for your verifications
-
 ## Verification Types
 
-ShipFlow supports four types of verifications. All generate Playwright tests.
+ShipFlow supports four types of verifications. All compile to Playwright tests.
 
 ### UI Checks — `vp/ui/*.yml`
 
@@ -101,7 +85,7 @@ Verify what users see and interact with in the browser.
 id: add-item
 title: User can add an item
 severity: blocker
-setup: login-as-user          # optional fixture reference
+setup: login-as-user          # optional — references vp/ui/_fixtures/
 app:
   kind: web
   base_url: http://localhost:3000
@@ -114,22 +98,21 @@ assert:
   - count: { testid: item, equals: 1 }
 ```
 
-**Flow steps**: `open`, `click` (name/testid/role), `fill` (testid/label + value), `select` (label/testid + value), `hover` (role/testid), `wait_for` (ms).
+**Flow steps**: `open`, `click`, `fill`, `select`, `hover`, `wait_for`
 
-**Assertions**: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`.
+**Assertions**: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`
 
-**Locators**: `testid` → `getByTestId()`, `label` → `getByLabel()`, `role` + `name` → `getByRole()`.
+**Locators**: `testid`, `label`, `role` + `name`
 
 ### Behavior Checks — `vp/behavior/*.yml`
 
-Verify business logic scenarios with Given/When/Then structure. Uses the same flow steps and assertions as UI checks.
+Verify business logic scenarios with Given/When/Then. Same flow steps and assertions as UI checks.
 
 ```yaml
 id: checkout-flow
 feature: Shopping Cart
 scenario: User adds item and checks out
 severity: blocker
-setup: login-as-user
 app:
   kind: web
   base_url: http://localhost:3000
@@ -137,7 +120,6 @@ given:
   - open: /products
   - click: { testid: add-to-cart }
 when:
-  - open: /cart
   - click: { name: "Checkout" }
   - fill: { label: "Card Number", value: "4111111111111111" }
   - click: { name: "Pay" }
@@ -148,7 +130,7 @@ then:
 
 ### API Checks — `vp/api/*.yml`
 
-Verify HTTP endpoints. Generated tests use Playwright's `request` API context (no browser needed).
+Verify HTTP endpoints. No browser needed.
 
 ```yaml
 id: list-users
@@ -158,22 +140,19 @@ app:
   kind: api
   base_url: http://localhost:3000
 request:
-  method: GET                  # GET, POST, PUT, PATCH, DELETE
+  method: GET
   path: /api/users
-  headers:                     # optional
+  headers:
     Authorization: "Bearer test-token"
 assert:
   - status: 200
-  - header_matches: { name: content-type, matches: "application/json" }
   - json_count: { path: "$", count: 3 }
   - json_equals: { path: "$[0].name", equals: "Alice" }
 ```
 
-**Request options**: `method`, `path`, `headers`, `body` (string), `body_json` (object).
+**Request**: `method` (GET/POST/PUT/PATCH/DELETE), `path`, `headers`, `body`, `body_json`
 
-**Assertions**: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches`, `json_count`.
-
-JSON paths use `$` for the response body root: `$[0].name` → `body[0].name`.
+**Assertions**: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches`, `json_count`
 
 ### DB Checks — `vp/db/*.yml`
 
@@ -185,28 +164,24 @@ title: Users table has expected seed data
 severity: blocker
 app:
   kind: db
-  engine: sqlite               # sqlite or postgresql
-  connection: ./test.db        # file path or connection string
-setup_sql: |                   # optional — runs before the query
+  engine: sqlite
+  connection: ./test.db
+setup_sql: |
   INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com');
 query: "SELECT name, email FROM users"
 assert:
   - row_count: 1
   - cell_equals: { row: 0, column: name, equals: "Alice" }
-  - cell_matches: { row: 0, column: email, matches: "@test\\.com$" }
-  - column_contains: { column: name, value: "Alice" }
 ```
 
-**Assertions**: `row_count`, `cell_equals`, `cell_matches`, `column_contains`.
+**Assertions**: `row_count`, `cell_equals`, `cell_matches`, `column_contains`
 
 ### Fixtures — `vp/ui/_fixtures/*.yml`
 
-Reusable setup flows (login, navigation, etc.) referenced by `setup:` in UI and behavior checks.
+Reusable setup flows (login, etc.) for UI and behavior checks via `setup:`.
 
 ```yaml
-# vp/ui/_fixtures/auth.yml
 id: login-as-user
-title: Log in as test user
 app:
   kind: web
   base_url: http://localhost:3000
@@ -217,77 +192,54 @@ flow:
   - click: { name: "Sign in" }
 ```
 
-## CLI Commands
+## Project Structure
+
+```
+your-app/
+├── vp/                          # Verifications (human + AI)
+│   ├── ui/*.yml
+│   ├── behavior/*.yml
+│   ├── api/*.yml
+│   ├── db/*.yml
+│   └── ui/_fixtures/*.yml
+├── .gen/                        # Generated tests (do not edit)
+│   ├── playwright/*.spec.ts
+│   └── vp.lock.json
+├── evidence/                    # Test results (do not edit)
+│   └── run.json
+├── src/                         # Application code (AI writes this)
+└── shipflow.json                # Config
+```
+
+## CLI
 
 ```bash
-shipflow gen       # Compile vp/ → .gen/playwright/*.spec.ts + vp.lock.json
+shipflow gen       # vp/ → .gen/playwright/*.spec.ts + vp.lock.json
 shipflow verify    # Run tests → evidence/run.json, exit 0 if all pass
 ```
 
 ## Anti-Cheat
 
-ShipFlow enforces a strict separation: the implementer cannot modify verifications, generated tests, or evidence.
+During implementation, hooks enforce:
 
-| Protected path | What it contains | Who writes it |
-|---|---|---|
-| `vp/` | Verification pack (YAML) | Human + AI (spec phase only) |
-| `.gen/` | Generated Playwright tests | `shipflow gen` |
-| `evidence/` | Test results | `shipflow verify` |
-
-During implementation, Claude Code hooks block any `Write` or `Edit` to these paths. A `Stop` hook runs `shipflow verify` before the AI can finish — if tests fail, it keeps working.
-
-## Project Structure
-
-```
-your-app/
-├── vp/                          # You define these
-│   ├── ui/
-│   │   ├── feature-a.yml
-│   │   ├── feature-b.yml
-│   │   └── _fixtures/
-│   │       └── auth.yml
-│   ├── behavior/
-│   │   └── checkout.yml
-│   ├── api/
-│   │   └── users.yml
-│   └── db/
-│       └── seed-data.yml
-├── .gen/                        # ShipFlow generates these
-│   ├── playwright/
-│   │   ├── vp_ui_feature-a.spec.ts
-│   │   ├── vp_behavior_checkout.spec.ts
-│   │   ├── vp_api_users.spec.ts
-│   │   └── vp_db_seed-data.spec.ts
-│   └── vp.lock.json
-├── evidence/                    # ShipFlow writes these
-│   └── run.json
-├── src/                         # AI implements this
-│   └── ...
-└── shipflow.json                # Project config
-```
+- **PreToolUse** blocks Write/Edit to `vp/`, `.gen/`, `evidence/`
+- **Stop** hook runs `shipflow verify` — blocks completion if tests fail
+- **VP lock** (SHA-256) detects any tampering between `gen` and `verify`
 
 ## Configuration
-
-`shipflow.json` at your project root:
 
 ```json
 {
   "impl": {
     "srcDir": "src",
-    "context": "Node.js HTTP server, no frameworks, inline CSS/JS"
+    "context": "Node.js HTTP server, no frameworks"
   }
 }
 ```
 
-| Field | Default | Description |
-|---|---|---|
-| `impl.srcDir` | `"src"` | Where the AI writes application code |
-| `impl.context` | — | Tech stack guidance for the AI |
-
-## CI Integration
+## CI
 
 ```yaml
-# .github/workflows/verify.yml
 name: ShipFlow Verify
 on: [pull_request]
 jobs:
@@ -307,7 +259,6 @@ jobs:
 
 - Node.js 18+
 - Claude Code with plugin support
-- Playwright (installed automatically via `npx`)
 
 ## License
 

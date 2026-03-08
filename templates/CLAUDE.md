@@ -1,31 +1,30 @@
 # ShipFlow
 
-This project uses ShipFlow. You are the implementer. Follow this workflow exactly.
+This project uses ShipFlow for verification-first development.
 
-## Two phases, two roles
+## Two Phases
 
-### Phase 1: Spec (human + AI collaboration)
-**Model: Claude Opus 4.6** (`claude-opus-4-6`)
+### Phase 1: Verification (human + AI)
 
-The human and AI collaborate to define Verification Pack specs in `vp/`.
-- Discuss requirements, edge cases, expected behaviors
-- Write `vp/ui/*.yml` checks (what the app must do)
-- Write `vp/ui/_fixtures/*.yml` (reusable setup flows like login)
-- Review and refine until the human approves the specs
+Draft verifications in `vp/` — YAML files describing what the app must do.
 
-You MAY modify `vp/` files during this phase. This is the only phase where VP modification is allowed.
+Four types of verifications:
+- `vp/ui/*.yml` — UI checks (browser interactions + assertions)
+- `vp/behavior/*.yml` — behavior checks (Given/When/Then scenarios)
+- `vp/api/*.yml` — API checks (HTTP requests + response assertions)
+- `vp/db/*.yml` — DB checks (SQL queries + row/cell assertions)
+- `vp/ui/_fixtures/*.yml` — reusable setup flows (login, etc.)
+
+You MAY modify `vp/` files during this phase only.
 
 ### Phase 2: Implementation (AI autonomous)
-**Model: Claude Sonnet 4.6** (`claude-sonnet-4-6`)
 
-You implement the app code that satisfies the VP specs. The human does not write code. You do.
+Implement app code that passes all generated tests. The human does not write code.
 
-## The implementation loop
-
-Every time you implement or modify the app, follow this exact loop:
+## The Implementation Loop
 
 ```
-1. Read VP       →  Read all vp/ui/*.yml and vp/ui/_fixtures/*.yml
+1. Read VP       →  Read all vp/**/*.yml
 2. Generate      →  Run: shipflow gen
 3. Read tests    →  Read .gen/playwright/*.spec.ts
 4. Implement     →  Write app code under src/
@@ -35,52 +34,50 @@ Every time you implement or modify the app, follow this exact loop:
 
 Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
 
-## Protected paths — NEVER modify during implementation
+## Protected Paths — NEVER Modify During Implementation
 
-- `vp/**` — Verification Pack (specs are the source of truth)
-- `.gen/**` — Generated tests (compiled from VP by `shipflow gen`)
-- `evidence/**` — Verification output (written by `shipflow verify`)
+- `vp/**` — Verification pack (source of truth)
+- `.gen/**` — Generated tests
+- `evidence/**` — Verification output
 - `shipflow.json` — Framework config
 - `playwright.config.ts` — Test runner config
 
-If you need to change a spec to fix a test, STOP. That means the spec is wrong. Go back to Phase 1 with the human.
+If a verification seems wrong, STOP. Go back to Phase 1 with the human.
 
-## What to read in VP specs
+## What to Match in Your Implementation
 
-Each `vp/ui/*.yml` file defines one check with:
-- `flow`: user actions (open, click, fill, select, hover, wait_for)
-- `assert`: expected outcomes (text_equals, text_matches, visible, hidden, url_matches, count)
-- `setup`: optional reference to a fixture for reusable setup (e.g. login)
+The generated Playwright tests use these locators:
 
-## What to get right in your implementation
-
-The generated Playwright tests use these locators. Match them exactly:
-
-| VP concept | Your HTML must have |
+| VP concept | Your code must provide |
 |---|---|
 | `testid: foo` | `data-testid="foo"` attribute |
-| `label: Email` | `<label for="x">Email</label>` + `<input id="x">` |
-| `click: { name: Submit }` | `<button>Submit</button>` (or element with matching accessible name) |
-| `role: link, name: Home` | `<a>Home</a>` (or element with matching role + name) |
-| `url_matches: { regex: "/dashboard" }` | URL after navigation matches the regex |
-| `visible: { testid: x }` | Element with `data-testid="x"` is visible |
-| `hidden: { testid: x }` | Element with `data-testid="x"` exists but is hidden (`display:none` etc.) |
-| `count: { testid: x, equals: 3 }` | Exactly 3 elements with `data-testid="x"` |
+| `label: Email` | `<label>Email</label>` + associated input |
+| `click: { name: Submit }` | `<button>Submit</button>` |
+| `role: link, name: Home` | `<a>Home</a>` |
+| `visible: { testid: x }` | Element visible in DOM |
+| `hidden: { testid: x }` | Element in DOM but hidden |
+| `count: { testid: x, equals: 3 }` | Exactly 3 elements with that testid |
+
+For API checks: implement endpoints matching the `method`, `path`, response `status`, headers, and JSON body.
+
+For DB checks: ensure the database schema and data match the `query` and assertions.
 
 ## Commands
 
 ```bash
 shipflow gen      # Compile vp/ → .gen/playwright/*.spec.ts + vp.lock.json
-shipflow verify   # Run Playwright tests → evidence/run.json, exit 0 if all pass
+shipflow verify   # Run tests → evidence/run.json, exit 0 if all pass
 ```
 
-## On verify failure
+## On Verify Failure
 
-Read the Playwright error output carefully. Common fixes:
-- **Element not found** → missing `data-testid`, wrong label text, or wrong button text
-- **Text mismatch** → wrong `textContent` in your HTML/JS
-- **Timeout** → element never appears; check your rendering logic
-- **Count mismatch** → wrong number of elements; check your filtering/rendering
-- **URL mismatch** → your navigation doesn't produce the expected URL
+Read the Playwright error output. Common fixes:
+- **Element not found** → missing `data-testid`, wrong label/button text
+- **Text mismatch** → wrong textContent in your HTML/JS
+- **Timeout** → element never appears; check rendering
+- **Count mismatch** → wrong number of elements
+- **URL mismatch** → navigation doesn't produce expected URL
+- **Status mismatch** → API returns wrong HTTP status
+- **JSON mismatch** → API response body doesn't match assertions
 
-Fix the code, then run `shipflow verify` again. Repeat until green.
+Fix the code, run `shipflow verify` again. Repeat until green.

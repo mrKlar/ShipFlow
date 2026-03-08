@@ -1,34 +1,44 @@
-# Verification Pack v1 (ShipFlow)
+# Verification Pack (ShipFlow)
 
-## Canon
-Only `vp/` is human-readable and reviewed.
-Everything else is build output or opaque implementation.
+## Principle
 
-Required folders in app repo:
-- `vp/`       : verification pack (reviewed)
-- `.gen/`     : generated verifiers (do not edit manually)
-- `evidence/` : verification outputs (do not edit manually)
+Only `vp/` is human-readable and reviewed. Everything else is generated or opaque implementation.
 
-## Verification languages (human-readable)
-- UI/Feature: `vp/ui/*.yml` (ShipFlow DSL, closed vocabulary)
-- API: `vp/api/openapi.yaml`, `vp/api/*.schema.json`
-- Data: `vp/data/*.sql` (+ optional metadata YAML)
-- NFR: `vp/nfr/*.yml` (budgets/scenarios)
-- Policy: `vp/policy/*.rego` (OPA/Rego)
+## Directories
 
-## Generated (opaque)
-- `.gen/playwright/*.spec.ts` from UI DSL
-- `.gen/k6/*.js` from NFR DSL (v1 stub)
-- `.gen/vp.lock.json` (hash of the verification pack)
+| Directory | Role | Editable |
+|---|---|---|
+| `vp/` | Verification pack | Yes (verification phase only) |
+| `.gen/` | Generated tests | No (produced by `shipflow gen`) |
+| `evidence/` | Test results | No (produced by `shipflow verify`) |
+
+## Verification Types
+
+| Type | Path | Schema | Generates |
+|---|---|---|---|
+| UI | `vp/ui/*.yml` | Flow + assert | Playwright browser tests |
+| Behavior | `vp/behavior/*.yml` | Given/when/then | Playwright browser tests (BDD structure) |
+| API | `vp/api/*.yml` | Request + assert | Playwright API tests (no browser) |
+| DB | `vp/db/*.yml` | Query + assert | Playwright tests with CLI (sqlite3/psql) |
+| Fixtures | `vp/ui/_fixtures/*.yml` | Flow only | Inlined into UI/behavior tests |
+
+## Generated Output
+
+All verification types compile to `.gen/playwright/*.spec.ts`.
+
+The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
 
 ## Execution
-`shipflow verify` must:
-1) validate verification pack lock (verification pack unchanged since `gen`)
-2) run policy gate (optional in v1; integration point exists)
-3) run generated verifiers
-4) emit evidence JSON
 
-## Anti-triche invariants (enforced by adapters/CI)
-- Implementation phase MUST NOT modify: `vp/**`, `.gen/**`, `evidence/**`
-- `.gen/**` is regenerated only via `shipflow gen`
-- Only one merge gate uses `shipflow verify` results
+`shipflow verify`:
+1. Validates VP lock (VP unchanged since `gen`)
+2. Runs generated Playwright tests
+3. Emits `evidence/run.json`
+4. Exits 0 if all pass
+
+## Anti-Cheat Invariants
+
+- Implementation phase MUST NOT modify `vp/`, `.gen/`, or `evidence/`
+- `.gen/` is regenerated only via `shipflow gen`
+- VP lock prevents tampering between gen and verify
+- Claude Code hooks enforce these constraints automatically
