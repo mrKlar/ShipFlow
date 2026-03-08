@@ -66,10 +66,10 @@ That's it. The installer **auto-detects** every AI coding agent on your machine 
 
 | Platform | What the installer does |
 |---|---|
-| 🟠 **Claude Code** | Installs the ShipFlow **plugin** + anti-cheat hooks |
-| 🟢 **Codex CLI** | Installs **skills** + exec policy rules + global instructions |
-| 🟣 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
-| 🔵 **Kiro CLI** | Installs **skills** + steering context |
+| ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | Installs the ShipFlow **plugin** + anti-cheat hooks |
+| ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | Installs **skills** + exec policy rules + global instructions |
+| ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | Installs **extension** + BeforeTool guard hooks |
+| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | Installs **skills** + steering context |
 
 ### Uninstall
 
@@ -87,10 +87,10 @@ Open any project in your AI coding agent and use the **native commands:**
 
 | | Describe your app | Build it |
 |---|---|---|
-| 🟠 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
-| 🟢 Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-impl` |
-| 🟣 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
-| 🔵 Kiro CLI | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
+| ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | `/shipflow-verifications a todo app` | `/shipflow-impl` |
+| ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | `$shipflow-verifications a todo app` | `$shipflow-impl` |
+| ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | `/shipflow:verifications a todo app` | `/shipflow:impl` |
+| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
 
 **Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
 
@@ -154,16 +154,16 @@ ShipFlow doesn't just "support" AI agents. It installs **native extensions** tha
 
 | Platform | Integration type | Anti-cheat mechanism |
 |---|---|---|
-| 🟠 **Claude Code** | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
-| 🟢 **Codex CLI** | Skills (`$skill` invocation) | Sandbox + exec policy rules |
-| 🟣 **Gemini CLI** | Extension (slash commands + context) | BeforeTool guard hooks |
-| 🔵 **Kiro CLI** | Skills (auto-activated) + steering | PreToolUse guard hooks |
+| ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
+| ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | Skills (`$skill` invocation) | Sandbox + exec policy rules |
+| ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | Extension (slash commands + context) | BeforeTool guard hooks |
+| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | Skills (auto-activated) + steering | PreToolUse guard hooks |
 
 Every integration includes the **full verification schema**, **implementation loop instructions**, and **platform-specific anti-cheat enforcement.** The AI knows exactly what to do, and it can't cheat.
 
 ---
 
-## 📋 Six Verification Types + Policy Gates
+## 📋 Seven Verification Types + Policy Gates
 
 | | Type | Path | What it tests |
 |---|---|---|---|
@@ -173,6 +173,7 @@ Every integration includes the **full verification schema**, **implementation lo
 | 🗄️ | **Database Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
 | ⚡ | **Performance Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
 | 🔐 | **Security Checks** | `vp/security/*.yml` | Auth, authz, headers, exposure |
+| 🏗️ | **Technical Checks** | `vp/technical/*.yml` | Frameworks, architecture, CI, infra, tooling |
 | 📜 | **Policy Gates** | `vp/policy/*.rego` | Organizational rules via OPA |
 
 Plus 🧩 **fixtures** (`vp/ui/_fixtures/*.yml`) for reusable setup flows.
@@ -190,6 +191,7 @@ your-app/
 │   ├── db/*.yml
 │   ├── nfr/*.yml
 │   ├── security/*.yml
+│   ├── technical/*.yml
 │   ├── policy/*.rego
 │   └── ui/_fixtures/*.yml
 ├── 📂 .gen/                      # 🤖 Generated tests (don't touch)
@@ -248,7 +250,7 @@ jobs:
 
 ### 📋 Requirements
 
-**Node.js 18+** · **Claude Code** or **Codex CLI** or **Gemini CLI** or **Kiro CLI**
+**Node.js 18+** · ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) or ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) or ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) or ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white)
 
 <br>
 
