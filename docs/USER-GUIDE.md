@@ -27,8 +27,12 @@ cd ShipFlow && ./install.sh
 
 The installer:
 1. Installs `shipflow` as a global CLI command
-2. Detects Claude Code, Codex CLI, Gemini CLI
-3. Installs the Claude Code plugin if Claude is found
+2. Auto-detects Claude Code, Codex CLI, Gemini CLI, Kiro CLI
+3. Installs native integrations for each detected platform:
+   - **Claude Code** — plugin + anti-cheat hooks
+   - **Codex CLI** — skills + exec policy rules + global instructions
+   - **Gemini CLI** — extension + BeforeTool guard hooks
+   - **Kiro CLI** — skills + steering context
 
 Restart Claude Code after installing.
 
@@ -54,7 +58,9 @@ npx playwright install
 ```bash
 shipflow init --codex              # OpenAI Codex CLI
 shipflow init --gemini             # Google Gemini CLI
+shipflow init --kiro               # AWS Kiro CLI
 shipflow init --claude --codex     # Multiple platforms
+shipflow init --all                # All platforms
 ```
 
 ## Usage
@@ -99,6 +105,20 @@ Review and iterate. Then:
 
 ```
 /shipflow:impl
+```
+
+### With Kiro CLI
+
+Open your project. Skills auto-activate when your request matches:
+
+```
+"create shipflow verifications for a todo app with login"
+```
+
+Review and iterate. Then:
+
+```
+"implement until shipflow verify passes"
 ```
 
 ### All platforms
@@ -324,6 +344,98 @@ scenario:
 
 Requires `k6` installed. Runs during `shipflow verify` if available.
 
+### Technical Checks — `vp/technical/*.yml`
+
+Verify repository-level technical constraints: framework selection, architecture boundaries, CI workflows, infrastructure files, SaaS/tooling declarations, and browser/mobile test services.
+
+```yaml
+id: technical-ci-stack
+title: Repository uses GitHub Actions and Playwright
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: ".github/workflows/ci.yml" }
+  - dependency_present: { name: "@playwright/test", section: devDependencies }
+  - github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/checkout@v4" }
+```
+
+#### Categories
+
+`framework`, `architecture`, `infrastructure`, `saas`, `ci`, `testing`, `mobile`, `web`, `other`
+
+#### Runners
+
+`custom` uses the built-in repo inspection engine.
+
+`archtest` is for architecture-oriented checks; use it when you want to enforce layering or boundary rules with assertions such as forbidden imports.
+
+Typical `runner.framework` values: `dependency-cruiser`, `tsarch`, `madge`, `eslint-plugin-boundaries`.
+
+Example architecture rule with `tsarch`:
+
+```yaml
+id: technical-architecture-boundaries
+title: Domain layer stays isolated from UI
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: tsarch
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
+  - command_succeeds: { command: "npx tsarch --help" }
+```
+
+#### Technical Assertions
+
+```yaml
+- path_exists: { path: "Dockerfile" }
+- path_absent: { path: "docker-compose.yml" }
+- file_contains: { path: ".github/workflows/ci.yml", text: "playwright install" }
+- file_not_contains: { path: "package.json", text: "\"express\"" }
+- json_has: { path: "package.json", query: "$.scripts.test" }
+- json_equals: { path: "package.json", query: "$.type", equals: "module" }
+- dependency_present: { name: "next", section: dependencies }
+- dependency_absent: { name: "express", section: all }
+- github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/setup-node@v4" }
+- glob_count: { glob: ".github/workflows/*.yml", equals: 2 }
+- imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
+- imports_allowed_only_from: { files: "src/domain/**/*.ts", patterns: ["@/domain", "@/shared"] }
+- layer_dependencies:
+    layers:
+      - { name: ui, files: "src/ui/**/*.ts", may_import: ["application", "shared"] }
+      - { name: application, files: "src/application/**/*.ts", may_import: ["domain", "shared"] }
+- command_succeeds: { command: "npx dependency-cruiser --version" }
+- command_stdout_contains: { command: "npx tsarch --help", text: "tsarch" }
+```
+
+### Local Draft Workflow
+
+```bash
+shipflow map
+shipflow draft
+shipflow draft --write
+shipflow doctor
+shipflow lint
+shipflow gen
+```
+
+Recommended usage:
+1. `shipflow map` to inspect the current repo surface.
+2. `shipflow draft` to see the understood coverage, gaps, ambiguities, and proposed starter files.
+3. `shipflow draft --write` to write starter files for the highest-confidence gaps.
+4. Review/edit the VP files.
+5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
+
 ### Fixtures — `vp/ui/_fixtures/*.yml`
 
 Reusable setup flows referenced by `setup:` in UI and behavior checks.
@@ -392,6 +504,8 @@ ShipFlow enforces separation between verification and implementation:
 | `.gen/` | Generated Playwright tests | `shipflow gen` |
 | `evidence/` | Test results | `shipflow verify` |
 
-Hooks enforce this automatically:
-- **PreToolUse** blocks Write/Edit to protected paths
-- **Stop** runs `shipflow verify` before the AI can finish
+Hooks enforce this automatically per platform:
+- **Claude Code** — PreToolUse blocks Write/Edit to protected paths, Stop runs verify before completion
+- **Codex CLI** — Sandbox exec policy rules restrict protected paths
+- **Gemini CLI** — BeforeTool hooks block writes to protected paths
+- **Kiro CLI** — PreToolUse hooks block writes (exit code 2) to protected paths
