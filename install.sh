@@ -112,7 +112,7 @@ if command -v claude &>/dev/null; then
   claude plugin marketplace add "$INSTALL_DIR" 2>/dev/null || true
   claude plugin uninstall shipflow@shipflow 2>/dev/null || true
   claude plugin install shipflow@shipflow 2>/dev/null || true
-  info "Plugin installed: /shipflow-verifications, /shipflow-impl"
+  info "Plugin installed: /shipflow-verifications, /shipflow-implement"
 else
   skip "Claude Code not found"
 fi
@@ -153,10 +153,11 @@ if command -v codex &>/dev/null; then
   # Install skills (global: ~/.agents/skills/)
   CODEX_SKILLS="$HOME/.agents/skills"
   mkdir -p "$CODEX_SKILLS"
-  rm -rf "$CODEX_SKILLS/shipflow-verifications" "$CODEX_SKILLS/shipflow-impl"
+  rm -rf "$CODEX_SKILLS/shipflow-verifications" "$CODEX_SKILLS/shipflow-impl" "$CODEX_SKILLS/shipflow-implement"
   cp -r "$INSTALL_DIR/codex-skills/shipflow-verifications" "$CODEX_SKILLS/"
   cp -r "$INSTALL_DIR/codex-skills/shipflow-impl" "$CODEX_SKILLS/"
-  info "Skills installed: \$shipflow-verifications, \$shipflow-impl"
+  cp -r "$INSTALL_DIR/codex-skills/shipflow-implement" "$CODEX_SKILLS/"
+  info "Skills installed: \$shipflow-verifications, \$shipflow-implement"
 else
   skip "Codex CLI not found"
 fi
@@ -168,7 +169,7 @@ if command -v gemini &>/dev/null; then
 
   # Install extension
   gemini extensions install "$INSTALL_DIR/gemini-extension" --consent 2>/dev/null || true
-  info "Extension installed: /shipflow:verifications, /shipflow:impl"
+  info "Extension installed: /shipflow:verifications, /shipflow:implement"
 
   # Merge hooks into settings.json
   GEMINI_SETTINGS="$HOME/.gemini/settings.json"
@@ -231,10 +232,11 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   # Install skills (global: ~/.kiro/skills/)
   KIRO_SKILLS="$HOME/.kiro/skills"
   mkdir -p "$KIRO_SKILLS"
-  rm -rf "$KIRO_SKILLS/shipflow-verifications" "$KIRO_SKILLS/shipflow-impl"
+  rm -rf "$KIRO_SKILLS/shipflow-verifications" "$KIRO_SKILLS/shipflow-impl" "$KIRO_SKILLS/shipflow-implement"
   cp -r "$INSTALL_DIR/kiro-skills/shipflow-verifications" "$KIRO_SKILLS/"
   cp -r "$INSTALL_DIR/kiro-skills/shipflow-impl" "$KIRO_SKILLS/"
-  info "Skills installed: shipflow-verifications, shipflow-impl"
+  cp -r "$INSTALL_DIR/kiro-skills/shipflow-implement" "$KIRO_SKILLS/"
+  info "Skills installed: shipflow-verifications, shipflow-implement"
 
   # Global steering context
   KIRO_STEERING="$HOME/.kiro/steering"
@@ -276,27 +278,27 @@ echo ""
 if [[ " ${FOUND[*]:-} " == *" claude "* ]]; then
   printf "  ${D}# Claude Code:${R}\n"
   echo "  /shipflow-verifications a todo app"
-  echo "  /shipflow-impl"
+  echo "  /shipflow-implement"
   echo ""
 fi
 
 if [[ " ${FOUND[*]:-} " == *" codex "* ]]; then
   printf "  ${D}# Codex CLI:${R}\n"
   echo "  \$shipflow-verifications a todo app"
-  echo "  \$shipflow-impl"
+  echo "  \$shipflow-implement"
   echo ""
 fi
 
 if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
   printf "  ${D}# Gemini CLI:${R}\n"
   echo "  /shipflow:verifications a todo app"
-  echo "  /shipflow:impl"
+  echo "  /shipflow:implement"
   echo ""
 fi
 
 if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
   printf "  ${D}# Kiro CLI (skills auto-activate):${R}\n"
-  echo "  \"create shipflow verifications for a todo app\""
-  echo "  \"implement until shipflow verify passes\""
+  echo "  \"draft ShipFlow verifications for a todo app\""
+  echo "  \"run shipflow implement against the reviewed verification pack\""
   echo ""
 fi

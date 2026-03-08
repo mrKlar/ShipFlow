@@ -1,145 +1,65 @@
 ---
 name: shipflow-verifications
-description: Draft executable ShipFlow verifications for an app. Use when the user wants to create or update VP verification files, define what an app must do, or start a new ShipFlow project. Do NOT use for implementation — use $shipflow-impl instead.
+description: Collaboratively draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl.
 ---
 
-# ShipFlow — Verification Phase
+# ShipFlow — Verification Collaboration
 
-You are writing executable verifications for the user's app. Be proactive: draft verifications immediately from context, don't interview the user.
+Use this skill when the user wants to define, review, add, remove, or tighten ShipFlow verifications.
 
-## Context
+## Intent
 
-$ARGUMENTS
+This is a human + AI collaboration phase, not an autonomous one-shot.
+Your job is to help the user shape a precise verification pack under `vp/`, then validate it with ShipFlow.
 
-## Process
+## Workflow
 
-### Step 1: Read context (silently)
-
-Quickly scan what exists — do NOT narrate this to the user:
-- `shipflow.json` — project config
-- `vp/**/*.yml` — existing checks (ui, behavior, api, db)
-- `src/` — existing app code (if any)
-- Project name, README — for intent
-
-If no `shipflow.json` exists, run `shipflow init --codex` first.
-
-### Step 2: Draft verifications NOW
-
-From the project name, user's description, and any existing code, **immediately write VP check files**. Don't ask what to verify — infer it. Be opinionated. Cover the obvious flows.
-
-Choose the right verification type for each behavior:
-
-#### UI checks — `vp/ui/*.yml`
-For verifying what users see and interact with in the browser.
-
-```yaml
-id: unique-id
-title: What this verifies
-severity: blocker
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /
-  - fill: { testid: x, value: "text" }
-  - click: { name: "Button" }
-assert:
-  - text_equals: { testid: x, equals: "Expected" }
-```
-
-Flow steps: `open`, `fill` (testid/label + value), `click` (name/testid/role), `select` (label/testid + value), `hover` (role/testid), `wait_for` (ms), `route_block` (path + status, to mock/block API calls).
-
-Assertions: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`.
-
-#### Behavior checks — `vp/behavior/*.yml`
-For verifying business logic scenarios with Given/When/Then structure.
-
-```yaml
-id: unique-id
-feature: Feature Name
-scenario: What happens in this scenario
-severity: blocker
-app:
-  kind: web
-  base_url: http://localhost:3000
-given:
-  - open: /products
-  - click: { testid: add-to-cart }
-when:
-  - click: { name: "Checkout" }
-then:
-  - url_matches: { regex: "/confirmation" }
-  - visible: { testid: success-message }
-```
-
-#### API checks — `vp/api/*.yml`
-For verifying HTTP endpoints.
-
-```yaml
-id: unique-id
-title: What this verifies
-severity: blocker
-app:
-  kind: api
-  base_url: http://localhost:3000
-request:
-  method: GET
-  path: /api/users
-assert:
-  - status: 200
-  - json_count: { path: "$", count: 3 }
-  - json_equals: { path: "$[0].name", equals: "Alice" }
-```
-
-#### DB checks — `vp/db/*.yml`
-For verifying database state.
-
-```yaml
-id: unique-id
-title: What this verifies
-severity: blocker
-app:
-  kind: db
-  engine: sqlite
-  connection: ./test.db
-query: "SELECT name FROM users"
-assert:
-  - row_count: 1
-  - cell_equals: { row: 0, column: name, equals: "Alice" }
-```
-
-#### Fixtures — `vp/ui/_fixtures/*.yml`
-Reusable setup flows (login, etc.) referenced by `setup:` in UI and behavior checks.
-
-### Step 3: Validate
-
-Run gen to confirm the checks compile:
+1. If the project has no `shipflow.json`, run:
 
 ```bash
+shipflow init --codex
+```
+
+2. Build context before writing:
+- Read the user request
+- Review existing `vp/` files if they exist
+- Run `shipflow map --json` when repo context matters
+- Run `shipflow draft --json` when starter proposals would help
+
+3. Draft or refine the verification pack in collaboration with the user:
+- Write focused checks under `vp/`
+- Prefer one observable behavior per file
+- Cover the relevant types: UI, behavior, API, database, performance, security, technical
+- Call out ambiguities instead of hiding them
+
+4. Validate every pass:
+
+```bash
+shipflow lint
 shipflow gen
 ```
 
-Fix any YAML errors and retry until gen succeeds.
+5. Present a short summary:
+- what was added or changed
+- what is still ambiguous
+- what is intentionally not covered yet
 
-### Step 4: Present to the user
+6. Iterate until the user is satisfied, then direct them to:
 
-Show a short summary of what you drafted:
-- List each check: id, title, type (UI/behavior/API/DB), what it verifies
-- Say "These are your verifications. Tell me what to add, remove, or change."
+```text
+$shipflow-implement
+```
 
-### Step 5: Iterate
+Legacy alias:
 
-When the user gives feedback:
-- Add/remove/modify checks
-- Re-run gen to validate
-- Show updated summary
-
-Repeat until the user is satisfied, then tell them to use `$shipflow-impl` to build the app.
+```text
+$shipflow-impl
+```
 
 ## Rules
 
-- **Be proactive** — draft first, ask later. Never open with questions.
-- One behavior per check, keep flows short
-- Use `data-testid` for element targeting, `label` for form inputs, `name` for buttons
-- `severity: blocker` for core functionality, `warn` for nice-to-have
-- Choose the right verification type: UI for visual, behavior for scenarios, API for endpoints, DB for data
+- Do not pretend the first draft is complete
+- Do not optimize for check count; optimize for precision
+- Prefer stable selectors and concrete assertions
+- Use `warn` only for genuinely non-blocking checks
+- If validation fails, fix the pack before presenting it as ready
