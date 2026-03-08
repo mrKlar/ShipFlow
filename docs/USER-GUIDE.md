@@ -520,7 +520,7 @@ shipflow verify
 1. Validates the lock (VP unchanged since `gen`)
 2. Evaluates OPA policies (if present)
 3. Runs generated Playwright tests and writes per-type evidence files
-4. Runs k6 NFR scripts (if present and k6 available) and writes `evidence/load.json`
+4. Runs k6 NFR scripts when present. Missing `k6` is treated as a verification failure and writes `evidence/load.json`
 5. Writes aggregate `evidence/run.json`
 6. Exits 0 if all tests pass
 

@@ -240,6 +240,46 @@ describe("verify", () => {
     }
   });
 
+  it("fails when performance checks are present but k6 is not installed", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
+    const binDir = path.join(tmpDir, "bin");
+    const previousPath = process.env.PATH;
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "k6"), { recursive: true });
+      fs.mkdirSync(binDir, { recursive: true });
+
+      fs.writeFileSync(path.join(tmpDir, ".gen", "k6", "vp_nfr_smoke.js"), "export default function() {}\n");
+
+      const lock = { version: 1, vp_sha256: sha256(Buffer.from("[]")), files: [] };
+      fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
+      fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
+        version: 1,
+        outputs: {
+          nfr: {
+            files: [".gen/k6/vp_nfr_smoke.js"],
+            checks: [{ id: "perf-smoke", severity: "blocker", file: ".gen/k6/vp_nfr_smoke.js" }],
+          },
+        },
+      }, null, 2));
+
+      writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '0 passed'\n");
+      process.env.PATH = `${binDir}:${previousPath}`;
+      const result = await verify({ cwd: tmpDir, capture: true });
+
+      assert.equal(result.exitCode, 1);
+      const load = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "load.json"), "utf-8"));
+      assert.equal(load.ok, false);
+      assert.equal(load.reason, "k6 not installed");
+      const run = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "run.json"), "utf-8"));
+      assert.equal(run.ok, false);
+    } finally {
+      process.env.PATH = previousPath;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("does not fail the run when only warn checks fail", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
     const binDir = path.join(tmpDir, "bin");
