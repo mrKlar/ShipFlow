@@ -103,6 +103,10 @@ function runCommand(command, relCwd) {
 
 test.describe("Technical: ci", () => {
   test("technical-ci-stack: Repository uses GitHub Actions and Playwright [custom]", async () => {
+    // Anti false positive guard
+    expect(exists("__shipflow_false_positive__/missing")).toBe(false);
+    expect(globFiles("__shipflow_false_positive__/**").length).toBe(0);
+    if (exists("package.json")) expect(hasDependency("package.json", "__shipflow_false_positive__")).toBe(false);
     expect(exists("package.json")).toBe(true);
     expect(readText("package.json")).toContain("@playwright/test");
     expect(exists(".github/workflows/ci.yml")).toBe(true);

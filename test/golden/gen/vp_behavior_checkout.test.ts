@@ -21,4 +21,21 @@ test.describe("Shopping Cart", () => {
     await expect(page).toHaveURL(new RegExp("/confirmation"));
     await expect(page.getByTestId("success-message")).toBeVisible();
   });
+  test("checkout-flow: User adds item and checks out [mutation guard]", async ({ page }) => {
+    await page.goto("http://localhost:3000");
+    // setup: login-fixture
+    await page.goto("http://localhost:3000/login");
+    await page.getByTestId("email-input").fill("test@example.com");
+    await page.getByLabel("Password").fill("testpass");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForTimeout(300);
+    // Given
+    await page.goto("http://localhost:3000/products");
+    await page.getByTestId("add-to-cart").click();
+    const mutationGuardPasses = [
+      new RegExp("/confirmation").test(page.url()),
+      await page.getByTestId("success-message").isVisible().catch(() => false),
+    ].every(Boolean);
+    expect(mutationGuardPasses).toBe(false);
+  });
 });

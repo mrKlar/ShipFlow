@@ -69,13 +69,36 @@ describe("buildDraft", () => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
 
-      const result = buildDraft(tmpDir, "todo app with login, REST API, sqlite, GitHub Actions, and Docker");
+      const result = buildDraft(tmpDir, "todo app with login, REST API, sqlite, GitHub Actions, Docker, and stress testing");
       assert.ok(result.proposals.some(proposal => proposal.type === "ui" && proposal.path.startsWith("vp/ui/")));
       assert.ok(result.proposals.some(proposal => proposal.type === "behavior" && proposal.path.startsWith("vp/behavior/")));
-      assert.ok(result.proposals.some(proposal => proposal.type === "api" && proposal.path.startsWith("vp/api/")));
-      assert.ok(result.proposals.some(proposal => proposal.type === "database" && proposal.path === "vp/db/requested-sqlite-smoke.yml"));
+      const api = result.proposals.find(proposal => proposal.type === "api" && proposal.path.startsWith("vp/api/"));
+      const database = result.proposals.find(proposal => proposal.type === "database" && proposal.path === "vp/db/requested-sqlite-smoke.yml");
+      const performance = result.proposals.find(proposal => proposal.type === "performance" && proposal.path.startsWith("vp/nfr/"));
+      assert.ok(api);
+      assert.deepEqual(api.data.request.body_json, { email: "user@example.com", password: "secret123" });
+      assert.ok(api.data.assert.some(item => item.json_type?.type === "object"));
+      assert.ok(database);
+      assert.match(database.data.setup_sql, /CREATE TABLE IF NOT EXISTS todos/);
+      assert.match(database.data.cleanup_sql, /DROP TABLE IF EXISTS todos/);
+      assert.ok(performance);
+      assert.equal(performance.data.scenario.profile, "stress");
+      assert.equal(performance.data.scenario.method, "POST");
+      assert.equal(performance.data.scenario.stages.length, 3);
       assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-delivery-stack.yml"));
       assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-framework-stack.yml") === false);
+    });
+  });
+
+  it("categorizes request-driven admin security starters as authz", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "admin API with role permissions");
+      const security = result.proposals.find(proposal => proposal.type === "security");
+      assert.ok(security);
+      assert.equal(security.data.category, "authz");
     });
   });
 });
@@ -256,7 +279,9 @@ describe("draft", () => {
       });
 
       const behavior = result.proposals.find(proposal => proposal.path.startsWith("vp/behavior/"));
+      const database = result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-smoke.yml");
       assert.equal(behavior.validation.auto_write, false);
+      assert.equal(database.validation.auto_write, true);
       assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
       assert.ok(result.written.includes("vp/db/requested-sqlite-smoke.yml"));
       assert.ok(result.proposal_validation.needs_review >= 1);

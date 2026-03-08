@@ -144,6 +144,8 @@ describe("genTechnicalTest", () => {
     });
     assert.ok(code.includes('import fs from "node:fs"'));
     assert.ok(code.includes('test.describe("Technical: ci"'));
+    assert.ok(code.includes("Anti false positive guard"));
+    assert.ok(code.includes('__shipflow_false_positive__/missing'));
     assert.ok(code.includes('exists(".github/workflows/ci.yml")'));
     assert.ok(code.includes('actions/checkout@v4'));
   });

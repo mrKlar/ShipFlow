@@ -114,6 +114,9 @@ describe("genBehaviorTest", () => {
   it("generates flow steps and assertions", () => {
     const code = genBehaviorTest(check);
     assert.ok(code.includes('goto("http://localhost:3000/calc")'));
+    assert.ok(code.includes('[mutation guard]'));
+    assert.ok(code.includes("mutationGuardPasses"));
+    assert.ok(code.includes('=== "5"'));
     assert.ok(code.includes('.click()'));
     assert.ok(code.includes('toHaveText("5")'));
   });

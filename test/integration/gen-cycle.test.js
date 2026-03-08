@@ -108,7 +108,9 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(file, "API test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes("{ request }"), "should use request fixture");
-    assert.ok(content.includes("request.get("), "should call request.get");
+    assert.ok(content.includes("sendShipFlowRequest"), "should use request helper");
+    assert.ok(content.includes("REQUEST_SPEC"), "should embed original request spec");
+    assert.ok(content.includes("MUTATION_REQUEST_SPEC"), "should embed mutated request spec");
     assert.ok(content.includes("res.status()"), "should check status");
     assert.ok(content.includes("JSON.parse(rawBody)"), "should parse JSON body");
     assert.ok(content.includes("Bearer test-token"), "should include auth header");
@@ -133,7 +135,8 @@ describe("gen integration — full cycle on test fixtures", () => {
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes('{ request }'), "should use request fixture");
     assert.ok(content.includes("Security: authz"), "should group security tests");
-    assert.ok(content.includes("request.get("), "should issue an HTTP request");
+    assert.ok(content.includes("sendShipFlowSecurityRequest"), "should issue requests through the helper");
+    assert.ok(content.includes("MUTATION_REQUEST_SPEC"), "should include the mutated request spec");
     assert.ok(content.includes("toBe(401)"), "should assert rejection");
     assert.ok(content.includes("toBe(false)"), "should assert missing header");
   });

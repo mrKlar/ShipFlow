@@ -185,6 +185,8 @@ describe("genDbTest", () => {
     assert.ok(code.includes("const beforeRows = query("));
     assert.ok(code.includes("const rows = query("));
     assert.ok(code.includes("const afterRows = query("));
+    assert.ok(code.includes("[mutation guard]"));
+    assert.ok(code.includes("mutationGuardPasses"));
     assert.ok(code.includes("finally"));
     assert.ok(code.includes("DELETE FROM users"));
   });

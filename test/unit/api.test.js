@@ -171,8 +171,10 @@ describe("apiAssertExpr", () => {
 describe("genApiTest", () => {
   it("generates GET request", () => {
     const code = genApiTest({ ...base, assert: [{ status: 200 }] });
-    assert.ok(code.includes("request.get("));
-    assert.ok(code.includes('"http://localhost:3000/api/users"'));
+    assert.ok(code.includes("REQUEST_SPEC"));
+    assert.ok(code.includes("MUTATION_REQUEST_SPEC"));
+    assert.ok(code.includes("sendShipFlowRequest"));
+    assert.ok(code.includes('"path":"/api/users"'));
     assert.ok(code.includes("toBe(200)"));
   });
 
@@ -183,8 +185,9 @@ describe("genApiTest", () => {
       assert: [{ status: 201 }],
     };
     const code = genApiTest(check);
-    assert.ok(code.includes("request.post("));
-    assert.ok(code.includes('"name":"Bob"'));
+    assert.ok(code.includes('"method":"POST"'));
+    assert.ok(code.includes('"body_json":{"name":"Bob"}'));
+    assert.ok(code.includes("Mutation strategy should invalidate the original API contract"));
   });
 
   it("generates headers", () => {
@@ -220,8 +223,8 @@ describe("genApiTest", () => {
       request: { method: "GET", path: "/secure", auth: { kind: "bearer", env: "API_TOKEN", token: "fallback" } },
       assert: [{ status: 200 }],
     });
-    assert.ok(code.includes('process.env["API_TOKEN"]'));
-    assert.ok(code.includes('Authorization'));
+    assert.ok(code.includes("spec.auth.env ? (process.env[spec.auth.env]"));
+    assert.ok(code.includes('spec.auth.header || "Authorization"'));
     assert.ok(code.includes('Missing auth token'));
   });
 });

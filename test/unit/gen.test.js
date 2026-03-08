@@ -198,6 +198,9 @@ describe("genPlaywrightTest", () => {
     assert.ok(code.includes('import { test, expect } from "@playwright/test"'));
     assert.ok(code.includes('"test-1: Basic test"'));
     assert.ok(code.includes('await page.goto("http://localhost:3000")'));
+    assert.ok(code.includes('[mutation guard]'));
+    assert.ok(code.includes("mutationGuardPasses"));
+    assert.ok(code.includes('=== "OK"'));
     assert.ok(code.includes('await page.goto("http://localhost:3000/page")'));
     assert.ok(code.includes('.click()'));
     assert.ok(code.includes('toHaveText("OK")'));

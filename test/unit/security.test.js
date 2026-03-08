@@ -80,7 +80,9 @@ describe("genSecurityTest", () => {
     });
     assert.ok(code.includes('test.describe("Security: authz"'));
     assert.ok(code.includes('{ request }'));
-    assert.ok(code.includes('request.get("http://localhost:3000/api/admin")'));
+    assert.ok(code.includes("REQUEST_SPEC"));
+    assert.ok(code.includes("MUTATION_REQUEST_SPEC"));
+    assert.ok(code.includes("sendShipFlowSecurityRequest"));
     assert.ok(code.includes("toBe(401)"));
   });
 
@@ -95,7 +97,8 @@ describe("genSecurityTest", () => {
       },
       assert: [{ status: 400 }, { body_not_contains: "/etc/passwd" }],
     });
-    assert.ok(code.includes("request.post("));
+    assert.ok(code.includes('"method":"POST"'));
+    assert.ok(code.includes("Mutation strategy should invalidate the original security contract"));
     assert.ok(code.includes("Authorization"));
     assert.ok(code.includes("etc/passwd"));
   });

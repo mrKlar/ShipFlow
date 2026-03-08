@@ -219,6 +219,9 @@ describe("genK6Script", () => {
     const code = genK6Script(check);
     assert.ok(code.includes("check(res"));
     assert.ok(code.includes("r.status === 200"));
+    assert.ok(code.includes("falsePositiveUrl"));
+    assert.ok(code.includes("check(controlRes"));
+    assert.ok(code.includes("r.status !== 200"));
   });
 
   it("generates derived stages when ramp_up is present", () => {
