@@ -3,12 +3,12 @@
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
-        "command": "node ../../hooks/guard-paths.js"
+        "command": "shipflow-guard"
       }
     ],
     "Stop": [
       {
-        "command": "node ../../bin/shipflow.js gen && node ../../bin/shipflow.js verify"
+        "command": "shipflow-stop"
       }
     ]
   }

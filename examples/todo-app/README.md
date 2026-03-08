@@ -8,9 +8,9 @@ No human writes app code. The `src/` directory starts empty and is generated ent
 
 ```
 todo-app/
-  shipflow.json              # ShipFlow config (model, srcDir, context)
-  playwright.config.ts       # Playwright config (pre-existing)
-  package.json               # Scripts and dependencies
+  shipflow.json              # ShipFlow config
+  playwright.config.ts       # Playwright config
+  package.json               # Dependencies
   vp/                        # Verification Pack (human-written)
     ui/
       add-todo.yml           # Verification: add a todo item
@@ -23,60 +23,39 @@ todo-app/
   evidence/                  # Verification results
 ```
 
-## Run the full loop
+## Quick start
 
 ```bash
 # Install dependencies
 npm install
 npx playwright install
 
-# Set your API key
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Run the full loop: gen → AI impl → verify → retry if needed
-npm run shipflow:run
+# Initialize ShipFlow
+shipflow init
 ```
 
-ShipFlow will:
-1. Compile `vp/` verifications into Playwright tests (`.gen/`)
-2. Call Claude to generate the app code (`src/`)
-3. Run Playwright to verify the implementation
-4. If tests fail, feed errors back to Claude and retry
-5. Stop when all tests pass (or after max iterations)
+Then open the project in Claude Code and run:
 
-## Step by step (manual)
+```
+/shipflow-impl
+```
+
+## Manual steps
 
 ```bash
-# 1. Generate tests from VP
-npm run shipflow:gen
-
-# 2. AI generates app code
-npm run shipflow:impl
-
-# 3. Verify the implementation
-npm run shipflow:verify
+shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
+shipflow verify    # Run tests → evidence/run.json
 ```
 
 ## Configuration
 
-`shipflow.json` controls the AI implementation:
+`shipflow.json`:
 
 ```json
 {
   "impl": {
-    "model": "claude-sonnet-4-20250514",
-    "maxTokens": 16384,
-    "maxIterations": 5,
     "srcDir": "src",
-    "context": "Build a Node.js HTTP server..."
+    "context": "Node.js HTTP server, built-in modules only"
   }
 }
 ```
-
-| Field | Default | Description |
-|---|---|---|
-| `model` | `claude-sonnet-4-20250514` | Claude model for code generation |
-| `maxTokens` | `16384` | Max output tokens per AI call |
-| `maxIterations` | `5` | Max gen→impl→verify loops |
-| `srcDir` | `src` | Directory the AI can write to |
-| `context` | — | Project-specific instructions for the AI |

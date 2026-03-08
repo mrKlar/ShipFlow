@@ -1,19 +1,54 @@
 # ShipFlow
 
-**Tell the AI what to build. It writes verifications, generates tests, implements the code, and loops until everything passes.**
+### Spec-driven development is dead. Welcome to verification-first.
 
-ShipFlow is a verification-first framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). You describe your app in plain language. The AI drafts executable verifications, generates Playwright tests from them, writes all the application code, and loops until every test is green.
+Traditional spec-driven development was designed for humans writing code. You spend weeks writing specifications, then months building what you described, hoping the result matches. With AI coding agents, this is backwards.
+
+**ShipFlow flips the model.** You describe what the app must do. The AI writes executable verifications, generates real tests, builds the entire application, and loops until every test passes. No specs. No handoffs. No gap between intent and implementation.
 
 ```
  You describe           AI drafts              AI generates           AI builds & loops
 "a calculator"  -->  vp/**/*.yml  -->  .gen/playwright/*.ts  -->  src/**  -->  all tests pass
 ```
 
+The AI **cannot cheat** — cryptographic locks and runtime hooks make it impossible to modify the verifications or tests during implementation. The only way out is working code.
+
+## Why ShipFlow
+
+| Spec-driven (old) | ShipFlow (new) |
+|---|---|
+| Write specs, then code separately | Verifications ARE the spec AND the test |
+| Specs drift from implementation | Lock file detects any divergence |
+| Manual testing against specs | Automated Playwright tests, every time |
+| Trust the developer followed the spec | Hooks block the AI from cheating |
+| Weeks to go from spec to working app | Minutes. The AI loops until green. |
+
+## 30-Second Demo
+
+```bash
+# Install (once)
+git clone https://github.com/mrKlar/ShipFlow.git && cd ShipFlow && ./install.sh
+```
+
+Restart Claude Code. Open any project:
+
+```
+/shipflow-verifications a kawaii calculator with a fox mascot
+```
+
+The AI drafts 50+ verifications in seconds. Review them. Then:
+
+```
+/shipflow-impl
+```
+
+Walk away. Come back to a working app with every behavior verified.
+
 ## How It Works
 
-### Phase 1 — Verification (`/shipflow-verifications`)
+### Phase 1 — Verification
 
-You describe what you want. The AI immediately drafts verifications — no interview, no lengthy documents. You review and refine.
+You describe what you want. The AI drafts verifications — executable YAML that defines every behavior your app must have.
 
 ```yaml
 # vp/ui/add-numbers.yml
@@ -33,7 +68,9 @@ assert:
   - text_equals: { testid: display, equals: "5" }
 ```
 
-### Phase 2 — Implementation (`/shipflow-impl`)
+This isn't a specification document. It's a machine-readable contract that compiles directly to a Playwright test.
+
+### Phase 2 — Implementation
 
 Fully autonomous. The AI reads the verifications, generates Playwright tests, writes all application code, runs the tests, reads failures, fixes the code, and repeats until every test passes.
 
@@ -43,238 +80,78 @@ Read VP  →  Generate tests  →  Implement  →  Verify  →  Pass? Done.
                                     └──── Fix & retry ─────┘
 ```
 
-The AI **cannot cheat** — hooks block any modification to `vp/`, `.gen/`, and `evidence/` during implementation.
+### The Anti-Cheat System
 
-## Quick Start
+ShipFlow makes it structurally impossible for the AI to game the tests:
 
-```bash
-git clone <shipflow-repo-url>
-cd ShipFlow
-./install.sh
-```
+- **Path protection** — hooks block any write to `vp/`, `.gen/`, `evidence/` during implementation
+- **Cryptographic lock** — SHA-256 hashes of every verification file, verified before each test run
+- **Stop gate** — the AI cannot report "done" until `shipflow verify` exits 0
 
-Restart Claude Code, then in any project:
+The only way the AI can succeed is by writing code that actually works.
 
-```
-/shipflow-verifications a calculator app
-```
+## Multi-Agent Support
 
-The AI drafts verifications. Review them, then:
+ShipFlow works with every major AI coding agent:
 
-```
-/shipflow-impl
-```
-
-The AI builds the app and loops until all verifications pass.
-
-To scaffold a project with hooks and CLAUDE.md:
+| Platform | Setup | Anti-cheat mechanism |
+|---|---|---|
+| **Claude Code** | Plugin + hooks | PreToolUse + Stop hooks |
+| **OpenAI Codex CLI** | AGENTS.md + sandbox | OS-level write restrictions + Starlark rules |
+| **Google Gemini CLI** | GEMINI.md + hooks | BeforeTool JSON protocol |
 
 ```bash
-./install.sh /path/to/your-project
+shipflow init                        # Claude Code (default)
+shipflow init --codex                # Codex CLI
+shipflow init --gemini               # Gemini CLI
+shipflow init --claude --codex       # Multiple platforms
 ```
 
-## Verification Types
-
-ShipFlow supports five types of verifications, plus policy gates.
+## Five Verification Types
 
 ### UI Checks — `vp/ui/*.yml`
-
-Verify what users see and interact with in the browser.
-
-```yaml
-id: add-item
-title: User can add an item
-severity: blocker
-setup: login-as-user          # optional — references vp/ui/_fixtures/
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /items
-  - fill: { testid: new-item, value: "Buy milk" }
-  - click: { name: "Add" }
-assert:
-  - text_equals: { testid: item-last, equals: "Buy milk" }
-  - count: { testid: item, equals: 1 }
-```
-
-**Flow steps**: `open`, `click`, `fill`, `select`, `hover`, `wait_for`
-
-**Assertions**: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`
-
-**Locators**: `testid`, `label`, `role` + `name`
+Browser interactions and visual assertions. Compiles to Playwright browser tests.
 
 ### Behavior Checks — `vp/behavior/*.yml`
-
-Verify business logic scenarios with Given/When/Then. Same flow steps and assertions as UI checks.
-
-```yaml
-id: checkout-flow
-feature: Shopping Cart
-scenario: User adds item and checks out
-severity: blocker
-app:
-  kind: web
-  base_url: http://localhost:3000
-given:
-  - open: /products
-  - click: { testid: add-to-cart }
-when:
-  - click: { name: "Checkout" }
-  - fill: { label: "Card Number", value: "4111111111111111" }
-  - click: { name: "Pay" }
-then:
-  - url_matches: { regex: "/confirmation" }
-  - visible: { testid: success-message }
-```
+Given/When/Then scenarios for business logic. Same Playwright engine.
 
 ### API Checks — `vp/api/*.yml`
-
-Verify HTTP endpoints. No browser needed.
-
-```yaml
-id: list-users
-title: GET /api/users returns user list
-severity: blocker
-app:
-  kind: api
-  base_url: http://localhost:3000
-request:
-  method: GET
-  path: /api/users
-  headers:
-    Authorization: "Bearer test-token"
-assert:
-  - status: 200
-  - json_count: { path: "$", count: 3 }
-  - json_equals: { path: "$[0].name", equals: "Alice" }
-```
-
-**Request**: `method` (GET/POST/PUT/PATCH/DELETE), `path`, `headers`, `body`, `body_json`
-
-**Assertions**: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches`, `json_count`
+HTTP request/response verification. No browser needed.
 
 ### DB Checks — `vp/db/*.yml`
-
-Verify database state. Supports SQLite and PostgreSQL.
-
-```yaml
-id: users-seeded
-title: Users table has expected seed data
-severity: blocker
-app:
-  kind: db
-  engine: sqlite
-  connection: ./test.db
-setup_sql: |
-  INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com');
-query: "SELECT name, email FROM users"
-assert:
-  - row_count: 1
-  - cell_equals: { row: 0, column: name, equals: "Alice" }
-```
-
-**Assertions**: `row_count`, `cell_equals`, `cell_matches`, `column_contains`
+Database state verification. SQLite and PostgreSQL.
 
 ### NFR Checks — `vp/nfr/*.yml`
+Performance under load. Generates k6 scripts.
 
-Verify performance under load. Generates [k6](https://k6.io) scripts.
-
-```yaml
-id: homepage-load
-title: Homepage handles 100 concurrent users
-severity: blocker
-app:
-  kind: nfr
-  base_url: http://localhost:3000
-scenario:
-  endpoint: /
-  method: GET
-  thresholds:
-    http_req_duration_p95: 500
-    http_req_failed: 0.01
-  vus: 100
-  duration: 30s
-```
-
-**Thresholds**: `http_req_duration_p95`, `http_req_duration_p99`, `http_req_failed`
-
-Requires `k6` to be installed. NFR checks run during `shipflow verify` if k6 is available.
-
-### Fixtures — `vp/ui/_fixtures/*.yml`
-
-Reusable setup flows (login, etc.) for UI and behavior checks via `setup:`.
-
-```yaml
-id: login-as-user
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /login
-  - fill: { label: Email, value: "test@example.com" }
-  - fill: { label: Password, value: "testpass" }
-  - click: { name: "Sign in" }
-```
-
-### Policy Gates — `vp/policy/*.rego`
-
-OPA/Rego policies evaluated before tests run. Block verification if organizational rules are violated.
-
-```rego
-package shipflow
-
-deny[msg] {
-  count(input.vp_files) == 0
-  msg := "No verification files found"
-}
-```
-
-Requires `opa` to be installed. Policies are optional — if no `.rego` files exist, the gate is skipped.
+Plus **fixtures** (`vp/ui/_fixtures/*.yml`) for reusable setup flows, and **policy gates** (`vp/policy/*.rego`) for organizational rules via OPA.
 
 ## Project Structure
 
 ```
 your-app/
-├── vp/                          # Verifications (human + AI)
+├── vp/                          # Verifications (you review these)
 │   ├── ui/*.yml
 │   ├── behavior/*.yml
 │   ├── api/*.yml
 │   ├── db/*.yml
-│   ├── nfr/*.yml
-│   ├── policy/*.rego
 │   └── ui/_fixtures/*.yml
-├── .gen/                        # Generated (do not edit)
-│   ├── playwright/*.test.ts
-│   ├── k6/*.js
-│   └── vp.lock.json
-├── evidence/                    # Results (do not edit)
-│   ├── run.json
-│   └── policy.json
-├── src/                         # Application code (AI writes this)
+├── .gen/                        # Generated tests (don't touch)
+│   └── playwright/*.test.ts
+├── evidence/                    # Results (don't touch)
+│   └── run.json
+├── src/                         # App code (AI writes this)
 └── shipflow.json                # Config
 ```
 
 ## CLI
 
 ```bash
-shipflow init      # Scaffold vp/, CLAUDE.md, hooks, .gitignore
-shipflow gen       # vp/ → .gen/playwright/*.test.ts + .gen/k6/*.js + vp.lock.json
-shipflow verify    # Run tests → evidence/run.json, exit 0 if all pass
-shipflow status    # Show verification state (VP, generated, evidence)
+shipflow init [--claude|--codex|--gemini]   # Scaffold project
+shipflow gen                                 # Compile verifications → tests
+shipflow verify                              # Run tests → evidence
+shipflow status                              # Show project state
 ```
-
-**Flags**: `--verbose` / `-v`, `--quiet` / `-q`
-
-**Exit codes**: `0` success, `1` test failure, `2` usage error, `3` policy violation
-
-## Anti-Cheat
-
-During implementation, hooks enforce:
-
-- **PreToolUse** blocks Write/Edit to `vp/`, `.gen/`, `evidence/`
-- **Stop** hook runs `shipflow verify` — blocks completion if tests fail
-- **VP lock** (SHA-256) detects any tampering between `gen` and `verify`
 
 ## Configuration
 
@@ -301,14 +178,14 @@ jobs:
         with: { node-version: 20 }
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: npx shipflow gen
-      - run: npx shipflow verify
+      - run: shipflow gen
+      - run: shipflow verify
 ```
 
 ## Requirements
 
 - Node.js 18+
-- Claude Code with plugin support
+- One of: Claude Code, Codex CLI, or Gemini CLI
 
 ## License
 

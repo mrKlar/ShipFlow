@@ -13,30 +13,47 @@ The only files you write and review are under `vp/`. Everything else is generate
 ## Installation
 
 ```bash
-git clone <shipflow-repo-url>
+git clone https://github.com/mrKlar/ShipFlow.git
 cd ShipFlow
 ./install.sh
 ```
 
-This installs ShipFlow as a Claude Code plugin. Restart Claude Code after installing.
+This installs:
+1. `shipflow` as a global CLI command (via `npm install -g`)
+2. Claude Code plugin with `/shipflow-verifications` and `/shipflow-impl` commands
 
-To scaffold a project with CLAUDE.md, hooks, and vp/ directories:
+Restart Claude Code after installing.
+
+### Project setup
+
+In any project directory:
 
 ```bash
-./install.sh /path/to/your-project
+shipflow init
 ```
+
+This creates `vp/` directories, `CLAUDE.md`, `.claude/hooks.json`, `shipflow.json`, and `.gitignore`.
 
 Your project needs Playwright:
 
 ```bash
-cd your-project
 npm install -D @playwright/test
 npx playwright install
 ```
 
+### Multi-platform
+
+```bash
+shipflow init --codex              # OpenAI Codex CLI
+shipflow init --gemini             # Google Gemini CLI
+shipflow init --claude --codex     # Multiple platforms
+```
+
 ## Usage
 
-In Claude Code, open your project and run:
+### With Claude Code
+
+Open your project and run:
 
 ```
 /shipflow-verifications a todo app with login
@@ -49,6 +66,14 @@ The AI drafts verifications immediately. Review, add, or remove checks. Then:
 ```
 
 The AI implements the entire app autonomously, looping until all tests pass.
+
+### With the CLI
+
+```bash
+shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
+shipflow verify    # Run tests → evidence/run.json
+shipflow status    # Show VP counts, test counts, last run
+```
 
 ## Writing Verifications
 
@@ -115,6 +140,12 @@ assert:
 - wait_for: {}
 ```
 
+**route_block** — Mock/block an API call. Useful for testing error handling.
+
+```yaml
+- route_block: { path: "/api/calculate", status: 500 }
+```
+
 #### Assertions
 
 ```yaml
@@ -161,8 +192,6 @@ then:
   - visible: { testid: success-message }
 ```
 
-Generates a Playwright test with `test.describe(feature)` and Given/When/Then comments.
-
 ### API Checks — `vp/api/*.yml`
 
 Verify HTTP endpoints using Playwright's request API (no browser).
@@ -202,10 +231,10 @@ assert:
 ```yaml
 - status: 200                                                # HTTP status
 - header_equals: { name: "x-request-id", equals: "abc" }    # exact header
-- header_matches: { name: "content-type", matches: "json" }  # regex header
+- header_matches: { name: "content-type", regex: "json" }    # regex header
 - body_contains: "success"                                    # raw body search
 - json_equals: { path: "$[0].name", equals: "Alice" }        # JSON value
-- json_matches: { path: "$.status", matches: "active" }      # JSON regex
+- json_matches: { path: "$.status", regex: "active" }        # JSON regex
 - json_count: { path: "$.items", count: 5 }                  # array length
 ```
 
@@ -230,11 +259,32 @@ query: "SELECT name, email FROM users"
 assert:
   - row_count: 1
   - cell_equals: { row: 0, column: name, equals: "Alice" }
-  - cell_matches: { row: 0, column: email, matches: "@test\\.com$" }
+  - cell_matches: { row: 0, column: email, regex: "@test\\.com$" }
   - column_contains: { column: name, value: "Alice" }
 ```
 
-Generates a Playwright test that calls `sqlite3` or `psql` via `execFileSync`, piping SQL through stdin.
+### NFR Checks — `vp/nfr/*.yml`
+
+Verify non-functional requirements (performance, load). Generates k6 scripts.
+
+```yaml
+id: api-load
+title: API handles 50 concurrent users
+severity: blocker
+app:
+  kind: nfr
+  base_url: http://localhost:3000
+scenario:
+  endpoint: /api/health
+  method: GET
+  thresholds:
+    http_req_duration_p95: 200
+    http_req_failed: 0.01
+  vus: 50
+  duration: 30s
+```
+
+Requires `k6` installed. Runs during `shipflow verify` if available.
 
 ### Fixtures — `vp/ui/_fixtures/*.yml`
 
@@ -271,7 +321,7 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, k6 scripts into `.gen/k6/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
 
 ### Run verification
 
@@ -280,25 +330,19 @@ shipflow verify
 ```
 
 1. Validates the lock (VP unchanged since `gen`)
-2. Runs `npx playwright test .gen/playwright`
-3. Writes `evidence/run.json`
-4. Exits 0 if all tests pass
+2. Evaluates OPA policies (if present)
+3. Runs k6 NFR scripts (if present and k6 available)
+4. Runs Playwright tests
+5. Writes `evidence/run.json`
+6. Exits 0 if all tests pass
 
-### Validation errors
+### Check status
 
+```bash
+shipflow status
 ```
-Validation failed in vp/ui/login.yml:
-  severity: Invalid enum value. Expected 'blocker' | 'warn', received 'critical'
-  flow.2.click.name: Required
-```
 
-### Lock integrity
-
-If VP files change after `gen`, `verify` fails:
-
-```
-Error: Verification pack changed since last generation. Run shipflow gen.
-```
+Shows VP file counts, generated test counts, and last run results.
 
 ## Anti-Cheat
 
@@ -310,24 +354,6 @@ ShipFlow enforces separation between verification and implementation:
 | `.gen/` | Generated Playwright tests | `shipflow gen` |
 | `evidence/` | Test results | `shipflow verify` |
 
-Claude Code hooks enforce this automatically:
+Hooks enforce this automatically:
 - **PreToolUse** blocks Write/Edit to protected paths
 - **Stop** runs `shipflow verify` before the AI can finish
-
-## CI Integration
-
-```yaml
-name: ShipFlow Verify
-on: [pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npx shipflow gen
-      - run: npx shipflow verify
-```
