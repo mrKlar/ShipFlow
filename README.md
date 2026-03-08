@@ -154,7 +154,7 @@ Every integration includes the verification schema, the implementation-loop inst
 | | Type | Path | What it tests |
 |---|---|---|---|
 | 🖥️ | **UI Checks** | `vp/ui/*.yml` | Browser interactions and visual assertions |
-| 📖 | **Behavior Checks** | `vp/behavior/*.yml` | Given/When/Then business logic with Playwright or Cucumber/Gherkin |
+| 📖 | **Behavior Checks** | `vp/behavior/*.yml` | Given/When/Then scenarios across web, API, or TUI surfaces, with Playwright-backed or Cucumber/Gherkin execution |
 | 🌐 | **API Checks** | `vp/api/*.yml` | HTTP request/response behavior |
 | 🗄️ | **Database Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
 | ⚡ | **Performance Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
@@ -222,7 +222,7 @@ ShipFlow now has a practical default per verification type:
 | Type | Default | Strong alternates |
 |---|---|---|
 | UI | Playwright | |
-| Behavior | Playwright | Cucumber / Gherkin |
+| Behavior | Cucumber + surface executors | Playwright web, Playwright request, node PTY |
 | API | Playwright request | Pactum |
 | Database | Built-in SQL harness | pgTAP (PostgreSQL) |
 | Performance | k6 | |

@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Shopping Cart", () => {
+  // executor: browser/playwright
   test("checkout-flow: User adds item and checks out", async ({ page }) => {
     await page.goto("http://localhost:3000");
     // setup: login-fixture

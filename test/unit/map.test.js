@@ -48,7 +48,7 @@ describe("buildMap", () => {
       assert.ok(result.recommendations.some(r => r.type === "security"));
       assert.ok(result.recommendations.some(r => r.type === "technical"));
       assert.ok(result.detected.technical_files.includes(".github/workflows"));
-      assert.deepEqual(result.framework_recommendations.behavior, ["playwright", "cucumber"]);
+      assert.deepEqual(result.framework_recommendations.behavior, ["cucumber", "playwright-web", "playwright-request", "node-pty"]);
       assert.ok(result.framework_recommendations.technical.includes("tsarch"));
     });
   });
@@ -78,6 +78,21 @@ describe("buildMap", () => {
       assert.ok(result.ambiguities.some(item => item.includes("no concrete routes")));
       assert.ok(result.recommendations.some(rec => rec.type === "api" && rec.summary.includes("requested endpoints")));
       assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("requested technical scope")));
+    });
+  });
+
+  it("detects CLI/TUI signals and behavior gaps", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "cli.js"), `
+        import readline from "node:readline";
+        process.stdin.resume();
+      `);
+
+      const result = buildMap(tmpDir, "terminal todo app with a CLI");
+      assert.ok(result.detected.tui_signals > 0);
+      assert.ok(result.coverage.gaps.some(gap => gap.includes("behavior verification")));
+      assert.equal(result.ambiguities.some(item => item.includes("terminal entrypoint")), false);
     });
   });
 });

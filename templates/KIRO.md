@@ -58,7 +58,7 @@ If a verification seems wrong, stop and go back to the verification phase with t
 
 ## What to Match
 
-The generated Playwright tests use these locators:
+For UI checks, and behavior checks compiled to Playwright web flows, these locators apply:
 
 | VP concept | Your code must provide |
 |---|---|

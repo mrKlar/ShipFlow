@@ -49,7 +49,7 @@ If a verification seems wrong, STOP. Go back to Phase 1 with the human.
 
 ## What to Match in Your Implementation
 
-The generated Playwright tests use these locators:
+For UI checks, and behavior checks compiled to Playwright web flows, these locators apply:
 
 | VP concept | Your code must provide |
 |---|---|
@@ -89,7 +89,7 @@ Only use `--update-existing` when the human explicitly approved replacing an exi
 
 ## On Verify Failure
 
-Read the Playwright error output. Common fixes:
+For Playwright-backed UI checks, common fixes:
 - **Element not found** → missing `data-testid`, wrong label/button text
 - **Text mismatch** → wrong textContent in your HTML/JS
 - **Timeout** → element never appears; check rendering

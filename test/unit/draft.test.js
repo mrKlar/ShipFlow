@@ -139,6 +139,46 @@ describe("buildDraft", () => {
       assert.equal(security.data.request.path, "/api/profile");
     });
   });
+
+  it("proposes API behavior starters when the request is API-centric", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "GraphQL API for checkout");
+      const behavior = result.proposals.find(proposal => proposal.type === "behavior");
+      assert.ok(behavior);
+      assert.equal(behavior.data.app.kind, "api");
+      assert.ok(Array.isArray(behavior.data.when));
+      assert.ok(behavior.data.when[0].request);
+    });
+  });
+
+  it("proposes technical stack assertions for GraphQL requests", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "Next.js app with GraphQL and GitHub Actions");
+      const technical = result.proposals.find(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-framework-stack.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "next"));
+      assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "graphql"));
+    });
+  });
+
+  it("proposes TUI behavior starters when the request is CLI-centric", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "cli.js"), "process.stdin.resume();\n");
+
+      const result = buildDraft(tmpDir, "terminal todo app with a CLI");
+      const behavior = result.proposals.find(proposal => proposal.type === "behavior");
+      assert.ok(behavior);
+      assert.equal(behavior.data.app.kind, "tui");
+      assert.equal(behavior.data.when[0].stdin.text, "--help\n");
+    });
+  });
 });
 
 describe("draft", () => {

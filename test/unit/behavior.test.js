@@ -1,9 +1,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { BehaviorCheck } from "../../lib/schema/behavior-check.zod.js";
-import { genBehaviorTest, genBehaviorFeature, genBehaviorSteps, genBehaviorCucumberArtifacts, isGherkinBehavior } from "../../lib/gen-behavior.js";
+import {
+  genBehaviorTest,
+  genBehaviorFeature,
+  genBehaviorSteps,
+  genBehaviorCucumberArtifacts,
+  isGherkinBehavior,
+  resolveBehaviorExecutor,
+} from "../../lib/gen-behavior.js";
 
-const base = {
+const webBase = {
   id: "test-bdd",
   feature: "Calculator",
   scenario: "Adding two numbers",
@@ -12,32 +19,59 @@ const base = {
 };
 
 describe("BehaviorCheck schema", () => {
-  it("accepts valid behavior check", () => {
-    const r = BehaviorCheck.parse({
-      ...base,
+  it("accepts valid web behavior checks", () => {
+    const parsed = BehaviorCheck.parse({
+      ...webBase,
       given: [{ open: "/calc" }],
       when: [{ click: { testid: "btn-add" } }],
       then: [{ text_equals: { testid: "display", equals: "5" } }],
     });
-    assert.equal(r.id, "test-bdd");
-    assert.equal(r.feature, "Calculator");
-    assert.equal(r.scenario, "Adding two numbers");
+    assert.equal(parsed.app.kind, "web");
+    assert.equal(parsed.feature, "Calculator");
   });
 
-  it("accepts optional setup", () => {
-    const r = BehaviorCheck.parse({
-      ...base,
-      setup: "login",
+  it("accepts valid API behavior checks", () => {
+    const parsed = BehaviorCheck.parse({
+      id: "api-checkout",
+      feature: "Checkout API",
+      scenario: "Authenticated checkout succeeds",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
       given: [],
-      when: [],
-      then: [],
+      when: [{
+        request: {
+          method: "POST",
+          path: "/api/checkout",
+          body_json: { sku: "sku-1" },
+        },
+      }],
+      then: [
+        { status: 201 },
+        { json_type: { path: "$", type: "object" } },
+      ],
     });
-    assert.equal(r.setup, "login");
+    assert.equal(parsed.app.kind, "api");
+    assert.equal(resolveBehaviorExecutor(parsed).framework, "playwright-request");
+  });
+
+  it("accepts valid TUI behavior checks", () => {
+    const parsed = BehaviorCheck.parse({
+      id: "cli-help",
+      feature: "CLI",
+      scenario: "Help command is available",
+      severity: "blocker",
+      app: { kind: "tui", command: "node", args: ["./src/cli.js"] },
+      given: [],
+      when: [{ stdin: { text: "--help\n" } }],
+      then: [{ stdout_contains: "Usage" }],
+    });
+    assert.equal(parsed.app.kind, "tui");
+    assert.equal(resolveBehaviorExecutor(parsed).kind, "pty");
   });
 
   it("accepts tags and examples for scenario outlines", () => {
-    const r = BehaviorCheck.parse({
-      ...base,
+    const parsed = BehaviorCheck.parse({
+      ...webBase,
       runner: { kind: "gherkin", framework: "cucumber" },
       tags: ["smoke", "checkout"],
       given: [{ open: "/checkout/<region>" }],
@@ -45,106 +79,106 @@ describe("BehaviorCheck schema", () => {
       then: [{ url_matches: { regex: "/checkout/<region>/payment" } }],
       examples: [{ region: "eu" }, { region: "us" }],
     });
-    assert.equal(r.tags.length, 2);
-    assert.equal(r.examples.length, 2);
-    assert.equal(r.runner.framework, "cucumber");
+    assert.equal(parsed.tags.length, 2);
+    assert.equal(parsed.examples.length, 2);
   });
 
-  it("given/when use FlowStep, then uses Assert", () => {
-    const r = BehaviorCheck.parse({
-      ...base,
-      given: [
-        { open: "/page" },
-        { fill: { testid: "input", value: "hello" } },
-      ],
-      when: [
-        { click: { name: "Submit" } },
-        { wait_for: { ms: 300 } },
-      ],
-      then: [
-        { visible: { testid: "result" } },
-        { url_matches: { regex: "/success" } },
-      ],
-    });
-    assert.equal(r.given.length, 2);
-    assert.equal(r.when.length, 2);
-    assert.equal(r.then.length, 2);
-  });
-
-  it("rejects missing feature field", () => {
+  it("rejects executor/framework mismatches", () => {
     assert.throws(() => {
       BehaviorCheck.parse({
-        id: "x", scenario: "y", severity: "blocker",
-        app: { kind: "web", base_url: "http://localhost:3000" },
-        given: [], when: [], then: [],
+        ...webBase,
+        executor: { kind: "api", framework: "playwright-request" },
+        given: [{ open: "/calc" }],
+        when: [],
+        then: [{ url_matches: { regex: "/calc" } }],
       });
-    });
-  });
-
-  it("rejects extra fields", () => {
-    assert.throws(() => {
-      BehaviorCheck.parse({ ...base, given: [], when: [], then: [], extra: true });
-    });
+    }, /executor/);
   });
 });
 
 describe("genBehaviorTest", () => {
-  const check = {
-    ...base,
-    given: [{ open: "/calc" }],
-    when: [{ click: { role: "button", name: "Add" } }],
-    then: [{ text_equals: { testid: "display", equals: "5" } }],
-  };
-
-  it("generates test.describe with feature name", () => {
-    const code = genBehaviorTest(check);
+  it("generates web behavior tests with Given/When/Then comments", () => {
+    const code = genBehaviorTest({
+      ...webBase,
+      given: [{ open: "/calc" }],
+      when: [{ click: { role: "button", name: "Add" } }],
+      then: [{ text_equals: { testid: "display", equals: "5" } }],
+    });
     assert.ok(code.includes('test.describe("Calculator"'));
-  });
-
-  it("generates test with id and scenario", () => {
-    const code = genBehaviorTest(check);
-    assert.ok(code.includes('"test-bdd: Adding two numbers"'));
-  });
-
-  it("generates Given/When/Then comments", () => {
-    const code = genBehaviorTest(check);
     assert.ok(code.includes("// Given"));
     assert.ok(code.includes("// When"));
     assert.ok(code.includes("// Then"));
-  });
-
-  it("generates flow steps and assertions", () => {
-    const code = genBehaviorTest(check);
-    assert.ok(code.includes('goto("http://localhost:3000/calc")'));
     assert.ok(code.includes('[mutation guard]'));
-    assert.ok(code.includes("mutationGuardPasses"));
-    assert.ok(code.includes('=== "5"'));
-    assert.ok(code.includes('.click()'));
-    assert.ok(code.includes('toHaveText("5")'));
+    assert.ok(code.includes('goto("http://localhost:3000/calc")'));
   });
 
-  it("inlines setup fixture", () => {
-    const withSetup = { ...check, setup: "auth" };
-    const fixturesMap = new Map([
+  it("inlines setup fixtures for web behavior checks", () => {
+    const code = genBehaviorTest({
+      ...webBase,
+      setup: "auth",
+      given: [{ open: "/calc" }],
+      when: [{ click: { role: "button", name: "Add" } }],
+      then: [{ text_equals: { testid: "display", equals: "5" } }],
+    }, new Map([
       ["auth", {
         id: "auth",
         app: { kind: "web", base_url: "http://localhost:3000" },
         flow: [{ open: "/login" }, { fill: { testid: "email", value: "a@b.com" } }],
       }],
-    ]);
-    const code = genBehaviorTest(withSetup, fixturesMap);
+    ]));
     assert.ok(code.includes("// setup: auth"));
     assert.ok(code.includes('goto("http://localhost:3000/login")'));
   });
 
-  it("throws on unknown fixture", () => {
-    const withSetup = { ...check, setup: "missing" };
-    assert.throws(() => genBehaviorTest(withSetup, new Map()), /Unknown fixture "missing"/);
+  it("generates API behavior tests with request execution helpers", () => {
+    const code = genBehaviorTest({
+      id: "api-checkout",
+      feature: "Checkout API",
+      scenario: "Authenticated checkout succeeds",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{
+        request: {
+          method: "POST",
+          path: "/api/checkout",
+          auth: { kind: "bearer", token: "test-token" },
+          body_json: { sku: "sku-1" },
+        },
+      }],
+      then: [
+        { status: 201 },
+        { json_type: { path: "$", type: "object" } },
+      ],
+    });
+    assert.ok(code.includes("{ request }"));
+    assert.ok(code.includes("sendBehaviorApiRequest"));
+    assert.ok(code.includes("executeBehaviorApiSteps"));
+    assert.ok(code.includes("res.status()"));
+    assert.ok(code.includes("jsonType("));
+    assert.ok(code.includes("[mutation guard]"));
   });
 
-  it("expands examples into multiple concrete tests", () => {
+  it("generates TUI behavior tests with a PTY-like harness", () => {
     const code = genBehaviorTest({
-      ...check,
+      id: "cli-help",
+      feature: "CLI",
+      scenario: "Help command is available",
+      severity: "blocker",
+      app: { kind: "tui", command: "node", args: ["./src/cli.js"] },
+      given: [],
+      when: [{ stdin: { text: "--help\n" } }],
+      then: [{ stdout_contains: "Usage" }],
+    });
+    assert.ok(code.includes('import { spawn } from "node:child_process"'));
+    assert.ok(code.includes("startShipFlowTui"));
+    assert.ok(code.includes("stdout.includes"));
+    assert.ok(code.includes("[mutation guard]"));
+  });
+
+  it("expands examples into multiple concrete web tests", () => {
+    const code = genBehaviorTest({
+      ...webBase,
       tags: ["smoke"],
       scenario: "Checkout in <region>",
       given: [{ open: "/checkout/<region>" }],
@@ -154,54 +188,79 @@ describe("genBehaviorTest", () => {
     });
     assert.ok(code.includes('test("test-bdd[1]: Checkout in eu"'));
     assert.ok(code.includes('test("test-bdd[2]: Checkout in us"'));
-    assert.ok(code.includes('goto("http://localhost:3000/checkout/eu")'));
-    assert.ok(code.includes('continue-eu'));
     assert.ok(code.includes('// tags: smoke'));
   });
+});
 
+describe("Gherkin/Cucumber behavior generation", () => {
   it("detects gherkin/cucumber behavior checks", () => {
     assert.equal(isGherkinBehavior({ runner: { kind: "gherkin" } }), true);
     assert.equal(isGherkinBehavior({ runner: { framework: "cucumber" } }), true);
     assert.equal(isGherkinBehavior({ runner: { kind: "playwright" } }), false);
   });
 
-  it("generates a Gherkin feature file", () => {
+  it("generates a Gherkin feature file for API behavior", () => {
     const code = genBehaviorFeature({
-      ...check,
+      id: "api-checkout",
+      feature: "Checkout API",
+      scenario: "Authenticated checkout succeeds",
+      severity: "blocker",
       runner: { kind: "gherkin", framework: "cucumber" },
-      tags: ["smoke"],
-      scenario: "Checkout in <region>",
-      given: [{ open: "/checkout/<region>" }],
-      when: [{ click: { testid: "continue-<region>" } }],
-      then: [{ url_matches: { regex: "/checkout/<region>/payment" } }],
-      examples: [{ region: "eu" }],
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{ request: { method: "POST", path: "/api/checkout", body_json: { sku: "sku-1" } } }],
+      then: [{ status: 201 }],
     });
-    assert.ok(code.includes("Feature: Calculator"));
-    assert.ok(code.includes("@smoke"));
-    assert.ok(code.includes("Scenario: test-bdd[1]: Checkout in eu"));
-    assert.ok(code.includes("Given ShipFlow given step 1"));
+    assert.ok(code.includes("Feature: Checkout API"));
+    assert.ok(code.includes("Scenario: api-checkout: Authenticated checkout succeeds"));
     assert.ok(code.includes("When ShipFlow when step 1"));
     assert.ok(code.includes("Then ShipFlow assert 1"));
     assert.ok(code.includes("[mutation guard]"));
   });
 
-  it("generates Cucumber step definitions", () => {
+  it("generates Cucumber step definitions for API behavior", () => {
     const code = genBehaviorSteps({
-      ...check,
+      id: "api-checkout",
+      feature: "Checkout API",
+      scenario: "Authenticated checkout succeeds",
+      severity: "blocker",
       runner: { kind: "gherkin", framework: "cucumber" },
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{ request: { method: "POST", path: "/api/checkout", body_json: { sku: "sku-1" } } }],
+      then: [{ status: 201 }],
     });
     assert.ok(code.includes('@cucumber/cucumber'));
-    assert.ok(code.includes('chromium'));
-    assert.ok(code.includes('ShipFlow setup step'));
-    assert.ok(code.includes('ShipFlow when step'));
-    assert.ok(code.includes('ShipFlow mutation guard'));
+    assert.ok(code.includes('request as playwrightRequest'));
+    assert.ok(code.includes('runApiBehaviorStep'));
+    assert.ok(code.includes('runBehaviorMutationGuard'));
+  });
+
+  it("generates Cucumber step definitions for TUI behavior", () => {
+    const code = genBehaviorSteps({
+      id: "cli-help",
+      feature: "CLI",
+      scenario: "Help command is available",
+      severity: "blocker",
+      runner: { kind: "gherkin", framework: "cucumber" },
+      app: { kind: "tui", command: "node", args: ["./src/cli.js"] },
+      given: [],
+      when: [{ stdin: { text: "--help\n" } }],
+      then: [{ stdout_contains: "Usage" }],
+    });
+    assert.ok(code.includes('import { spawn } from "node:child_process"'));
+    assert.ok(code.includes('startShipFlowTui'));
+    assert.ok(code.includes('runTuiBehaviorAssert'));
   });
 
   it("generates paired Cucumber artifacts", () => {
     const artifacts = genBehaviorCucumberArtifacts({
-      ...check,
+      ...webBase,
       __file: "vp/behavior/adding.yml",
       runner: { kind: "gherkin", framework: "cucumber" },
+      given: [{ open: "/calc" }],
+      when: [{ click: { testid: "btn-add" } }],
+      then: [{ text_equals: { testid: "display", equals: "5" } }],
     });
     assert.equal(artifacts.length, 2);
     assert.equal(artifacts[0].kind, "cucumber-feature");

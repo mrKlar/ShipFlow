@@ -236,8 +236,8 @@ All steps support three locator strategies — use one per step:
 
 ### Behavior Checks — `vp/behavior/*.yml`
 
-Given/When/Then structure for business logic scenarios. Uses the same flow steps and assertions.
-Default runner is Playwright. You can also target Gherkin/Cucumber generation and execution.
+Given/When/Then scenario checks. Web scenarios can reuse UI-style flow steps and assertions, API scenarios can issue request steps, and TUI scenarios can drive stdin/stdout flows.
+Default execution is surface-specific: Playwright browser for web, Playwright request for API behavior, and a node PTY harness for TUI behavior. You can also target Gherkin/Cucumber generation and execution.
 
 ```yaml
 id: checkout
@@ -261,6 +261,44 @@ when:
 then:
   - url_matches: { regex: "/confirmation" }
   - visible: { testid: success-message }
+```
+
+API behavior example:
+
+```yaml
+id: checkout-api
+feature: Checkout API
+scenario: Authenticated checkout succeeds
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+given: []
+when:
+  - request:
+      method: POST
+      path: /api/checkout
+      body_json: { sku: "sku-1" }
+then:
+  - status: 201
+  - json_type: { path: "$", type: object }
+```
+
+TUI behavior example:
+
+```yaml
+id: cli-help
+feature: CLI
+scenario: Help command is available
+severity: blocker
+app:
+  kind: tui
+  command: node
+  args: ["./src/cli.js"]
+when:
+  - stdin: { text: "--help\n" }
+then:
+  - stdout_contains: "Usage"
 ```
 
 When `runner.kind: gherkin` or `runner.framework: cucumber` is selected, ShipFlow generates `.feature` files plus Cucumber step definitions under `.gen/cucumber/` and executes them with `npx cucumber-js`.
@@ -422,7 +460,7 @@ Typical `runner.framework` values: `dependency-cruiser`, `tsarch`, `madge`, `esl
 | Type | Default | Strong alternates |
 |---|---|---|
 | UI | Playwright | |
-| Behavior | Playwright | Cucumber / Gherkin |
+| Behavior | Cucumber + surface executors | Playwright web, Playwright request, node PTY |
 | API | Playwright request | Pactum |
 | Database | Built-in SQL harness | pgTAP (PostgreSQL) |
 | Performance | k6 | |
