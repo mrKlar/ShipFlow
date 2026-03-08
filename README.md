@@ -62,19 +62,23 @@ curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | b
 
 > ☝️ Auto-detects Claude Code, Codex CLI, and Gemini CLI on your machine.
 
-Restart Claude Code. Open any project:
+Open any project:
 
-```
+```bash
+# Claude Code
 /shipflow-verifications a kawaii calculator with a fox mascot
-```
-
-The AI drafts **50+ verifications in seconds**. Review them. Then:
-
-```
 /shipflow-impl
+
+# Codex CLI
+$shipflow-verifications a kawaii calculator with a fox mascot
+$shipflow-impl
+
+# Gemini CLI
+/shipflow:verifications a kawaii calculator with a fox mascot
+/shipflow:impl
 ```
 
-☕ Walk away. Come back to a **working app** with every behavior verified.
+The AI drafts **50+ verifications in seconds**. Review them. Run impl. ☕ Walk away. Come back to a **working app** with every behavior verified.
 
 ---
 

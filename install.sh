@@ -167,7 +167,7 @@ if command -v gemini &>/dev/null; then
   FOUND+=("gemini")
 
   # Install extension
-  gemini extensions install --path="$INSTALL_DIR/gemini-extension" 2>/dev/null || true
+  gemini extensions install "$INSTALL_DIR/gemini-extension" --consent 2>/dev/null || true
   info "Extension installed: /shipflow:verifications, /shipflow:impl"
 
   # Merge hooks into settings.json

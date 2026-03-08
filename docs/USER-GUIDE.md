@@ -73,9 +73,39 @@ The AI drafts verifications immediately. Review, add, or remove checks. Then:
 /shipflow-impl
 ```
 
+### With Codex CLI
+
+Open your project and invoke the skills:
+
+```
+$shipflow-verifications a todo app with login
+```
+
+Review and iterate. Then:
+
+```
+$shipflow-impl
+```
+
+### With Gemini CLI
+
+Open your project and use the slash commands:
+
+```
+/shipflow:verifications a todo app with login
+```
+
+Review and iterate. Then:
+
+```
+/shipflow:impl
+```
+
+### All platforms
+
 The AI implements the entire app autonomously, looping until all tests pass.
 
-### With the CLI
+### CLI commands
 
 ```bash
 shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
