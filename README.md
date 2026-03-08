@@ -41,16 +41,18 @@ This is a **first-principles failure.** If you have an agent that can write, tes
 
 ---
 
-## ⚡ Why ShipFlow
+## ⚡ Why ShipFlow — not [spec-kit](https://github.com/github/spec-kit)
 
-| | Spec-driven *(old)* | ShipFlow *(new)* |
+| | Spec-driven *(spec-kit)* | Verification-first *(ShipFlow)* |
 |---|---|---|
-| 📝 | Write specs, then code separately | Verifications ARE the spec AND the test |
-| 🔄 | Specs drift from implementation | Lock file detects any divergence |
-| 🧪 | Manual testing against specs | Auto-generated tests: UI, API, DB, behavior, load |
-| 🤞 | Trust the developer followed the spec | Hooks block the AI from cheating |
-| ⏱️ | Weeks to go from spec to working app | **Minutes.** The AI loops until green. |
-| 🗑️ | Rewrite = months of work lost | **Delete & regenerate.** Code is disposable, verifications are forever. |
+| 📝 | Specs are **documents** the AI reads | Verifications **compile to real tests** |
+| ✅ | AI says "done" — you hope it's right | AI can't finish until `shipflow verify` **exits 0** |
+| 🔐 | Nothing stops the AI from ignoring the spec | Cryptographic locks + hooks make cheating **structurally impossible** |
+| 🧪 | No test generation — you test manually after | Auto-generated tests: UI, API, DB, behavior, security, load |
+| 🔄 | Specs drift — no enforcement mechanism | Lock file + SHA-256 hashes detect any divergence |
+| 🗑️ | Rewrite = start the whole spec process over | `rm -rf src/` — regenerate from verifications in minutes |
+| 🔁 | Linear: specify → plan → tasks → implement | **Autonomous loop:** generate → implement → verify → repeat |
+| 🤖 | Human workflow adapted for AI | Process **designed from scratch** for AI agents |
 
 ---
 
