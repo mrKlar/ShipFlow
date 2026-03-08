@@ -1,0 +1,6 @@
+{
+  "name": "shipflow",
+  "version": "0.3.0",
+  "description": "Verification-first development for AI coding agents",
+  "contextFileName": "GEMINI.md"
+}

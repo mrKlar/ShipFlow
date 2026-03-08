@@ -132,11 +132,11 @@ ShipFlow makes it **structurally impossible** for the AI to game the tests:
 
 Works with **every major AI coding agent:**
 
-| Platform | Setup | Anti-cheat |
-|---|---|---|
-| 🟣 **Claude Code** | Plugin + hooks | PreToolUse + Stop hooks |
-| 🟢 **OpenAI Codex CLI** | AGENTS.md + sandbox | OS-level write restrictions |
-| 🔵 **Google Gemini CLI** | GEMINI.md + hooks | BeforeTool JSON protocol |
+| Platform | Integration | Commands | Anti-cheat |
+|---|---|---|---|
+| 🟣 **Claude Code** | Plugin | `/shipflow-verifications` `/shipflow-impl` | PreToolUse + Stop hooks |
+| 🟢 **OpenAI Codex CLI** | Skills | `$shipflow-verifications` `$shipflow-impl` | Sandbox + exec rules |
+| 🔵 **Google Gemini CLI** | Extension | `/shipflow:verifications` `/shipflow:impl` | BeforeTool hooks |
 
 ```bash
 shipflow init                        # 🟣 Claude Code (default)

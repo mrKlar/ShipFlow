@@ -149,6 +149,14 @@ if command -v codex &>/dev/null; then
     cat "$INSTALL_DIR/templates/AGENTS.md" >> "$CODEX_INSTRUCTIONS"
     info "Instructions created: ~/.codex/instructions.md"
   fi
+
+  # Install skills (global: ~/.agents/skills/)
+  CODEX_SKILLS="$HOME/.agents/skills"
+  mkdir -p "$CODEX_SKILLS"
+  rm -rf "$CODEX_SKILLS/shipflow-verifications" "$CODEX_SKILLS/shipflow-impl"
+  cp -r "$INSTALL_DIR/codex-skills/shipflow-verifications" "$CODEX_SKILLS/"
+  cp -r "$INSTALL_DIR/codex-skills/shipflow-impl" "$CODEX_SKILLS/"
+  info "Skills installed: \$shipflow-verifications, \$shipflow-impl"
 else
   skip "Codex CLI not found"
 fi
@@ -158,28 +166,9 @@ if command -v gemini &>/dev/null; then
   info "Gemini CLI found"
   FOUND+=("gemini")
 
-  # Global instructions
-  GEMINI_MD="$HOME/.gemini/GEMINI.md"
-  SHIPFLOW_MARKER="<!-- shipflow -->"
-  if [ -f "$GEMINI_MD" ]; then
-    if ! grep -q "$SHIPFLOW_MARKER" "$GEMINI_MD" 2>/dev/null; then
-      printf "\n%s\n" "$SHIPFLOW_MARKER" >> "$GEMINI_MD"
-      cat "$INSTALL_DIR/templates/GEMINI.md" >> "$GEMINI_MD"
-      info "Instructions appended to ~/.gemini/GEMINI.md"
-    else
-      TMPFILE=$(mktemp)
-      sed "/$SHIPFLOW_MARKER/,\$d" "$GEMINI_MD" > "$TMPFILE"
-      printf "%s\n" "$SHIPFLOW_MARKER" >> "$TMPFILE"
-      cat "$INSTALL_DIR/templates/GEMINI.md" >> "$TMPFILE"
-      mv "$TMPFILE" "$GEMINI_MD"
-      info "Instructions updated in ~/.gemini/GEMINI.md"
-    fi
-  else
-    mkdir -p "$HOME/.gemini"
-    printf "%s\n" "$SHIPFLOW_MARKER" > "$GEMINI_MD"
-    cat "$INSTALL_DIR/templates/GEMINI.md" >> "$GEMINI_MD"
-    info "Instructions created: ~/.gemini/GEMINI.md"
-  fi
+  # Install extension
+  gemini extensions install --path="$INSTALL_DIR/gemini-extension" 2>/dev/null || true
+  info "Extension installed: /shipflow:verifications, /shipflow:impl"
 
   # Merge hooks into settings.json
   GEMINI_SETTINGS="$HOME/.gemini/settings.json"
@@ -249,8 +238,8 @@ if [ ${#FOUND[@]} -gt 0 ]; then
   for p in "${FOUND[@]}"; do
     case "$p" in
       claude) printf "  ${C}Claude Code${R}  — plugin + hooks (restart Claude Code)\n" ;;
-      codex)  printf "  ${C}Codex CLI${R}    — global rules + instructions\n" ;;
-      gemini) printf "  ${C}Gemini CLI${R}   — global hooks + instructions\n" ;;
+      codex)  printf "  ${C}Codex CLI${R}    — skills + rules + instructions\n" ;;
+      gemini) printf "  ${C}Gemini CLI${R}   — extension + hooks\n" ;;
     esac
   done
   echo ""
@@ -270,12 +259,14 @@ fi
 
 if [[ " ${FOUND[*]:-} " == *" codex "* ]]; then
   printf "  ${D}# Codex CLI:${R}\n"
-  echo "  codex \"read vp/ and implement the app until shipflow verify passes\""
+  echo "  \$shipflow-verifications a todo app"
+  echo "  \$shipflow-impl"
   echo ""
 fi
 
 if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
   printf "  ${D}# Gemini CLI:${R}\n"
-  echo "  gemini \"read vp/ and implement the app until shipflow verify passes\""
+  echo "  /shipflow:verifications a todo app"
+  echo "  /shipflow:impl"
   echo ""
 fi
