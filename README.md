@@ -14,9 +14,11 @@
 
 ---
 
-Traditional spec-driven development was designed for humans writing code. You spend weeks writing specifications, then months building what you described, hoping the result matches. With AI coding agents, **this is backwards.**
+Every "AI-powered" development framework makes the same fundamental mistake: **they imitate the human process.** Write a spec, hand it off, build to spec, review. They bolt AI onto a workflow designed for humans — and wonder why it feels like driving a Tesla with horse reins.
 
-> 🚀 **ShipFlow flips the model.** You describe what the app must do. The AI writes executable verifications, generates real tests, builds the entire application, and loops until every test passes. No specs. No handoffs. No gap between intent and implementation.
+This is a **first-principles failure.** If you have an agent that can write, test, and iterate at machine speed, why are you still asking it to follow a human playbook?
+
+> 🚀 **ShipFlow starts from zero.** No specs. No handoffs. You describe what the app must do. The AI writes executable verifications, generates real tests, builds the entire application, and loops until every test passes. The process isn't *assisted by* AI — it's **designed for** AI.
 
 ```
  You describe           AI drafts              AI generates           AI builds & loops
