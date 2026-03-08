@@ -39,14 +39,26 @@ describe("DbCheck schema", () => {
   it("accepts all assert types", () => {
     const r = DbCheck.parse({
       ...base,
+      seed_sql: "DELETE FROM users;",
+      before_query: "SELECT * FROM users",
+      before_assert: [{ row_count: 0 }],
+      action_sql: "INSERT INTO users VALUES ('Alice');",
       assert: [
         { row_count: 3 },
+        { row_count_gte: 1 },
+        { row_count_lte: 5 },
         { cell_equals: { row: 0, column: "name", equals: "Alice" } },
         { cell_matches: { row: 1, column: "email", matches: "@test\\.com$" } },
         { column_contains: { column: "name", value: "Bob" } },
+        { column_not_contains: { column: "name", value: "Mallory" } },
+        { row_equals: { row: 0, equals: { name: "Alice" } } },
+        { result_equals: [{ id: 1, name: "Alice" }] },
       ],
+      after_query: "SELECT * FROM users",
+      after_assert: [{ row_count_gte: 1 }],
+      cleanup_sql: "DELETE FROM users;",
     });
-    assert.equal(r.assert.length, 4);
+    assert.equal(r.assert.length, 9);
   });
 
   it("rejects negative row_count", () => {
@@ -77,6 +89,10 @@ describe("dbAssertExpr", () => {
     assert.equal(dbAssertExpr({ row_count: 3 }), "expect(rows).toHaveLength(3);");
   });
 
+  it("generates row_count_gte", () => {
+    assert.equal(dbAssertExpr({ row_count_gte: 2 }), "expect(rows.length).toBeGreaterThanOrEqual(2);");
+  });
+
   it("generates cell_equals", () => {
     const r = dbAssertExpr({ cell_equals: { row: 0, column: "name", equals: "Alice" } });
     assert.ok(r.includes('rows[0]["name"]'));
@@ -94,6 +110,11 @@ describe("dbAssertExpr", () => {
     assert.ok(r.includes("rows.some"));
     assert.ok(r.includes('"name"'));
     assert.ok(r.includes('"Bob"'));
+  });
+
+  it("generates row_equals", () => {
+    const r = dbAssertExpr({ row_equals: { row: 0, equals: { name: "Alice" } } });
+    assert.ok(r.includes("toMatchObject"));
   });
 
   it("throws on unknown assert", () => {
@@ -146,5 +167,25 @@ describe("genDbTest", () => {
     const code = genDbTest(check);
     assert.ok(code.includes('rows[0]["name"]'));
     assert.ok(code.includes("toMatch"));
+  });
+
+  it("generates before/after/action/cleanup flow", () => {
+    const check = {
+      ...base,
+      seed_sql: "DELETE FROM users;",
+      before_query: "SELECT * FROM users",
+      before_assert: [{ row_count: 0 }],
+      action_sql: "INSERT INTO users VALUES ('Alice');",
+      assert: [{ row_count_gte: 1 }],
+      after_query: "SELECT * FROM users",
+      after_assert: [{ column_contains: { column: "name", value: "Alice" } }],
+      cleanup_sql: "DELETE FROM users;",
+    };
+    const code = genDbTest(check);
+    assert.ok(code.includes("const beforeRows = query("));
+    assert.ok(code.includes("const rows = query("));
+    assert.ok(code.includes("const afterRows = query("));
+    assert.ok(code.includes("finally"));
+    assert.ok(code.includes("DELETE FROM users"));
   });
 });

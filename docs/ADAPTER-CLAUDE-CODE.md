@@ -1,6 +1,6 @@
 # Claude Code Adapter
 
-ShipFlow uses Claude Code as the native implementation engine. No external launcher — Claude Code IS the loop.
+ShipFlow uses Claude Code as a first-class implementation surface. The normal user flow is verification drafting plus `shipflow implement`.
 
 ## Plugin
 
@@ -9,7 +9,8 @@ ShipFlow installs as a Claude Code plugin providing two commands:
 | Command | Model | Role |
 |---|---|---|
 | `/shipflow-verifications` | Opus 4.6 | Human + AI draft verifications |
-| `/shipflow-impl` | Sonnet 4.6 | AI implements autonomously |
+| `/shipflow-implement` | Sonnet 4.6 | AI implements autonomously |
+| `/shipflow-impl` | Sonnet 4.6 | Legacy alias |
 
 Install with `./install.sh`. This registers a marketplace and installs the plugin.
 
@@ -18,18 +19,18 @@ Install with `./install.sh`. This registers a marketplace and installs the plugi
 ```
 /shipflow-verifications → AI drafts vp/ checks, human refines
                             ↓
-/shipflow-impl          → AI reads VP, generates tests, implements code
+/shipflow-implement     → AI drives the normal implementation loop
                             ↓
                     ┌───────────────────────────┐
-                    │ 1. Read vp/**/*.yml       │
-                    │ 2. shipflow gen           │
-                    │ 3. Read .gen/ tests       │
-                    │ 4. Write code under src/  │
-                    │ 5. shipflow verify        │
-                    │ 6. Fail? Fix → goto 5     │
-                    │ 7. Pass? Done             │
+                    │ 1. shipflow implement     │
+                    │ 2. doctor                 │
+                    │ 3. lint                   │
+                    │ 4. gen                    │
+                    │ 5. write code under src/  │
+                    │ 6. verify                 │
+                    │ 7. retry until green      │
                     └───────────────────────────┘
-                    Stop hook enforces step 5-7
+                    Stop hook enforces final verify
 ```
 
 ## Hooks

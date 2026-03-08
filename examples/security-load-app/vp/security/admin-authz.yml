@@ -1,0 +1,12 @@
+id: security-admin-authz
+title: Admin route rejects unauthenticated users
+severity: blocker
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/admin
+assert:
+  - status: 401
+  - body_not_contains: "stack trace"

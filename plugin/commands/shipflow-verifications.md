@@ -29,7 +29,7 @@ Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all shipflow commands.
 
 Quickly scan what exists — do NOT narrate this to the user:
 - `shipflow.json` — project config
-- `vp/**/*.yml` — existing checks (ui, behavior, api, db, nfr, security)
+- `vp/**/*.yml` — existing checks (ui, behavior, api, db, nfr, security, technical)
 - `src/` — existing app code (if any)
 - Project name, README, CLAUDE.md — for intent
 
@@ -37,13 +37,14 @@ Then run:
 
 ```bash
 node $SHIPFLOW_DIR/bin/shipflow.js map
+node $SHIPFLOW_DIR/bin/shipflow.js draft
 ```
 
-Use that repo map plus `$ARGUMENTS` to decide what to cover first, which verification types are missing, and where precision is most needed.
+Use that repo map and draft summary plus `$ARGUMENTS` to decide what to cover first, which verification types are missing, what the main gaps are, and what remains ambiguous.
 
-### Step 2: Build a coverage plan, then draft verifications NOW
+### Step 2: Build a coverage plan, review ambiguities, then draft verifications NOW
 
-From the project name, the repo map, the user's description (`$ARGUMENTS`), and any existing code, **immediately write VP check files**. Don't ask what to verify first — infer it. Be opinionated. Cover the obvious flows and the important risks.
+From the project name, the repo map, the local draft summary, the user's description (`$ARGUMENTS`), and any existing code, **immediately write VP check files**. Don't ask what to verify first — infer it. Be opinionated. Cover the obvious flows and the important risks.
 
 For a new project: scaffold `shipflow.json` and the `vp/` directories too.
 
@@ -166,6 +167,61 @@ Categories: `authn`, `authz`, `headers`, `input_validation`, `cors`, `session`, 
 
 Assertions: `status`, `header_equals`, `header_matches`, `header_absent`, `body_contains`, `body_not_contains`.
 
+#### Technical checks — `vp/technical/*.yml`
+For verifying repository-level technical constraints: framework choice, architecture boundaries, infrastructure files, SaaS/tooling, CI workflows, browser/mobile testing services.
+
+```yaml
+id: technical-ci-stack
+title: Repository uses GitHub Actions and Playwright
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: ".github/workflows/ci.yml" }
+  - dependency_present: { name: "@playwright/test", section: devDependencies }
+  - github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/checkout@v4" }
+```
+
+Categories: `framework`, `architecture`, `infrastructure`, `saas`, `ci`, `testing`, `mobile`, `web`, `other`.
+
+Runners:
+- `custom` — built-in repo inspection engine
+- `archtest` — architecture-oriented checks; use this when you want to validate boundaries or layering rules
+
+Typical architecture tools for `runner.framework`: `dependency-cruiser`, `tsarch`, `madge`, `eslint-plugin-boundaries`.
+
+Example architecture checks:
+
+```yaml
+id: technical-architecture-boundaries
+title: Domain layer stays isolated from UI
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: tsarch
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
+  - command_succeeds: { command: "npx tsarch --help" }
+```
+
+Assertions:
+- `path_exists`, `path_absent`
+- `file_contains`, `file_not_contains`
+- `json_has`, `json_equals`
+- `dependency_present`, `dependency_absent`
+- `github_action_uses`
+- `glob_count`
+- `imports_forbidden`
+
 #### Fixtures — `vp/ui/_fixtures/*.yml`
 Reusable setup flows (login, etc.) referenced by `setup:` in UI and behavior checks.
 
@@ -174,10 +230,11 @@ Reusable setup flows (login, etc.) referenced by `setup:` in UI and behavior che
 First lint the pack quality:
 
 ```bash
+node $SHIPFLOW_DIR/bin/shipflow.js doctor
 node $SHIPFLOW_DIR/bin/shipflow.js lint
 ```
 
-Fix any duplicate ids, weak assertions, missing statuses, or vague checks.
+Fix any environment problems, duplicate ids, weak assertions, missing statuses, or vague checks.
 
 Then run gen to confirm the checks compile:
 
@@ -190,7 +247,7 @@ Fix any YAML errors and retry until both lint and gen succeed.
 ### Step 4: Present to the user
 
 Show a short summary of what you drafted:
-- List each check: id, title, type (UI/behavior/API/database/performance/security), what it verifies
+- List each check: id, title, type (UI/behavior/API/database/performance/security/technical), what it verifies
 - Mention the main gaps you intentionally left for a second pass
 - Say "These are your verifications. Tell me what to add, remove, or change."
 
@@ -203,7 +260,7 @@ When the user gives feedback:
 - Re-run gen to validate
 - Show updated summary
 
-Repeat until the user is satisfied, then tell them to run `/shipflow-impl` to build the app.
+Repeat until the user is satisfied, then tell them to run `/shipflow-implement` to build the app.
 
 ## Rules
 
@@ -212,6 +269,6 @@ Repeat until the user is satisfied, then tell them to run `/shipflow-impl` to bu
 - Use `data-testid` for element targeting, `label` for form inputs, `name` for buttons
 - `severity: blocker` for core functionality, `warn` for nice-to-have
 - If the project has no `shipflow.json`, create one with sensible defaults
-- Choose the right verification type: UI for visual, behavior for scenarios, API for endpoints, DB for data, NFR for load/perf, security for auth/headers/exposure
+- Choose the right verification type: UI for visual, behavior for scenarios, API for endpoints, database for data, performance for load/perf, security for auth/headers/exposure, technical for frameworks/architecture/CI/infra/tooling
 - Prefer precise, observable checks over broad narrative checks
-- Use `shipflow map` before writing and `shipflow lint` before finishing
+- Use `shipflow map` and `shipflow draft` before writing, and `shipflow doctor` + `shipflow lint` before finishing

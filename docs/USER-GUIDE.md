@@ -5,7 +5,7 @@
 ShipFlow is a verification-first framework. You describe what your app must do in YAML files. ShipFlow compiles those into Playwright tests and runs them. The AI implements the code and loops until every test passes.
 
 ```
-vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts  →  shipflow verify  →  evidence/run.json
+vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/k6/*.js  →  shipflow verify  →  evidence/*.json
 ```
 
 The only files you write and review are under `vp/`. Everything else is generated.
@@ -76,7 +76,7 @@ Open your project and run:
 The AI drafts verifications immediately. Review, add, or remove checks. Then:
 
 ```
-/shipflow-impl
+/shipflow-implement
 ```
 
 ### With Codex CLI
@@ -90,7 +90,7 @@ $shipflow-verifications a todo app with login
 Review and iterate. Then:
 
 ```
-$shipflow-impl
+$shipflow-implement
 ```
 
 ### With Gemini CLI
@@ -104,7 +104,7 @@ Open your project and use the slash commands:
 Review and iterate. Then:
 
 ```
-/shipflow:impl
+/shipflow:implement
 ```
 
 ### With Kiro CLI
@@ -128,9 +128,17 @@ The AI implements the entire app autonomously, looping until all tests pass.
 ### CLI commands
 
 ```bash
-shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
-shipflow verify    # Run tests → evidence/run.json
-shipflow status    # Show VP counts, test counts, last run
+shipflow draft       # Normal flow: collaborate on the verification pack
+shipflow implement   # Normal flow: doctor → lint → gen → implement → verify
+
+# Advanced / debug
+shipflow map
+shipflow doctor
+shipflow lint
+shipflow gen
+shipflow verify
+shipflow status
+shipflow implement-once
 ```
 
 ## Writing Verifications
@@ -283,6 +291,7 @@ assert:
 | `headers` | Optional key-value pairs |
 | `body` | Optional raw string body |
 | `body_json` | Optional JSON body (object/array) |
+| `auth` | Optional bearer auth injected from env or inline token |
 
 #### API Assertions
 
@@ -290,10 +299,22 @@ assert:
 - status: 200                                                # HTTP status
 - header_equals: { name: "x-request-id", equals: "abc" }    # exact header
 - header_matches: { name: "content-type", regex: "json" }    # regex header
+- header_present: { name: "x-trace-id" }                     # required header
+- header_absent: { name: "x-internal" }                      # forbidden header
 - body_contains: "success"                                    # raw body search
+- body_not_contains: "stack trace"                            # negative body check
 - json_equals: { path: "$[0].name", equals: "Alice" }        # JSON value
 - json_matches: { path: "$.status", regex: "active" }        # JSON regex
 - json_count: { path: "$.items", count: 5 }                  # array length
+- json_has: { path: "$.meta" }                               # field exists
+- json_absent: { path: "$.debug" }                           # field absent
+- json_type: { path: "$.items", type: "array" }              # JSON type
+- json_array_includes: { path: "$.items", equals: { id: 1 } }
+- json_schema:
+    path: "$"
+    schema:
+      type: object
+      required: [id, name]
 ```
 
 JSON paths: `$` = response body root. `$[0].name` → `body[0].name`, `$.items` → `body.items`.
@@ -310,15 +331,23 @@ app:
   kind: db
   engine: sqlite               # sqlite or postgresql
   connection: ./test.db        # file path or connection string
-setup_sql: |
+seed_sql: |
   CREATE TABLE IF NOT EXISTS users (name TEXT, email TEXT);
   INSERT INTO users VALUES ('Alice', 'alice@test.com');
+before_query: "SELECT name FROM users"
+before_assert:
+  - row_count: 1
+action_sql: "UPDATE users SET email = 'alice@prod.test' WHERE name = 'Alice'"
 query: "SELECT name, email FROM users"
 assert:
   - row_count: 1
   - cell_equals: { row: 0, column: name, equals: "Alice" }
-  - cell_matches: { row: 0, column: email, regex: "@test\\.com$" }
+  - cell_matches: { row: 0, column: email, matches: "@prod\\.test$" }
   - column_contains: { column: name, value: "Alice" }
+after_query: "SELECT email FROM users"
+after_assert:
+  - row_equals: { row: 0, equals: { email: "alice@prod.test" } }
+cleanup_sql: "DELETE FROM users WHERE name = 'Alice'"
 ```
 
 ### NFR Checks — `vp/nfr/*.yml`
@@ -335,11 +364,15 @@ app:
 scenario:
   endpoint: /api/health
   method: GET
+  profile: smoke
   thresholds:
+    http_req_duration_avg: 150
     http_req_duration_p95: 200
     http_req_failed: 0.01
+    checks_rate: 0.99
   vus: 50
   duration: 30s
+  ramp_up: 10s
 ```
 
 Requires `k6` installed. Runs during `shipflow verify` if available.
@@ -471,7 +504,7 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, k6 scripts into `.gen/k6/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, k6 scripts into `.gen/k6/`, and creates `.gen/vp.lock.json` plus `.gen/manifest.json`.
 
 ### Run verification
 
@@ -481,10 +514,12 @@ shipflow verify
 
 1. Validates the lock (VP unchanged since `gen`)
 2. Evaluates OPA policies (if present)
-3. Runs k6 NFR scripts (if present and k6 available)
-4. Runs Playwright tests
-5. Writes `evidence/run.json`
+3. Runs generated Playwright tests and writes per-type evidence files
+4. Runs k6 NFR scripts (if present and k6 available) and writes `evidence/load.json`
+5. Writes aggregate `evidence/run.json`
 6. Exits 0 if all tests pass
+
+`shipflow implement` also writes `evidence/implement.json` with loop-level metrics such as iteration count, first-pass success, provider/model, VP counts, and generated counts by verification type.
 
 ### Check status
 
@@ -501,7 +536,7 @@ ShipFlow enforces separation between verification and implementation:
 | Protected | Contents | Who writes |
 |---|---|---|
 | `vp/` | Verifications (YAML) | Human + AI (verification phase only) |
-| `.gen/` | Generated tests (Playwright, k6, technical) | `shipflow gen` |
+| `.gen/` | Generated tests, manifest, lock | `shipflow gen` |
 | `evidence/` | Test results | `shipflow verify` |
 
 Hooks enforce this automatically per platform:

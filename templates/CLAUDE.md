@@ -8,13 +8,14 @@ This project uses ShipFlow for verification-first development.
 
 Draft verifications in `vp/` — YAML files describing what the app must do.
 
-Six verification types:
+Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
 - `vp/behavior/*.yml` — behavior checks (Given/When/Then scenarios)
 - `vp/api/*.yml` — API checks (HTTP requests + response assertions)
 - `vp/db/*.yml` — Database checks (SQL queries + row/cell assertions)
 - `vp/nfr/*.yml` — Performance checks (load/performance thresholds)
-- `vp/security/*.yml` — security checks (auth/authz/headers/exposure)
+- `vp/security/*.yml` — Security checks (auth/authz/headers/exposure)
+- `vp/technical/*.yml` — Technical checks (frameworks/architecture/CI/infra/tooling)
 - `vp/ui/_fixtures/*.yml` — reusable setup flows (login, etc.)
 
 You MAY modify `vp/` files during this phase only.
@@ -23,16 +24,12 @@ You MAY modify `vp/` files during this phase only.
 
 Implement app code that passes all generated tests. The human does not write code.
 
-## The Implementation Loop
+## Normal Flow
 
 ```
-1. Read VP       →  Read all vp/**/*.yml
-2. Lint          →  Run: shipflow lint
-3. Generate      →  Run: shipflow gen
-4. Read tests    →  Read .gen/playwright/*.test.ts
-5. Implement     →  Write app code under src/
-6. Verify        →  Run: shipflow verify
-7. Pass?         →  If exit 0: DONE. If not: read errors, fix code, goto 6.
+1. Draft verifications collaboratively in `vp/`
+2. Prefer `shipflow implement` for the normal implementation loop
+3. Use granular commands only when debugging or inspecting the pipeline
 ```
 
 Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
@@ -65,13 +62,19 @@ For API checks: implement endpoints matching the `method`, `path`, response `sta
 
 For DB checks: ensure the database schema and data match the `query` and assertions.
 
+For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions.
+
 ## Commands
 
 ```bash
-shipflow map      # Analyze repo + VP coverage before drafting
-shipflow lint     # Check VP quality before generation
-shipflow gen      # Compile vp/ → .gen/playwright/*.test.ts + vp.lock.json
-shipflow verify   # Run tests → evidence/run.json, exit 0 if all pass
+shipflow draft         # Normal flow: collaborate on VP creation/refinement
+shipflow implement     # Normal flow: doctor → lint → gen → implement → verify
+shipflow map           # Advanced: inspect repo coverage
+shipflow doctor        # Advanced: inspect environment readiness
+shipflow lint          # Advanced: inspect VP quality
+shipflow gen           # Advanced: compile vp/ → generated tests
+shipflow verify        # Advanced: run generated tests only
+shipflow implement-once # Advanced: one provider codegen pass, no loop
 ```
 
 ## On Verify Failure

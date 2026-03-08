@@ -26,6 +26,7 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "db")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "nfr")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "security")));
+      assert.ok(fs.existsSync(path.join(tmpDir, "vp", "technical")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "policy")));
     });
   });
@@ -34,6 +35,9 @@ describe("init", () => {
     withTmpDir(tmpDir => {
       init({ cwd: tmpDir });
       const config = JSON.parse(fs.readFileSync(path.join(tmpDir, "shipflow.json"), "utf-8"));
+      assert.equal(config.draft.provider, "local");
+      assert.equal(config.impl.provider, "anthropic");
+      assert.equal(config.impl.model, "claude-sonnet-4-6");
       assert.equal(config.impl.srcDir, "src");
     });
   });
@@ -122,13 +126,14 @@ describe("init", () => {
 
   it("creates files for all platforms combined", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir, platforms: ["claude", "codex", "gemini"] });
+      init({ cwd: tmpDir, platforms: ["claude", "codex", "gemini", "kiro"] });
       assert.ok(fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".claude", "hooks.json")));
       assert.ok(fs.existsSync(path.join(tmpDir, "AGENTS.md")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "config.toml")));
       assert.ok(fs.existsSync(path.join(tmpDir, "GEMINI.md")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".gemini", "settings.json")));
+      assert.ok(fs.existsSync(path.join(tmpDir, "KIRO.md")));
     });
   });
 });

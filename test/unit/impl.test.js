@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseFiles, buildPrompt } from "../../lib/impl.js";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { parseFiles, buildPrompt, resolveImplOptions } from "../../lib/impl.js";
 
 describe("parseFiles", () => {
   it("parses single file", () => {
@@ -105,5 +108,50 @@ describe("buildPrompt", () => {
   it("uses default srcDir if not configured", () => {
     const p = buildPrompt(vpFiles, [], [], {}, null);
     assert.ok(p.includes('"src/"'));
+  });
+});
+
+describe("resolveImplOptions", () => {
+  it("prefers env and explicit config provider/model", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          provider: "command",
+          model: "custom-model",
+          srcDir: "app",
+          command: { bin: "cat", args: [] },
+        },
+      }));
+      const previousProvider = process.env.SHIPFLOW_IMPL_PROVIDER;
+      const previousModel = process.env.SHIPFLOW_IMPL_MODEL;
+      process.env.SHIPFLOW_IMPL_PROVIDER = "anthropic";
+      process.env.SHIPFLOW_IMPL_MODEL = "override-model";
+      try {
+        const options = resolveImplOptions(tmpDir);
+        assert.equal(options.provider, "anthropic");
+        assert.equal(options.model, "override-model");
+        assert.equal(options.srcDir, "app");
+      } finally {
+        if (previousProvider === undefined) delete process.env.SHIPFLOW_IMPL_PROVIDER;
+        else process.env.SHIPFLOW_IMPL_PROVIDER = previousProvider;
+        if (previousModel === undefined) delete process.env.SHIPFLOW_IMPL_MODEL;
+        else process.env.SHIPFLOW_IMPL_MODEL = previousModel;
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("uses anthropic defaults when config is absent", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      const options = resolveImplOptions(tmpDir, {});
+      assert.equal(options.provider, "anthropic");
+      assert.equal(options.model, "claude-sonnet-4-6");
+      assert.equal(options.srcDir, "src");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

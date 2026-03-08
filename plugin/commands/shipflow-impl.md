@@ -6,6 +6,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 
 # ShipFlow — Implementation Phase
 
+Preferred command name: `/shipflow-implement`
+Legacy alias: `/shipflow-impl`
+
 You implement the app. Write code that passes all VP verification tests. Loop until green. No human intervention needed.
 
 ## Context
@@ -31,25 +34,23 @@ cd "$(pwd)" && node "$SHIPFLOW_DIR/bin/shipflow.js" init
 
 ## The Loop
 
-Execute in order. Do NOT skip steps. Do NOT report completion until verify exits 0.
-
-### 1. Read VP verifications
-
-Read silently:
-- `vp/ui/*.yml`, `vp/behavior/*.yml`, `vp/api/*.yml`, `vp/db/*.yml`, `vp/security/*.yml`
-- `vp/ui/_fixtures/*.yml` — setup flows
-- `shipflow.json` — config (srcDir, context, base_url)
-
-### 2. Generate tests
+The normal path is a single command:
 
 ```bash
-node $SHIPFLOW_DIR/bin/shipflow.js lint
-node $SHIPFLOW_DIR/bin/shipflow.js gen
+node $SHIPFLOW_DIR/bin/shipflow.js implement
 ```
 
-If lint fails, stop and tell the user the verification pack needs refinement before implementation.
+That command automatically runs:
+- doctor
+- lint
+- gen
+- provider implementation
+- verify
+- retry until green or retry budget exhausted
 
-### 3. Read generated tests
+Only drop to granular commands for debugging.
+
+### 1. Read current verification context
 
 Read `.gen/playwright/*.test.ts`. Match every locator and every HTTP/status/header/body expectation exactly:
 
@@ -64,21 +65,22 @@ Read `.gen/playwright/*.test.ts`. Match every locator and every HTTP/status/head
 | `toHaveText("x")` | Element textContent equals "x" |
 | `toHaveURL(/pattern/)` | URL matches regex after navigation |
 
-### 4. Implement
+### 2. Implement
 
 Write app code under the configured `srcDir` (default: `src/`). Read `shipflow.json` `impl.context` for tech stack.
 
 **NEVER modify**: `vp/`, `.gen/`, `evidence/`, `shipflow.json`, `playwright.config.ts`
 
 For security checks, implement the exact rejection, header, and exposure behavior expected by the generated tests.
+For technical checks, implement the exact repository constraints expected by the generated tests: framework choices, architecture rules, CI workflows, infrastructure files, and required tooling/services.
 
-### 5. Verify
+### 3. Verify
 
 ```bash
 node $SHIPFLOW_DIR/bin/shipflow.js verify
 ```
 
-### 6. Result
+### 4. Result
 
 - **Exit 0** — Done. Report files written and test count.
 - **Exit non-zero** — Read errors, fix code, go back to step 5.

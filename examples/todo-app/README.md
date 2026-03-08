@@ -1,6 +1,6 @@
 # Todo App — ShipFlow Example
 
-This example demonstrates the full ShipFlow loop: **define verifications → generate tests → AI implements → verify → loop until green**.
+This example demonstrates the normal ShipFlow loop: **define verifications → `shipflow implement` → green**.
 
 No human writes app code. The `src/` directory starts empty and is generated entirely by the AI.
 
@@ -16,6 +16,8 @@ todo-app/
       add-todo.yml           # Verification: add a todo item
       complete-todo.yml      # Verification: mark a todo as complete
       filter-todos.yml       # Verification: filter todos by status
+    technical/
+      ci-stack.yml           # Verification: local technical stack stays in place
       _fixtures/
         login.yml            # Reusable login flow
   src/                       # App code (AI-generated, starts empty)
@@ -37,14 +39,16 @@ shipflow init
 Then open the project in Claude Code and run:
 
 ```
-/shipflow-impl
+/shipflow-implement
 ```
 
 ## Manual steps
 
 ```bash
+shipflow draft     # Analyze the repo and propose starter VP files
+shipflow implement # Normal loop: doctor → lint → gen → implement → verify
 shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
-shipflow verify    # Run tests → evidence/run.json
+shipflow verify    # Run tests → evidence/*.json
 ```
 
 ## Configuration

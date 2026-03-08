@@ -32,7 +32,10 @@ describe("buildMap", () => {
       fs.mkdirSync(path.join(tmpDir, "vp", "db"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, "vp", "nfr"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, "vp", "security"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "vp", "technical"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { srcDir: "src" } }));
+      fs.mkdirSync(path.join(tmpDir, ".github", "workflows"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".github", "workflows", "ci.yml"), "name: ci\n");
 
       const result = buildMap(tmpDir);
       assert.ok(result.detected.ui_routes.includes("/dashboard") || result.detected.ui_routes.includes("/login"));
@@ -40,8 +43,11 @@ describe("buildMap", () => {
       assert.ok(result.detected.db_tables.includes("users"));
       assert.ok(result.coverage.gaps.some(g => g.includes("UI verification")));
       assert.ok(result.coverage.gaps.some(g => g.includes("security verification")));
+      assert.ok(result.coverage.gaps.some(g => g.includes("technical verification")));
       assert.ok(result.recommendations.some(r => r.type === "api"));
       assert.ok(result.recommendations.some(r => r.type === "security"));
+      assert.ok(result.recommendations.some(r => r.type === "technical"));
+      assert.ok(result.detected.technical_files.includes(".github/workflows"));
     });
   });
 

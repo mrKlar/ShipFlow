@@ -1,0 +1,13 @@
+id: technical-api-db-ci
+title: API service keeps expected CI stack
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: package.json }
+  - dependency_present: { name: "@playwright/test", section: devDependencies }

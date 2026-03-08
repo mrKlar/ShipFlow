@@ -5,6 +5,11 @@ import { verify } from "../lib/verify.js";
 const args = process.argv.slice(2);
 const cmd = args.find(a => !a.startsWith("-"));
 const flags = new Set(args.filter(a => a.startsWith("-")));
+const optionValue = (name) => {
+  const prefix = `--${name}=`;
+  const arg = args.find(a => a.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : undefined;
+};
 const verbose = flags.has("--verbose") || flags.has("-v");
 const quiet = flags.has("--quiet") || flags.has("-q");
 
@@ -12,22 +17,35 @@ async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Usage:
-  shipflow gen         Compile VP verifications into runnable tests
-  shipflow verify      Run generated tests, produce evidence
-  shipflow impl        AI generates app code from VP + tests
-  shipflow run         Full loop: gen → impl → verify (repeat until green)
-  shipflow map         Analyze repo + current VP coverage before drafting checks
-  shipflow lint        Lint VP quality before generation
+  Normal flow:
+    shipflow draft         Collaboratively draft/refine verifications
+    shipflow implement     Automatic implementation loop (doctor → lint → gen → implement → verify)
+
+  Advanced / debug:
+    shipflow map           Analyze repo + current VP coverage before drafting checks
+    shipflow lint          Lint VP quality before generation
+    shipflow doctor        Check local tooling and supported AI CLI integrations
+    shipflow gen           Compile VP verifications into runnable tests
+    shipflow verify        Run generated tests, produce evidence
+    shipflow status        Show verification state (VP, generated, evidence)
+    shipflow implement-once  Single provider code generation pass (no loop)
+    shipflow run           Legacy alias for shipflow implement
+
+  Setup:
   shipflow init        Scaffold vp/ directories + platform config
     --claude             Setup for Claude Code (default)
     --codex              Setup for OpenAI Codex CLI
     --gemini             Setup for Google Gemini CLI
-  shipflow status      Show verification state (VP, generated, evidence)
+    --all                Setup for all supported platforms
 
 Flags:
   --verbose, -v        Show detailed output
   --quiet, -q          Minimal output
   --json               Machine-readable output for map/lint
+  --write              Write draft starter files to vp/ (for shipflow draft)
+  --ai                 Ask the configured draft provider to refine draft proposals
+  --provider=<name>    Override provider for shipflow draft/implement
+  --model=<id>         Override model for shipflow draft/implement
 
 Exit codes:
   0    Success (all tests pass)
@@ -48,15 +66,15 @@ Exit codes:
     process.exit(exitCode);
   }
 
-  if (cmd === "impl") {
+  if (cmd === "implement-once" || cmd === "impl-once") {
     const { impl } = await import("../lib/impl.js");
-    await impl({ cwd: process.cwd() });
+    await impl({ cwd: process.cwd(), provider: optionValue("provider"), model: optionValue("model") });
     return;
   }
 
-  if (cmd === "run") {
+  if (cmd === "implement" || cmd === "impl" || cmd === "run") {
     const { run } = await import("../lib/loop.js");
-    const code = await run({ cwd: process.cwd() });
+    const code = await run({ cwd: process.cwd(), provider: optionValue("provider"), model: optionValue("model") });
     process.exit(code);
   }
 
@@ -66,20 +84,41 @@ Exit codes:
     process.exit(exitCode);
   }
 
+  if (cmd === "draft") {
+    const { draft } = await import("../lib/draft.js");
+    const { exitCode } = await draft({
+      cwd: process.cwd(),
+      json: flags.has("--json"),
+      write: flags.has("--write"),
+      ai: flags.has("--ai"),
+      provider: optionValue("provider"),
+      model: optionValue("model"),
+    });
+    process.exit(exitCode);
+  }
+
   if (cmd === "lint") {
     const { lint } = await import("../lib/lint.js");
     const { exitCode } = lint({ cwd: process.cwd(), json: flags.has("--json") });
     process.exit(exitCode);
   }
 
+  if (cmd === "doctor") {
+    const { doctor } = await import("../lib/doctor.js");
+    const { exitCode } = doctor({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
   if (cmd === "init") {
     const { init } = await import("../lib/init.js");
     const platforms = [];
+    if (flags.has("--all")) platforms.push("claude", "codex", "gemini", "kiro");
     if (flags.has("--claude")) platforms.push("claude");
     if (flags.has("--codex")) platforms.push("codex");
     if (flags.has("--gemini")) platforms.push("gemini");
+    if (flags.has("--kiro")) platforms.push("kiro");
     if (platforms.length === 0) platforms.push("claude");
-    init({ cwd: process.cwd(), platforms });
+    init({ cwd: process.cwd(), platforms: [...new Set(platforms)] });
     return;
   }
 

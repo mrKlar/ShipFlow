@@ -7,15 +7,12 @@ This project uses ShipFlow for verification-first development.
 - `vp/ui/*.yml` — UI checks (browser)
 - `vp/ui/_fixtures/*.yml` — reusable setup flows (login)
 
-## Implementation Loop
+## Normal Flow
 
 ```
-1. Read VP       →  Read all vp/**/*.yml
-2. Generate      →  Run: shipflow gen
-3. Read tests    →  Read .gen/playwright/*.test.ts
-4. Implement     →  Write app code under src/
-5. Verify        →  Run: shipflow verify
-6. Pass?         →  If exit 0: DONE. If not: read errors, fix code, goto 5.
+1. Draft verifications collaboratively
+2. Prefer `shipflow implement` for the normal loop
+3. Use `shipflow gen` and `shipflow verify` only when debugging
 ```
 
 ## Protected Paths — NEVER Modify During Implementation
@@ -42,6 +39,7 @@ This project uses ShipFlow for verification-first development.
 ## Commands
 
 ```bash
-shipflow gen       # VP → tests
-shipflow verify    # Run tests
+shipflow implement # doctor → lint → gen → implement → verify
+shipflow gen       # Advanced: VP → tests
+shipflow verify    # Advanced: run tests only
 ```

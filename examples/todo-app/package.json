@@ -6,8 +6,8 @@
     "dev": "node src/server.js",
     "shipflow:gen": "node ../../bin/shipflow.js gen",
     "shipflow:verify": "node ../../bin/shipflow.js verify",
-    "shipflow:impl": "node ../../bin/shipflow.js impl",
-    "shipflow:run": "node ../../bin/shipflow.js run"
+    "shipflow:implement": "node ../../bin/shipflow.js implement",
+    "shipflow:implement-once": "node ../../bin/shipflow.js implement-once"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0",

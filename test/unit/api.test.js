@@ -63,13 +63,34 @@ describe("ApiCheck schema", () => {
         { status: 200 },
         { header_equals: { name: "x-id", equals: "abc" } },
         { header_matches: { name: "content-type", matches: "json" } },
+        { header_present: { name: "x-trace-id" } },
+        { header_absent: { name: "x-internal" } },
         { body_contains: "hello" },
+        { body_not_contains: "stack trace" },
         { json_equals: { path: "$.name", equals: "Alice" } },
         { json_matches: { path: "$.status", matches: "active" } },
         { json_count: { path: "$", count: 5 } },
+        { json_has: { path: "$.meta" } },
+        { json_absent: { path: "$.debug" } },
+        { json_type: { path: "$.items", type: "array" } },
+        { json_array_includes: { path: "$.items", equals: { id: 1 } } },
+        { json_schema: { path: "$", schema: { type: "object", required: ["name"] } } },
       ],
     });
-    assert.equal(r.assert.length, 7);
+    assert.equal(r.assert.length, 15);
+  });
+
+  it("accepts bearer auth configuration", () => {
+    const r = ApiCheck.parse({
+      ...base,
+      request: {
+        method: "GET",
+        path: "/secure",
+        auth: { kind: "bearer", env: "API_TOKEN" },
+      },
+      assert: [{ status: 200 }],
+    });
+    assert.equal(r.request.auth.kind, "bearer");
   });
 
   it("rejects unknown assert", () => {
@@ -108,20 +129,38 @@ describe("apiAssertExpr", () => {
     assert.ok(r.includes('"hello"'));
   });
 
+  it("generates header_present", () => {
+    const r = apiAssertExpr({ header_present: { name: "X-Trace-Id" } });
+    assert.ok(r.includes('"x-trace-id"'));
+    assert.ok(r.includes("toBeDefined"));
+  });
+
+  it("generates body_not_contains", () => {
+    const r = apiAssertExpr({ body_not_contains: "stack" });
+    assert.ok(r.includes("not.toContain"));
+  });
+
   it("generates json_equals", () => {
     const r = apiAssertExpr({ json_equals: { path: "$[0].name", equals: "Alice" } });
-    assert.equal(r, 'expect(body[0].name).toBe("Alice");');
+    assert.ok(r.includes('jsonPath(body, "$[0].name")'));
+    assert.ok(r.includes('toEqual("Alice")'));
   });
 
   it("generates json_matches", () => {
     const r = apiAssertExpr({ json_matches: { path: "$.status", matches: "active" } });
-    assert.ok(r.includes("body.status"));
+    assert.ok(r.includes('jsonPath(body, "$.status")'));
     assert.ok(r.includes("toMatch"));
   });
 
   it("generates json_count", () => {
     const r = apiAssertExpr({ json_count: { path: "$", count: 3 } });
-    assert.equal(r, "expect(body).toHaveLength(3);");
+    assert.ok(r.includes('jsonPath(body, "$")'));
+    assert.ok(r.includes("toHaveLength(3)"));
+  });
+
+  it("generates json_schema", () => {
+    const r = apiAssertExpr({ json_schema: { path: "$", schema: { type: "object", required: ["id"] } } });
+    assert.ok(r.includes("assertJsonSchema"));
   });
 
   it("throws on unknown assert", () => {
@@ -165,12 +204,24 @@ describe("genApiTest", () => {
       assert: [{ json_equals: { path: "$.name", equals: "Alice" } }],
     };
     const code = genApiTest(check);
-    assert.ok(code.includes("await res.json()"));
-    assert.ok(code.includes("body.name"));
+    assert.ok(code.includes("const rawBody = await res.text()"));
+    assert.ok(code.includes("JSON.parse(rawBody)"));
+    assert.ok(code.includes("jsonPath(body"));
   });
 
   it("does not parse JSON when only status check", () => {
     const code = genApiTest({ ...base, assert: [{ status: 200 }] });
     assert.ok(!code.includes("res.json()"));
+  });
+
+  it("injects bearer auth header from env or token", () => {
+    const code = genApiTest({
+      ...base,
+      request: { method: "GET", path: "/secure", auth: { kind: "bearer", env: "API_TOKEN", token: "fallback" } },
+      assert: [{ status: 200 }],
+    });
+    assert.ok(code.includes('process.env["API_TOKEN"]'));
+    assert.ok(code.includes('Authorization'));
+    assert.ok(code.includes('Missing auth token'));
   });
 });

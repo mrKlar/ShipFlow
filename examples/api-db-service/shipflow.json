@@ -1,0 +1,12 @@
+{
+  "draft": {
+    "provider": "local"
+  },
+  "impl": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "maxTokens": 16384,
+    "srcDir": "src",
+    "context": "JSON API with a relational database and deterministic seed data."
+  }
+}

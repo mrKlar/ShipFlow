@@ -43,6 +43,23 @@ describe("NfrCheck schema", () => {
     assert.deepEqual(r.scenario.body_json, { name: "test" });
   });
 
+  it("accepts staged load profile", () => {
+    const r = NfrCheck.parse({
+      ...base,
+      scenario: {
+        endpoint: "/api/data",
+        profile: "load",
+        thresholds: { http_req_duration_p95: 500, checks_rate: 0.99 },
+        stages: [
+          { duration: "10s", target: 20 },
+          { duration: "30s", target: 50 },
+        ],
+      },
+    });
+    assert.equal(r.scenario.profile, "load");
+    assert.equal(r.scenario.stages.length, 2);
+  });
+
   it("defaults method to GET", () => {
     const r = NfrCheck.parse({
       ...base,
@@ -54,6 +71,18 @@ describe("NfrCheck schema", () => {
       },
     });
     assert.equal(r.scenario.method, "GET");
+  });
+
+  it("requires either stages or vus and duration", () => {
+    assert.throws(() => {
+      NfrCheck.parse({
+        ...base,
+        scenario: {
+          endpoint: "/",
+          thresholds: { http_req_duration_p95: 500 },
+        },
+      });
+    });
   });
 
   it("rejects invalid duration format", () => {
@@ -129,6 +158,23 @@ describe("genK6Script", () => {
     assert.ok(code.includes("rate<0.01"));
   });
 
+  it("merges multiple duration thresholds into one metric", () => {
+    const code = genK6Script({
+      ...check,
+      scenario: {
+        ...check.scenario,
+        thresholds: {
+          http_req_duration_avg: 250,
+          http_req_duration_p90: 400,
+          http_req_duration_p95: 500,
+        },
+      },
+    });
+    assert.ok(code.includes("avg<250"));
+    assert.ok(code.includes("p(90)<400"));
+    assert.ok(code.includes("p(95)<500"));
+  });
+
   it("generates GET request", () => {
     const code = genK6Script(check);
     assert.ok(code.includes('http.get("http://localhost:3000/"'));
@@ -173,5 +219,23 @@ describe("genK6Script", () => {
     const code = genK6Script(check);
     assert.ok(code.includes("check(res"));
     assert.ok(code.includes("r.status === 200"));
+  });
+
+  it("generates derived stages when ramp_up is present", () => {
+    const code = genK6Script({
+      ...base,
+      scenario: {
+        endpoint: "/",
+        method: "GET",
+        thresholds: { http_req_duration_p95: 500 },
+        vus: 50,
+        duration: "30s",
+        ramp_up: "10s",
+        graceful_ramp_down: "5s",
+      },
+    });
+    assert.ok(code.includes("stages:"));
+    assert.ok(code.includes('"duration":"10s"'));
+    assert.ok(code.includes('"duration":"5s"'));
   });
 });

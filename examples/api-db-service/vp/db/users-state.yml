@@ -1,0 +1,19 @@
+id: db-users-state
+title: Users persist after creation
+severity: blocker
+app:
+  kind: db
+  engine: sqlite
+  connection: ./data/app.db
+seed_sql: |
+  CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, email TEXT);
+  DELETE FROM users;
+before_query: "SELECT * FROM users"
+before_assert:
+  - row_count: 0
+action_sql: "INSERT INTO users (name, email) VALUES ('Alice', 'alice@example.com')"
+query: "SELECT name, email FROM users"
+assert:
+  - row_count: 1
+  - row_equals: { row: 0, equals: { name: Alice, email: alice@example.com } }
+cleanup_sql: "DELETE FROM users"

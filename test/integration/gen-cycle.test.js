@@ -24,10 +24,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(fs.existsSync(path.join(genDir, "playwright")));
   });
 
-  it("generates one test per check YAML (UI + behavior + API + DB + security)", () => {
+  it("generates one test per check YAML (UI + behavior + API + DB + security + technical)", () => {
     const tests = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".test.ts"));
-    // 3 UI + 1 behavior + 1 API + 1 DB + 1 security = 7
-    assert.equal(tests.length, 7);
+    // 3 UI + 1 behavior + 1 API + 1 DB + 1 security + 1 technical = 8
+    assert.equal(tests.length, 8);
   });
 
   it("generates vp.lock.json with correct structure", () => {
@@ -110,7 +110,7 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("{ request }"), "should use request fixture");
     assert.ok(content.includes("request.get("), "should call request.get");
     assert.ok(content.includes("res.status()"), "should check status");
-    assert.ok(content.includes("res.json()"), "should parse JSON body");
+    assert.ok(content.includes("JSON.parse(rawBody)"), "should parse JSON body");
     assert.ok(content.includes("Bearer test-token"), "should include auth header");
   });
 
@@ -136,6 +136,17 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("request.get("), "should issue an HTTP request");
     assert.ok(content.includes("toBe(401)"), "should assert rejection");
     assert.ok(content.includes("toBe(false)"), "should assert missing header");
+  });
+
+  it("technical test inspects repository constraints", () => {
+    const dir = path.join(genDir, "playwright");
+    const file = fs.readdirSync(dir).find(f => f.includes("technical"));
+    assert.ok(file, "technical test file should exist");
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    assert.ok(content.includes('Technical: ci'), "should group technical tests");
+    assert.ok(content.includes('import fs from "node:fs"'), "should inspect repository files");
+    assert.ok(content.includes('actions/checkout@v4'), "should assert workflow actions");
+    assert.ok(content.includes('hasDependency') || content.includes('file_contains'), "should contain repo-level helpers");
   });
 
   it("generates k6 script for NFR check", () => {

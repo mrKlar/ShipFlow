@@ -35,6 +35,19 @@ describe("BehaviorCheck schema", () => {
     assert.equal(r.setup, "login");
   });
 
+  it("accepts tags and examples for scenario outlines", () => {
+    const r = BehaviorCheck.parse({
+      ...base,
+      tags: ["smoke", "checkout"],
+      given: [{ open: "/checkout/<region>" }],
+      when: [{ click: { testid: "continue-<region>" } }],
+      then: [{ url_matches: { regex: "/checkout/<region>/payment" } }],
+      examples: [{ region: "eu" }, { region: "us" }],
+    });
+    assert.equal(r.tags.length, 2);
+    assert.equal(r.examples.length, 2);
+  });
+
   it("given/when use FlowStep, then uses Assert", () => {
     const r = BehaviorCheck.parse({
       ...base,
@@ -122,5 +135,22 @@ describe("genBehaviorTest", () => {
   it("throws on unknown fixture", () => {
     const withSetup = { ...check, setup: "missing" };
     assert.throws(() => genBehaviorTest(withSetup, new Map()), /Unknown fixture "missing"/);
+  });
+
+  it("expands examples into multiple concrete tests", () => {
+    const code = genBehaviorTest({
+      ...check,
+      tags: ["smoke"],
+      scenario: "Checkout in <region>",
+      given: [{ open: "/checkout/<region>" }],
+      when: [{ click: { testid: "continue-<region>" } }],
+      then: [{ url_matches: { regex: "/checkout/<region>/payment" } }],
+      examples: [{ region: "eu" }, { region: "us" }],
+    });
+    assert.ok(code.includes('test("test-bdd[1]: Checkout in eu"'));
+    assert.ok(code.includes('test("test-bdd[2]: Checkout in us"'));
+    assert.ok(code.includes('goto("http://localhost:3000/checkout/eu")'));
+    assert.ok(code.includes('continue-eu'));
+    assert.ok(code.includes('// tags: smoke'));
   });
 });

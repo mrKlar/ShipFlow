@@ -1,0 +1,16 @@
+id: nfr-home-smoke
+title: Homepage meets smoke latency budget
+severity: warn
+app:
+  kind: nfr
+  base_url: http://localhost:3000
+scenario:
+  endpoint: /
+  method: GET
+  profile: smoke
+  thresholds:
+    http_req_duration_p95: 400
+    http_req_failed: 0.02
+  vus: 10
+  duration: 15s
+  ramp_up: 5s

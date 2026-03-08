@@ -15,7 +15,7 @@ function withTmpDir(fn) {
 }
 
 function mkdirs(base) {
-  for (const dir of ["ui/_fixtures", "behavior", "api", "db", "nfr", "security"]) {
+  for (const dir of ["ui/_fixtures", "behavior", "api", "db", "nfr", "security", "technical"]) {
     fs.mkdirSync(path.join(base, "vp", dir), { recursive: true });
   }
 }
@@ -115,6 +115,52 @@ assert:
       const result = runLint(tmpDir);
       assert.equal(result.ok, true);
       assert.equal(result.summary.errors, 0);
+    });
+  });
+
+  it("warns when an architecture runner has no architecture assertion", () => {
+    withTmpDir(tmpDir => {
+      mkdirs(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, "vp", "technical", "architecture.yml"), `
+id: architecture-rules
+title: Architecture stays layered
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: dependency-cruiser
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: src/domain }
+`);
+
+      const result = runLint(tmpDir);
+      assert.ok(result.issues.some(i => i.code === "technical.archtest_without_arch_rule"));
+      assert.ok(result.issues.some(i => i.code === "technical.weak_architecture"));
+    });
+  });
+
+  it("warns when a declared technical framework is not exercised", () => {
+    withTmpDir(tmpDir => {
+      mkdirs(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, "vp", "technical", "framework.yml"), `
+id: technical-arch-framework
+title: Architecture framework is declared
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: dependency-cruiser
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: src }
+`);
+      const result = runLint(tmpDir);
+      assert.ok(result.issues.some(i => i.code === "technical.framework_not_exercised"));
     });
   });
 });

@@ -37,7 +37,7 @@ This is a **first-principles failure.** If you have an agent that can write, tes
 
 </div>
 
-> Don't like the implementation? `rm -rf src/ && shipflow impl` — the AI rebuilds the entire app from scratch, guaranteed to pass every verification. **Legacy code doesn't exist** when you can regenerate on demand. No more "don't touch that, nobody knows how it works." No more drift. No more tech debt that compounds for years. Your verifications are the single source of truth — the code is just a **replaceable artifact**.
+> Don't like the implementation? `rm -rf src/ && shipflow implement` — the AI rebuilds the entire app from scratch, guaranteed to pass every verification. **Legacy code doesn't exist** when you can regenerate on demand. No more "don't touch that, nobody knows how it works." No more drift. No more tech debt that compounds for years. Your verifications are the single source of truth — the code is just a **replaceable artifact**.
 
 ---
 
@@ -89,14 +89,14 @@ Open any project in your AI coding agent and use the **native commands:**
 
 | | Describe your app | Build it |
 |---|---|---|
-| ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | `/shipflow-verifications a todo app` | `/shipflow-impl` |
+| ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | `/shipflow-verifications a todo app` | `/shipflow-implement` |
 | ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | `$shipflow-verifications a todo app` | `$shipflow-impl` |
-| ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | `/shipflow:verifications a todo app` | `/shipflow:impl` |
+| ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | `/shipflow:verifications a todo app` | `/shipflow:implement` |
 | ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
 
 **Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
 
-**Step 2** — Run impl. ☕ Walk away. Come back to a **working app** with every behavior verified.
+**Step 2** — Run `shipflow implement`. ☕ Walk away. Come back to a **working app** with every behavior verified.
 
 ---
 
@@ -198,9 +198,14 @@ your-app/
 │   └── ui/_fixtures/*.yml
 ├── 📂 .gen/                      # 🤖 Generated tests — all types (don't touch)
 │   ├── playwright/*.test.ts
-│   └── k6/*.js
+│   ├── k6/*.js
+│   └── manifest.json
 ├── 📂 evidence/                  # 📊 Results (don't touch)
-│   └── run.json
+│   ├── run.json
+│   ├── implement.json
+│   ├── policy.json
+│   ├── ui.json / api.json / security.json ...
+│   └── load.json
 ├── 📂 src/                       # 💻 App code (AI writes this)
 └── ⚙️ shipflow.json               # Config
 ```
@@ -209,14 +214,17 @@ your-app/
 
 ```bash
 shipflow init [--claude|--codex|--gemini|--kiro|--all]   # 📦 Scaffold project
+shipflow draft [--write] [--ai]              # ✍️  Normal flow: collaborate on verifications
+shipflow implement                           # 🔁 Normal flow: doctor → lint → gen → implement → verify
+
+# Advanced / debug
 shipflow map                                 # 🗺️  Analyze repo + coverage gaps before drafting
-shipflow draft [--write]                     # ✍️  Local drafting workflow + optional VP starter files
 shipflow doctor                              # 🩺  Check local tools and AI CLI integrations
 shipflow lint                                # 🔎  Lint VP quality before generation
 shipflow gen                                 # ⚙️  Compile verifications → tests
-shipflow verify                              # ✅ Run tests → evidence
-shipflow run                                 # 🔁 Full autonomous loop: gen → impl → verify
+shipflow verify                              # ✅ Run tests → phase evidence + aggregate run.json
 shipflow status                              # 📊 Show project state
+shipflow implement-once                      # 🧪 One provider codegen pass without the loop
 ```
 
 ### Example Technical Checks
@@ -260,7 +268,13 @@ assert:
 
 ```json
 {
+  "draft": {
+    "provider": "local"
+  },
   "impl": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "maxTokens": 16384,
     "srcDir": "src",
     "context": "Node.js HTTP server, no frameworks"
   }

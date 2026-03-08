@@ -1,0 +1,12 @@
+id: technical-security-tooling
+title: Security app keeps expected verification stack
+severity: warn
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: package.json }

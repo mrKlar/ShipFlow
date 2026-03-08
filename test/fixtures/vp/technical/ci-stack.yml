@@ -1,0 +1,15 @@
+id: technical-ci-stack
+title: Repository uses GitHub Actions and Playwright
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: package.json }
+  - file_contains: { path: package.json, text: "@playwright/test" }
+  - path_exists: { path: .github/workflows/ci.yml }
+  - github_action_uses: { workflow: .github/workflows/ci.yml, action: actions/checkout@v4 }
