@@ -295,8 +295,8 @@ if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
 fi
 
 if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
-  printf "  ${D}# Kiro CLI:${R}\n"
-  echo "  shipflow-verifications a todo app"
-  echo "  shipflow-impl"
+  printf "  ${D}# Kiro CLI (skills auto-activate):${R}\n"
+  echo "  \"create shipflow verifications for a todo app\""
+  echo "  \"implement until shipflow verify passes\""
   echo ""
 fi

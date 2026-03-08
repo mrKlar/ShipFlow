@@ -90,7 +90,7 @@ Open any project in your AI coding agent and use the **native commands:**
 | 🟣 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
 | 🟢 Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-impl` |
 | 🔵 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
-| 🟠 Kiro CLI | `shipflow-verifications a todo app` | `shipflow-impl` |
+| 🟠 Kiro CLI | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
 
 **Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
 
