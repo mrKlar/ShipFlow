@@ -66,10 +66,10 @@ That's it. The installer **auto-detects** every AI coding agent on your machine 
 
 | Platform | What the installer does |
 |---|---|
-| 🟣 **Claude Code** | Installs the ShipFlow **plugin** + anti-cheat hooks |
+| 🟠 **Claude Code** | Installs the ShipFlow **plugin** + anti-cheat hooks |
 | 🟢 **Codex CLI** | Installs **skills** + exec policy rules + global instructions |
-| 🔵 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
-| 🟠 **Kiro CLI** | Installs **skills** + steering context |
+| 🟣 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
+| 🔵 **Kiro CLI** | Installs **skills** + steering context |
 
 ### Uninstall
 
@@ -87,10 +87,10 @@ Open any project in your AI coding agent and use the **native commands:**
 
 | | Describe your app | Build it |
 |---|---|---|
-| 🟣 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
+| 🟠 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
 | 🟢 Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-impl` |
-| 🔵 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
-| 🟠 Kiro CLI | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
+| 🟣 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
+| 🔵 Kiro CLI | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
 
 **Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
 
@@ -154,10 +154,10 @@ ShipFlow doesn't just "support" AI agents. It installs **native extensions** tha
 
 | Platform | Integration type | Anti-cheat mechanism |
 |---|---|---|
-| 🟣 **Claude Code** | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
+| 🟠 **Claude Code** | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
 | 🟢 **Codex CLI** | Skills (`$skill` invocation) | Sandbox + exec policy rules |
-| 🔵 **Gemini CLI** | Extension (slash commands + context) | BeforeTool guard hooks |
-| 🟠 **Kiro CLI** | Skills (auto-activated) + steering | PreToolUse guard hooks |
+| 🟣 **Gemini CLI** | Extension (slash commands + context) | BeforeTool guard hooks |
+| 🔵 **Kiro CLI** | Skills (auto-activated) + steering | PreToolUse guard hooks |
 
 Every integration includes the **full verification schema**, **implementation loop instructions**, and **platform-specific anti-cheat enforcement.** The AI knows exactly what to do, and it can't cheat.
 
