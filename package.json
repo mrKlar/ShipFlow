@@ -7,7 +7,7 @@
     "shipflow": "bin/shipflow.js"
   },
   "scripts": {
-    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/impl.test.js test/integration/gen-cycle.test.js"
+    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/impl.test.js test/integration/gen-cycle.test.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

@@ -1,0 +1,13 @@
+id: users-seeded
+title: Users table has expected seed data
+severity: blocker
+app:
+  kind: db
+  engine: sqlite
+  connection: ./test.db
+setup_sql: |
+  INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com');
+query: "SELECT name, email FROM users WHERE email = 'alice@test.com'"
+assert:
+  - row_count: 1
+  - cell_equals: { row: 0, column: name, equals: "Alice" }

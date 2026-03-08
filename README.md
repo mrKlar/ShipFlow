@@ -5,8 +5,9 @@
 ShipFlow is a verification-first framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). You describe your app in plain language. The AI drafts executable verifications (YAML), generates Playwright tests from them, writes all the application code, and keeps looping until every test is green. No manual coding required.
 
 ```
- You say              AI drafts              AI generates         AI builds & loops
-"a calculator"  -->  vp/ui/*.yml  -->  .gen/playwright/*.ts  -->  src/**  -->  All tests pass
+ You say              AI drafts                AI generates         AI builds & loops
+"a calculator"  -->  vp/**/*.yml  -->  .gen/playwright/*.ts  -->  src/**  -->  All tests pass
+                     (ui, behavior, api, db)
 ```
 
 ## How It Works
@@ -88,63 +89,119 @@ This creates:
 - `.claude/hooks.json` — anti-cheat hooks
 - `vp/ui/` — directory for your verifications
 
-## Verification Pack Reference
+## Verification Types
 
-Verifications live in `vp/ui/*.yml`. Each file defines one testable behavior.
+ShipFlow supports four types of verifications. All generate Playwright tests.
 
-### Structure
+### UI Checks — `vp/ui/*.yml`
+
+Verify what users see and interact with in the browser.
 
 ```yaml
-id: unique-id
-title: What this verifies
-severity: blocker        # blocker or warn
-setup: fixture-id        # optional — reference to vp/ui/_fixtures/*.yml
+id: add-item
+title: User can add an item
+severity: blocker
+setup: login-as-user          # optional fixture reference
 app:
   kind: web
   base_url: http://localhost:3000
 flow:
-  - open: /path
-  - click: { name: "Button" }
-  - fill: { testid: input, value: "text" }
+  - open: /items
+  - fill: { testid: new-item, value: "Buy milk" }
+  - click: { name: "Add" }
 assert:
-  - text_equals: { testid: result, equals: "expected" }
+  - text_equals: { testid: item-last, equals: "Buy milk" }
+  - count: { testid: item, equals: 1 }
 ```
 
-### Flow Steps
+**Flow steps**: `open`, `click` (name/testid/role), `fill` (testid/label + value), `select` (label/testid + value), `hover` (role/testid), `wait_for` (ms).
 
-| Step | Example | What it does |
-|---|---|---|
-| `open` | `open: /path` | Navigate to URL |
-| `click` | `click: { name: "Submit" }` | Click element (role defaults to button) |
-| `fill` | `fill: { testid: x, value: "text" }` | Type into input |
-| `select` | `select: { label: "Country", value: "FR" }` | Pick dropdown option |
-| `hover` | `hover: { role: button, name: "Menu" }` | Hover over element |
-| `wait_for` | `wait_for: { ms: 300 }` | Wait (default 250ms) |
+**Assertions**: `text_equals`, `text_matches`, `visible`, `hidden`, `url_matches`, `count`.
 
-### Assertions
+**Locators**: `testid` → `getByTestId()`, `label` → `getByLabel()`, `role` + `name` → `getByRole()`.
 
-| Assertion | Example | What it checks |
-|---|---|---|
-| `text_equals` | `text_equals: { testid: x, equals: "Hello" }` | Exact text match |
-| `text_matches` | `text_matches: { testid: x, regex: "\\d+" }` | Regex text match |
-| `visible` | `visible: { testid: x }` | Element is visible |
-| `hidden` | `hidden: { testid: x }` | Element exists but hidden |
-| `url_matches` | `url_matches: { regex: "/dashboard" }` | URL matches pattern |
-| `count` | `count: { testid: x, equals: 3 }` | Number of matching elements |
+### Behavior Checks — `vp/behavior/*.yml`
 
-### Locator Strategies
+Verify business logic scenarios with Given/When/Then structure. Uses the same flow steps and assertions as UI checks.
 
-Every interaction step supports three ways to find elements:
+```yaml
+id: checkout-flow
+feature: Shopping Cart
+scenario: User adds item and checks out
+severity: blocker
+setup: login-as-user
+app:
+  kind: web
+  base_url: http://localhost:3000
+given:
+  - open: /products
+  - click: { testid: add-to-cart }
+when:
+  - open: /cart
+  - click: { name: "Checkout" }
+  - fill: { label: "Card Number", value: "4111111111111111" }
+  - click: { name: "Pay" }
+then:
+  - url_matches: { regex: "/confirmation" }
+  - visible: { testid: success-message }
+```
 
-| Strategy | Field | Playwright output |
-|---|---|---|
-| Role | `role` + `name` | `page.getByRole("button", { name: "Submit" })` |
-| Test ID | `testid` | `page.getByTestId("my-input")` |
-| Label | `label` | `page.getByLabel("Email")` |
+### API Checks — `vp/api/*.yml`
 
-### Fixtures
+Verify HTTP endpoints. Generated tests use Playwright's `request` API context (no browser needed).
 
-Reusable setup flows live in `vp/ui/_fixtures/`. Reference them with `setup:`.
+```yaml
+id: list-users
+title: GET /api/users returns user list
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: GET                  # GET, POST, PUT, PATCH, DELETE
+  path: /api/users
+  headers:                     # optional
+    Authorization: "Bearer test-token"
+assert:
+  - status: 200
+  - header_matches: { name: content-type, matches: "application/json" }
+  - json_count: { path: "$", count: 3 }
+  - json_equals: { path: "$[0].name", equals: "Alice" }
+```
+
+**Request options**: `method`, `path`, `headers`, `body` (string), `body_json` (object).
+
+**Assertions**: `status`, `header_equals`, `header_matches`, `body_contains`, `json_equals`, `json_matches`, `json_count`.
+
+JSON paths use `$` for the response body root: `$[0].name` → `body[0].name`.
+
+### DB Checks — `vp/db/*.yml`
+
+Verify database state. Supports SQLite and PostgreSQL.
+
+```yaml
+id: users-seeded
+title: Users table has expected seed data
+severity: blocker
+app:
+  kind: db
+  engine: sqlite               # sqlite or postgresql
+  connection: ./test.db        # file path or connection string
+setup_sql: |                   # optional — runs before the query
+  INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com');
+query: "SELECT name, email FROM users"
+assert:
+  - row_count: 1
+  - cell_equals: { row: 0, column: name, equals: "Alice" }
+  - cell_matches: { row: 0, column: email, matches: "@test\\.com$" }
+  - column_contains: { column: name, value: "Alice" }
+```
+
+**Assertions**: `row_count`, `cell_equals`, `cell_matches`, `column_contains`.
+
+### Fixtures — `vp/ui/_fixtures/*.yml`
+
+Reusable setup flows (login, navigation, etc.) referenced by `setup:` in UI and behavior checks.
 
 ```yaml
 # vp/ui/_fixtures/auth.yml
@@ -158,21 +215,6 @@ flow:
   - fill: { label: Email, value: "test@example.com" }
   - fill: { label: Password, value: "testpass" }
   - click: { name: "Sign in" }
-```
-
-```yaml
-# vp/ui/dashboard.yml
-id: dashboard-loads
-title: Dashboard shows after login
-severity: blocker
-setup: login-as-user
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /dashboard
-assert:
-  - visible: { testid: dashboard-content }
 ```
 
 ## CLI Commands
@@ -199,15 +241,23 @@ During implementation, Claude Code hooks block any `Write` or `Edit` to these pa
 ```
 your-app/
 ├── vp/                          # You define these
-│   └── ui/
-│       ├── feature-a.yml
-│       ├── feature-b.yml
-│       └── _fixtures/
-│           └── auth.yml
+│   ├── ui/
+│   │   ├── feature-a.yml
+│   │   ├── feature-b.yml
+│   │   └── _fixtures/
+│   │       └── auth.yml
+│   ├── behavior/
+│   │   └── checkout.yml
+│   ├── api/
+│   │   └── users.yml
+│   └── db/
+│       └── seed-data.yml
 ├── .gen/                        # ShipFlow generates these
 │   ├── playwright/
 │   │   ├── vp_ui_feature-a.spec.ts
-│   │   └── vp_ui_feature-b.spec.ts
+│   │   ├── vp_behavior_checkout.spec.ts
+│   │   ├── vp_api_users.spec.ts
+│   │   └── vp_db_seed-data.spec.ts
 │   └── vp.lock.json
 ├── evidence/                    # ShipFlow writes these
 │   └── run.json

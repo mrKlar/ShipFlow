@@ -24,9 +24,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(fs.existsSync(path.join(genDir, "playwright")));
   });
 
-  it("generates one spec per UI check YAML", () => {
+  it("generates one spec per check YAML (UI + behavior + API + DB)", () => {
     const specs = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".spec.ts"));
-    assert.equal(specs.length, 3);
+    // 3 UI + 1 behavior + 1 API + 1 DB = 6
+    assert.equal(specs.length, 6);
   });
 
   it("generates vp.lock.json with correct structure", () => {
@@ -87,6 +88,42 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes(".hover()"), "should contain hover");
     assert.ok(content.includes(".selectOption("), "should contain selectOption");
     assert.ok(content.includes("toHaveText(new RegExp("), "should contain text_matches regex");
+  });
+
+  it("behavior spec has test.describe and Given/When/Then", () => {
+    const dir = path.join(genDir, "playwright");
+    const file = fs.readdirSync(dir).find(f => f.includes("behavior"));
+    assert.ok(file, "behavior spec file should exist");
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    assert.ok(content.includes("test.describe("), "should use test.describe");
+    assert.ok(content.includes("// Given"), "should have Given comment");
+    assert.ok(content.includes("// When"), "should have When comment");
+    assert.ok(content.includes("// Then"), "should have Then comment");
+    assert.ok(content.includes("// setup: login-fixture"), "should inline fixture");
+  });
+
+  it("API spec uses request fixture", () => {
+    const dir = path.join(genDir, "playwright");
+    const file = fs.readdirSync(dir).find(f => f.includes("api"));
+    assert.ok(file, "API spec file should exist");
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    assert.ok(content.includes("{ request }"), "should use request fixture");
+    assert.ok(content.includes("request.get("), "should call request.get");
+    assert.ok(content.includes("res.status()"), "should check status");
+    assert.ok(content.includes("res.json()"), "should parse JSON body");
+    assert.ok(content.includes("Bearer test-token"), "should include auth header");
+  });
+
+  it("DB spec uses execFileSync and sqlite3", () => {
+    const dir = path.join(genDir, "playwright");
+    const file = fs.readdirSync(dir).find(f => f.includes("db"));
+    assert.ok(file, "DB spec file should exist");
+    const content = fs.readFileSync(path.join(dir, file), "utf-8");
+    assert.ok(content.includes("execFileSync"), "should import execFileSync");
+    assert.ok(content.includes("sqlite3"), "should use sqlite3 CLI");
+    assert.ok(content.includes("function query(sql)"), "should define query helper");
+    assert.ok(content.includes("exec("), "should call exec for setup_sql");
+    assert.ok(content.includes("toHaveLength(1)"), "should check row_count");
   });
 });
 

@@ -1,0 +1,16 @@
+id: list-users
+title: GET /api/users returns user list
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/users
+  headers:
+    Authorization: "Bearer test-token"
+assert:
+  - status: 200
+  - header_matches: { name: content-type, matches: "application/json" }
+  - json_count: { path: "$", count: 3 }
+  - json_equals: { path: "$[0].name", equals: "Alice" }

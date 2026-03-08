@@ -1,0 +1,19 @@
+id: checkout-flow
+feature: Shopping Cart
+scenario: User adds item and checks out
+severity: blocker
+setup: login-fixture
+app:
+  kind: web
+  base_url: http://localhost:3000
+given:
+  - open: /products
+  - click: { testid: add-to-cart }
+when:
+  - open: /cart
+  - click: { name: "Checkout" }
+  - fill: { label: "Card Number", value: "4111111111111111" }
+  - click: { name: "Pay" }
+then:
+  - url_matches: { regex: "/confirmation" }
+  - visible: { testid: success-message }
