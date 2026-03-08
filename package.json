@@ -2,7 +2,7 @@
   "name": "shipflow-framework",
   "private": false,
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "bin": {
     "shipflow": "bin/shipflow.js",
     "shipflow-guard": "hooks/guard-paths.js",

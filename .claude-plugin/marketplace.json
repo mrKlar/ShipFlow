@@ -9,11 +9,11 @@
     {
       "name": "shipflow",
       "description": "Verification-first development workflow. AI writes verifications with the human, generates tests, implements the app, and loops until all tests pass.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "ShipFlow"
       },
-      "source": ".",
+      "source": "./plugin",
       "category": "development"
     }
   ]
