@@ -119,10 +119,10 @@ describe("draft", () => {
 
       const { result } = await draft({ cwd: tmpDir, write: true, json: false });
       assert.ok(result.written.some(file => file.startsWith("vp/ui/")));
-      assert.ok(result.written.some(file => file.startsWith("vp/behavior/")));
       assert.ok(result.written.some(file => file.startsWith("vp/api/")));
       assert.ok(result.written.some(file => file.startsWith("vp/security/")));
       assert.ok(result.written.some(file => file.startsWith("vp/technical/")));
+      assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
       assert.ok(fs.existsSync(path.join(tmpDir, result.written[0])));
     });
   });
@@ -234,6 +234,28 @@ describe("draft", () => {
 
       assert.ok(capturedPrompt.includes("todo app with login and admin API"));
       assert.ok(capturedPrompt.includes("\"inferred_types\""));
+    });
+  });
+
+  it("keeps warning-prone starters out of auto-write while still surfacing them", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const { result } = await draft({
+        cwd: tmpDir,
+        input: "todo app with login and sqlite",
+        write: true,
+        json: false,
+      });
+
+      const behavior = result.proposals.find(proposal => proposal.path.startsWith("vp/behavior/"));
+      const database = result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-smoke.yml");
+      assert.equal(behavior.validation.auto_write, false);
+      assert.equal(database.validation.auto_write, false);
+      assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
+      assert.ok(!result.written.includes("vp/db/requested-sqlite-smoke.yml"));
+      assert.ok(result.proposal_validation.needs_review >= 2);
     });
   });
 });
