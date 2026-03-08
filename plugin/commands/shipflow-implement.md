@@ -1,5 +1,5 @@
 ---
-description: AI builds the app until all verifications pass — fully autonomous
+description: AI runs the standard implementation loop against the reviewed verification pack
 argument-hint: [optional focus area]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---

@@ -20,9 +20,9 @@ Seven verification types:
 
 You MAY modify `vp/` files during this phase only.
 
-### Phase 2: Implementation (AI autonomous)
+### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes all generated tests. The human does not write code.
+Implement app code that passes all generated tests. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
 ## Normal Flow
 
@@ -67,14 +67,14 @@ For technical checks: ensure the repository structure, manifests, workflows, arc
 ## Commands
 
 ```bash
-shipflow draft         # Normal flow: collaborate on VP creation/refinement
-shipflow implement     # Normal flow: doctor → lint → gen → implement → verify
-shipflow map           # Advanced: inspect repo coverage
-shipflow doctor        # Advanced: inspect environment readiness
-shipflow lint          # Advanced: inspect VP quality
-shipflow gen           # Advanced: compile vp/ → generated tests
-shipflow verify        # Advanced: run generated tests only
-shipflow implement-once # Advanced: one provider codegen pass, no loop
+shipflow draft          # Standard flow: co-draft and refine the verification pack
+shipflow implement      # Standard flow: validate, generate, implement, verify
+shipflow map            # Advanced: review repo surfaces and coverage gaps
+shipflow doctor         # Advanced: check local tools, runners, and adapters
+shipflow lint           # Advanced: lint verification quality
+shipflow gen            # Advanced: generate runnable tests from the pack
+shipflow verify         # Advanced: run generated tests and write evidence
+shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
 ## On Verify Failure

@@ -17,22 +17,22 @@ async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Usage:
-  Normal flow:
-    shipflow draft         Collaboratively draft/refine verifications
-    shipflow implement     Automatic implementation loop (doctor → lint → gen → implement → verify)
+  Standard flow:
+    shipflow draft         Human + AI draft and refine the verification pack
+    shipflow implement     Standard loop: validate pack, generate tests, implement, verify
 
   Advanced / debug:
-    shipflow map           Analyze repo + current VP coverage before drafting checks
-    shipflow lint          Lint VP quality before generation
-    shipflow doctor        Check local tooling and supported AI CLI integrations
-    shipflow gen           Compile VP verifications into runnable tests
-    shipflow verify        Run generated tests, produce evidence
-    shipflow status        Show verification state (VP, generated, evidence)
-    shipflow implement-once  Single provider code generation pass (no loop)
+    shipflow map           Review repo surfaces and coverage gaps before drafting
+    shipflow lint          Lint verification quality before generation
+    shipflow doctor        Check local tools, runners, and AI CLI adapters
+    shipflow gen           Generate runnable tests from the verification pack
+    shipflow verify        Run generated tests and write evidence
+    shipflow status        Show pack, generated tests, and evidence
+    shipflow implement-once  Single implementation pass without the retry loop
     shipflow run           Legacy alias for shipflow implement
 
   Setup:
-  shipflow init        Scaffold vp/ directories + platform config
+  shipflow init        Set up verification directories + platform config
     --claude             Setup for Claude Code (default)
     --codex              Setup for OpenAI Codex CLI
     --gemini             Setup for Google Gemini CLI

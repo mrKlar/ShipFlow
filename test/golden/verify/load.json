@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "nfr",
+  "label": "Performance",
+  "started_at": "<iso>",
+  "duration_ms": 0,
+  "exit_code": 0,
+  "ok": true,
+  "skipped": false,
+  "advisory_failed": 0,
+  "files": [
+    ".gen/k6/vp_nfr_smoke.js"
+  ],
+  "checks": [
+    {
+      "id": "nfr-smoke",
+      "title": "Smoke",
+      "severity": "blocker",
+      "file": ".gen/k6/vp_nfr_smoke.js"
+    }
+  ],
+  "scripts": [
+    {
+      "file": ".gen/k6/vp_nfr_smoke.js",
+      "id": "nfr-smoke",
+      "severity": "blocker",
+      "ok": true,
+      "exit_code": 0
+    }
+  ]
+}

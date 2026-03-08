@@ -1,0 +1,153 @@
+{
+  "version": 2,
+  "started_at": "<iso>",
+  "duration_ms": 0,
+  "exit_code": 0,
+  "ok": true,
+  "passed": 1,
+  "failed": 0,
+  "advisory_failed": 0,
+  "skipped": 5,
+  "groups": [
+    {
+      "version": 1,
+      "kind": "ui",
+      "label": "UI",
+      "started_at": "<iso>",
+      "duration_ms": 0,
+      "exit_code": 0,
+      "ok": true,
+      "skipped": false,
+      "passed": 1,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [
+        ".gen/playwright/vp_ui_home.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "ui-home",
+          "title": "Home",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_home.test.ts"
+        }
+      ],
+      "batches": [
+        {
+          "severity": "blocker",
+          "ok": true,
+          "exit_code": 0,
+          "duration_ms": 0,
+          "passed": 1,
+          "failed": 0,
+          "skipped_count": 0,
+          "files": [
+            ".gen/playwright/vp_ui_home.test.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "kind": "behavior",
+      "label": "Behavior",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated tests",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "api",
+      "label": "API",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated tests",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "db",
+      "label": "Database",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated tests",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "security",
+      "label": "Security",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated tests",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "technical",
+      "label": "Technical",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated tests",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "nfr",
+      "label": "Performance",
+      "started_at": "<iso>",
+      "duration_ms": 0,
+      "exit_code": 0,
+      "ok": true,
+      "skipped": false,
+      "advisory_failed": 0,
+      "files": [
+        ".gen/k6/vp_nfr_smoke.js"
+      ],
+      "checks": [
+        {
+          "id": "nfr-smoke",
+          "title": "Smoke",
+          "severity": "blocker",
+          "file": ".gen/k6/vp_nfr_smoke.js"
+        }
+      ],
+      "scripts": [
+        {
+          "file": ".gen/k6/vp_nfr_smoke.js",
+          "id": "nfr-smoke",
+          "severity": "blocker",
+          "ok": true,
+          "exit_code": 0
+        }
+      ]
+    }
+  ]
+}

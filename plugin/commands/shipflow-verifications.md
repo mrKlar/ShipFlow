@@ -260,7 +260,7 @@ When the user gives feedback:
 - Re-run gen to validate
 - Show updated summary
 
-Repeat until the user is satisfied, then tell them to run `/shipflow-implement` to build the app.
+Repeat until the user is satisfied, then tell them to run `/shipflow-implement` to continue with the standard implementation loop.
 
 ## Rules
 

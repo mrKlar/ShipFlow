@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { countVerificationPack, buildImplementationReport } from "../../lib/loop.js";
+import { countVerificationPack, buildImplementationReport, summarizeImplementationHistory, writeImplementationHistory } from "../../lib/loop.js";
 
 describe("countVerificationPack", () => {
   it("counts verifications by type", () => {
@@ -42,5 +42,100 @@ describe("buildImplementationReport", () => {
     assert.equal(report.first_pass_success, true);
     assert.equal(report.retries_used, 0);
     assert.equal(report.provider, "anthropic");
+  });
+});
+
+describe("implementation history", () => {
+  it("summarizes pass rate, first-pass rate, and provider usage", () => {
+    const summary = summarizeImplementationHistory([
+      {
+        ok: true,
+        first_pass_success: true,
+        iterations: 1,
+        duration_ms: 100,
+        provider: "anthropic",
+        started_at: "2026-03-08T10:00:00.000Z",
+      },
+      {
+        ok: false,
+        first_pass_success: false,
+        iterations: 3,
+        duration_ms: 300,
+        provider: "command",
+        started_at: "2026-03-08T11:00:00.000Z",
+      },
+    ]);
+    assert.equal(summary.total_runs, 2);
+    assert.equal(summary.pass_rate, 0.5);
+    assert.equal(summary.first_pass_rate, 0.5);
+    assert.equal(summary.average_iterations, 2);
+    assert.equal(summary.by_provider.anthropic, 1);
+    assert.equal(summary.by_provider.command, 1);
+    assert.equal(summary.last_success_at, "2026-03-08T10:00:00.000Z");
+    assert.equal(summary.last_failure_at, "2026-03-08T11:00:00.000Z");
+  });
+
+  it("writes bounded implement history without replacing implement.json semantics", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-history-"));
+    try {
+      writeImplementationHistory(tmpDir, {
+        started_at: "2026-03-08T10:00:00.000Z",
+        duration_ms: 120,
+        stage: "verify",
+        ok: true,
+        exit_code: 0,
+        iterations: 1,
+        first_pass_success: true,
+        retries_used: 0,
+        provider: "anthropic",
+        model: "claude-sonnet-4-6",
+        doctor_ok: true,
+        lint_ok: true,
+        vp_counts: { ui: 1 },
+        generated_counts: { ui: 1 },
+      }, 2);
+      writeImplementationHistory(tmpDir, {
+        started_at: "2026-03-08T11:00:00.000Z",
+        duration_ms: 180,
+        stage: "verify",
+        ok: false,
+        exit_code: 1,
+        iterations: 3,
+        first_pass_success: false,
+        retries_used: 2,
+        provider: "command",
+        model: "codex",
+        doctor_ok: true,
+        lint_ok: true,
+        vp_counts: { ui: 2 },
+        generated_counts: { ui: 2 },
+      }, 2);
+      writeImplementationHistory(tmpDir, {
+        started_at: "2026-03-08T12:00:00.000Z",
+        duration_ms: 90,
+        stage: "verify",
+        ok: true,
+        exit_code: 0,
+        iterations: 2,
+        first_pass_success: false,
+        retries_used: 1,
+        provider: "anthropic",
+        model: "claude-sonnet-4-6",
+        doctor_ok: true,
+        lint_ok: true,
+        vp_counts: { ui: 3 },
+        generated_counts: { ui: 3 },
+      }, 2);
+
+      const history = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement-history.json"), "utf-8"));
+      assert.equal(history.runs.length, 2);
+      assert.equal(history.summary.total_runs, 2);
+      assert.equal(history.summary.passed_runs, 1);
+      assert.equal(history.summary.failed_runs, 1);
+      assert.equal(history.runs[0].started_at, "2026-03-08T11:00:00.000Z");
+      assert.equal(history.runs[1].started_at, "2026-03-08T12:00:00.000Z");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

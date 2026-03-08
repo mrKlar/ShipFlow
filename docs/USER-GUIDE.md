@@ -2,7 +2,7 @@
 
 ## What is ShipFlow?
 
-ShipFlow is a verification-first framework. You describe what your app must do in YAML files. ShipFlow compiles those into Playwright tests and runs them. The AI implements the code and loops until every test passes.
+ShipFlow is a verification-first framework. You describe what your app must do, you and the AI refine that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that reviewed pack.
 
 ```
 vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/k6/*.js  →  shipflow verify  →  evidence/*.json
@@ -63,7 +63,7 @@ shipflow init --claude --codex     # Multiple platforms
 shipflow init --all                # All platforms
 ```
 
-## Usage
+## Agent Workflow
 
 ### With Claude Code
 
@@ -73,7 +73,7 @@ Open your project and run:
 /shipflow-verifications a todo app with login
 ```
 
-The AI drafts verifications immediately. Review, add, or remove checks. Then:
+Use that first pass as a collaboration point. Review it, add missing checks, remove weak ones, then:
 
 ```
 /shipflow-implement
@@ -87,7 +87,7 @@ Open your project and invoke the skills:
 $shipflow-verifications a todo app with login
 ```
 
-Review and iterate. Then:
+Review and iterate with the AI. Then:
 
 ```
 $shipflow-implement
@@ -101,7 +101,7 @@ Open your project and use the slash commands:
 /shipflow:verifications a todo app with login
 ```
 
-Review and iterate. Then:
+Review and iterate with the AI. Then:
 
 ```
 /shipflow:implement
@@ -115,21 +115,21 @@ Open your project. Skills auto-activate when your request matches:
 "create shipflow verifications for a todo app with login"
 ```
 
-Review and iterate. Then:
+Review and iterate with the AI. Then:
 
 ```
-"implement until shipflow verify passes"
+"run shipflow implement against the reviewed verification pack"
 ```
 
 ### All platforms
 
-The AI implements the entire app autonomously, looping until all tests pass.
+`shipflow implement` is the standard loop. It validates the verification pack, generates tests, applies code changes, runs verification, and retries within the configured budget.
 
 ### CLI commands
 
 ```bash
-shipflow draft       # Normal flow: collaborate on the verification pack
-shipflow implement   # Normal flow: doctor → lint → gen → implement → verify
+shipflow draft       # Standard flow: co-draft and refine the verification pack
+shipflow implement   # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
 shipflow map
@@ -520,6 +520,7 @@ shipflow verify
 6. Exits 0 if all tests pass
 
 `shipflow implement` also writes `evidence/implement.json` with loop-level metrics such as iteration count, first-pass success, provider/model, VP counts, and generated counts by verification type.
+It also appends `evidence/implement-history.json`, which keeps a bounded multi-run summary for `shipflow status` with pass rate, first-pass rate, average iterations, and recent success/failure timestamps.
 
 ### Check status
 
@@ -527,7 +528,7 @@ shipflow verify
 shipflow status
 ```
 
-Shows VP file counts, generated test counts, and last run results.
+Shows VP file counts, generated test counts, last run results, and aggregated implementation history.
 
 ## Anti-Cheat
 

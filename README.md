@@ -18,11 +18,11 @@ Every "AI-powered" development framework makes the same fundamental mistake: **t
 
 This is a **first-principles failure.** If you have an agent that can write, test, and iterate at machine speed, why are you still asking it to follow a human playbook?
 
-> 🚀 **ShipFlow starts from zero.** No specs. No handoffs. You describe what the app must do. The AI writes executable verifications, generates real tests, builds the entire application, and loops until every test passes. The process isn't *assisted by* AI — it's **designed for** AI.
+> 🚀 **ShipFlow starts from zero.** No specs. No handoffs. You describe what the app must do, you and the AI shape executable verifications together, ShipFlow generates real tests, and the AI implements against that reviewed pack. The process isn't *assisted by* AI — it's **designed for** AI.
 
 ```
- You describe           AI drafts              AI generates           AI builds & loops
-"a calculator"  ──▶  vp/**/*.yml  ──▶  .gen/playwright/*.ts  ──▶  src/**  ──▶  ✅ all tests pass
+ You describe        Human + AI refine       ShipFlow generates      AI builds & loops
+"a calculator" ──▶  vp/**/*.yml         ──▶  .gen/playwright/*.ts  ──▶  src/**  ──▶  ✅ reviewed pack enforced
 ```
 
 🔒 The AI **cannot cheat** — cryptographic locks and runtime hooks make it impossible to modify the verifications or tests during implementation. The only way out is **working code**.
@@ -83,20 +83,20 @@ Cleanly removes all integrations — plugin, skills, extension, hooks, symlinks,
 
 ---
 
-## 🚀 Usage
+## 🚀 Agent Flow
 
-Open any project in your AI coding agent and use the **native commands:**
+Open any project in your AI coding agent and start with a collaborative verification draft, then run the standard implementation loop:
 
-| | Describe your app | Build it |
+| | Draft the verification pack together | Run the standard loop |
 |---|---|---|
 | ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | `/shipflow-verifications a todo app` | `/shipflow-implement` |
-| ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | `$shipflow-verifications a todo app` | `$shipflow-impl` |
+| ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | `$shipflow-verifications a todo app` | `$shipflow-implement` |
 | ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | `/shipflow:verifications a todo app` | `/shipflow:implement` |
-| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"create shipflow verifications for a todo app"` | `"implement until shipflow verify passes"` |
+| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"draft ShipFlow verifications for a todo app"` | `"run shipflow implement against the reviewed verification pack"` |
 
-**Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
+**Step 1** — Human + AI draft the verification pack together. Review it, tighten it, add missing coverage, and remove weak checks.
 
-**Step 2** — Run `shipflow implement`. ☕ Walk away. Come back to a **working app** with every behavior verified.
+**Step 2** — Run `shipflow implement`. It validates the pack, generates tests, implements, verifies, and retries within the configured budget.
 
 ---
 
@@ -104,7 +104,7 @@ Open any project in your AI coding agent and use the **native commands:**
 
 ### Phase 1 — ✏️ Verification
 
-You describe what you want. The AI drafts verifications — **executable YAML** that defines every behavior your app must have.
+You describe what you want. You and the AI draft verifications — **executable YAML** that defines the observable behaviors your app must have.
 
 ```yaml
 # vp/ui/add-numbers.yml
@@ -128,7 +128,7 @@ assert:
 
 ### Phase 2 — 🤖 Implementation
 
-Fully autonomous. The AI reads the verifications, generates Playwright tests, writes all application code, runs the tests, reads failures, fixes the code, and **repeats until every test passes.**
+AI-led, pack-controlled. Once the verification pack is reviewed, the AI reads it, generates Playwright tests, writes application code, runs the tests, reads failures, fixes the code, and **repeats until every test passes or the retry budget is exhausted.**
 
 ```
 Read VP  →  Generate tests  →  Implement  →  Verify  →  ✅ Pass? Done.
@@ -203,6 +203,7 @@ your-app/
 ├── 📂 evidence/                  # 📊 Results (don't touch)
 │   ├── run.json
 │   ├── implement.json
+│   ├── implement-history.json
 │   ├── policy.json
 │   ├── ui.json / api.json / security.json ...
 │   └── load.json
@@ -213,18 +214,18 @@ your-app/
 ## 🛠️ CLI
 
 ```bash
-shipflow init [--claude|--codex|--gemini|--kiro|--all]   # 📦 Scaffold project
-shipflow draft [--write] [--ai]              # ✍️  Normal flow: collaborate on verifications
-shipflow implement                           # 🔁 Normal flow: doctor → lint → gen → implement → verify
+shipflow init [--claude|--codex|--gemini|--kiro|--all]  # Set up ShipFlow in a project
+shipflow draft [--write] [--ai]                         # Standard flow: co-draft the verification pack
+shipflow implement                                      # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
-shipflow map                                 # 🗺️  Analyze repo + coverage gaps before drafting
-shipflow doctor                              # 🩺  Check local tools and AI CLI integrations
-shipflow lint                                # 🔎  Lint VP quality before generation
-shipflow gen                                 # ⚙️  Compile verifications → tests
-shipflow verify                              # ✅ Run tests → phase evidence + aggregate run.json
-shipflow status                              # 📊 Show project state
-shipflow implement-once                      # 🧪 One provider codegen pass without the loop
+shipflow map                                            # Review repo surfaces and coverage gaps
+shipflow doctor                                         # Check local tools, runners, and adapters
+shipflow lint                                           # Lint verification quality
+shipflow gen                                            # Generate runnable tests from the pack
+shipflow verify                                         # Run generated tests and write evidence
+shipflow status                                         # Show pack, generated tests, and evidence
+shipflow implement-once                                 # Single implementation pass, no retry loop
 ```
 
 ### Example Technical Checks
@@ -275,6 +276,7 @@ assert:
     "provider": "anthropic",
     "model": "claude-sonnet-4-6",
     "maxTokens": 16384,
+    "historyLimit": 50,
     "srcDir": "src",
     "context": "Node.js HTTP server, no frameworks"
   }

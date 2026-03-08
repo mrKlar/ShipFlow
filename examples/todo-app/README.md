@@ -45,10 +45,10 @@ Then open the project in Claude Code and run:
 ## Manual steps
 
 ```bash
-shipflow draft     # Analyze the repo and propose starter VP files
-shipflow implement # Normal loop: doctor → lint → gen → implement → verify
-shipflow gen       # Compile vp/ → .gen/playwright/*.test.ts
-shipflow verify    # Run tests → evidence/*.json
+shipflow draft     # Co-draft the verification pack
+shipflow implement # Standard loop: validate, generate, implement, verify
+shipflow gen       # Advanced: generate .gen/playwright/*.test.ts
+shipflow verify    # Advanced: run generated tests and write evidence
 ```
 
 ## Configuration

@@ -1,0 +1,202 @@
+{
+  "version": 1,
+  "created_at": "<iso>",
+  "outputs": {
+    "ui": {
+      "label": "UI",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "ui.json",
+      "count": 3,
+      "files": [
+        ".gen/playwright/vp_ui_dashboard.test.ts",
+        ".gen/playwright/vp_ui_login.test.ts",
+        ".gen/playwright/vp_ui_nav.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "ui-dashboard-items",
+          "title": "Dashboard shows item count",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_dashboard.test.ts"
+        },
+        {
+          "id": "ui-login",
+          "title": "User can log in",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_login.test.ts"
+        },
+        {
+          "id": "ui-nav-menu",
+          "title": "Navigation menu works on hover",
+          "severity": "warn",
+          "file": ".gen/playwright/vp_ui_nav.test.ts"
+        }
+      ]
+    },
+    "behavior": {
+      "label": "Behavior",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "behavior.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_behavior_checkout.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "checkout-flow",
+          "title": "User adds item and checks out",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_behavior_checkout.test.ts"
+        }
+      ]
+    },
+    "api": {
+      "label": "API",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "api.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_api_list-users.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "list-users",
+          "title": "GET /api/users returns user list",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_api_list-users.test.ts"
+        }
+      ]
+    },
+    "db": {
+      "label": "Database",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "database.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_db_users-seeded.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "users-seeded",
+          "title": "Users table has expected seed data",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_db_users-seeded.test.ts"
+        }
+      ]
+    },
+    "security": {
+      "label": "Security",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "security.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_security_unauthenticated-admin.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "security-unauthenticated-admin",
+          "title": "Guest access to admin endpoint is rejected",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_security_unauthenticated-admin.test.ts"
+        }
+      ]
+    },
+    "technical": {
+      "label": "Technical",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "technical.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_technical_ci-stack.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "technical-ci-stack",
+          "title": "Repository uses GitHub Actions and Playwright",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_technical_ci-stack.test.ts"
+        }
+      ]
+    },
+    "nfr": {
+      "label": "Performance",
+      "output_kind": "k6",
+      "output_dir": "k6",
+      "evidence_file": "load.json",
+      "count": 1,
+      "files": [
+        ".gen/k6/vp_nfr_load-test.js"
+      ],
+      "checks": [
+        {
+          "id": "load-homepage",
+          "title": "Homepage handles 50 concurrent users",
+          "severity": "blocker",
+          "file": ".gen/k6/vp_nfr_load-test.js"
+        }
+      ]
+    }
+  },
+  "validations": {
+    "structural": [
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_dashboard.test.ts",
+        "ok": true
+      },
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_login.test.ts",
+        "ok": true
+      },
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_nav.test.ts",
+        "ok": true
+      },
+      {
+        "type": "behavior",
+        "file": ".gen/playwright/vp_behavior_checkout.test.ts",
+        "ok": true
+      },
+      {
+        "type": "api",
+        "file": ".gen/playwright/vp_api_list-users.test.ts",
+        "ok": true
+      },
+      {
+        "type": "db",
+        "file": ".gen/playwright/vp_db_users-seeded.test.ts",
+        "ok": true
+      },
+      {
+        "type": "security",
+        "file": ".gen/playwright/vp_security_unauthenticated-admin.test.ts",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/playwright/vp_technical_ci-stack.test.ts",
+        "ok": true
+      },
+      {
+        "type": "nfr",
+        "file": ".gen/k6/vp_nfr_load-test.js",
+        "ok": true
+      }
+    ],
+    "smoke_compile": [
+      {
+        "target": "playwright",
+        "status": "skipped",
+        "reason": "@playwright/test not installed"
+      }
+    ]
+  }
+}

@@ -42,8 +42,9 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
 4. Runs k6 NFR scripts (if `.gen/k6/*.js` exist and k6 is available) → `evidence/load.json`
 5. Emits aggregate `evidence/run.json` with group summaries
 6. `shipflow implement` emits `evidence/implement.json` with loop metrics
-7. Prints colored summary
-8. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
+7. `shipflow implement` appends `evidence/implement-history.json` with bounded multi-run KPIs
+8. Prints colored summary
+9. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
 
 `shipflow draft`:
 1. Builds a repo coverage map

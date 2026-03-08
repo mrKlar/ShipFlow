@@ -1,5 +1,5 @@
 ---
-description: AI builds the app until all verifications pass — fully autonomous
+description: AI runs the standard implementation loop against the reviewed verification pack
 argument-hint: [optional focus area]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---
@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 Preferred command name: `/shipflow-implement`
 Legacy alias: `/shipflow-impl`
 
-You implement the app. Write code that passes all VP verification tests. Loop until green. No human intervention needed.
+You implement the app against the reviewed verification pack. Write code that passes all generated verification tests. Loop until green unless the pack itself is wrong or ambiguous.
 
 ## Context
 

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "kind": "ui",
+  "label": "UI",
+  "started_at": "<iso>",
+  "duration_ms": 0,
+  "exit_code": 0,
+  "ok": true,
+  "skipped": false,
+  "passed": 1,
+  "failed": 0,
+  "skipped_count": 0,
+  "advisory_failed": 0,
+  "files": [
+    ".gen/playwright/vp_ui_home.test.ts"
+  ],
+  "checks": [
+    {
+      "id": "ui-home",
+      "title": "Home",
+      "severity": "blocker",
+      "file": ".gen/playwright/vp_ui_home.test.ts"
+    }
+  ],
+  "batches": [
+    {
+      "severity": "blocker",
+      "ok": true,
+      "exit_code": 0,
+      "duration_ms": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped_count": 0,
+      "files": [
+        ".gen/playwright/vp_ui_home.test.ts"
+      ]
+    }
+  ]
+}

@@ -39,7 +39,7 @@ This project uses ShipFlow for verification-first development.
 ## Commands
 
 ```bash
-shipflow implement # doctor → lint → gen → implement → verify
-shipflow gen       # Advanced: VP → tests
-shipflow verify    # Advanced: run tests only
+shipflow implement # Standard flow: validate, generate, implement, verify
+shipflow gen       # Advanced: verification pack → generated tests
+shipflow verify    # Advanced: run generated tests only
 ```

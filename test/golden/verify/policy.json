@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "kind": "policy",
+  "ok": true,
+  "skipped": true,
+  "reason": "no policy files",
+  "lock_vp_sha256": "<lock_vp_sha256>"
+}

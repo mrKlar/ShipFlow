@@ -11,7 +11,7 @@
     "shipflow-kiro-guard": "hooks/kiro-guard.js"
   },
   "scripts": {
-    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/nfr.test.js test/unit/security.test.js test/unit/technical.test.js test/unit/map.test.js test/unit/lint.test.js test/unit/draft.test.js test/unit/doctor.test.js test/unit/impl.test.js test/unit/loop.test.js test/unit/verify.test.js test/unit/init.test.js test/unit/status.test.js test/integration/gen-cycle.test.js"
+    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/nfr.test.js test/unit/security.test.js test/unit/technical.test.js test/unit/map.test.js test/unit/lint.test.js test/unit/draft.test.js test/unit/doctor.test.js test/unit/impl.test.js test/unit/loop.test.js test/unit/policy.test.js test/unit/verify.test.js test/unit/init.test.js test/unit/status.test.js test/integration/gen-cycle.test.js test/integration/golden.test.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

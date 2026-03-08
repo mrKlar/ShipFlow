@@ -9,7 +9,7 @@ ShipFlow installs as a Claude Code plugin providing two commands:
 | Command | Model | Role |
 |---|---|---|
 | `/shipflow-verifications` | Opus 4.6 | Human + AI draft verifications |
-| `/shipflow-implement` | Sonnet 4.6 | AI implements autonomously |
+| `/shipflow-implement` | Sonnet 4.6 | AI runs the standard implementation loop |
 | `/shipflow-impl` | Sonnet 4.6 | Legacy alias |
 
 Install with `./install.sh`. This registers a marketplace and installs the plugin.
@@ -17,9 +17,9 @@ Install with `./install.sh`. This registers a marketplace and installs the plugi
 ## How the Loop Works
 
 ```
-/shipflow-verifications → AI drafts vp/ checks, human refines
+/shipflow-verifications → Human + AI draft and refine the verification pack
                             ↓
-/shipflow-implement     → AI drives the normal implementation loop
+/shipflow-implement     → AI runs the standard implementation loop
                             ↓
                     ┌───────────────────────────┐
                     │ 1. shipflow implement     │
