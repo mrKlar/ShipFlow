@@ -8,6 +8,20 @@ import { status } from "../../lib/status.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("status", () => {
+  function captureStatusOutput(fn) {
+    const lines = [];
+    const original = console.log;
+    console.log = (...args) => {
+      lines.push(args.join(" "));
+    };
+    try {
+      fn();
+    } finally {
+      console.log = original;
+    }
+    return lines.join("\n");
+  }
+
   it("runs without error on empty directory", () => {
     const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
     fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
@@ -64,6 +78,35 @@ describe("status", () => {
     }));
     try {
       assert.doesNotThrow(() => status({ cwd: tmpDir }));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("shows draft session summary when present", () => {
+    const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
+    fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), JSON.stringify({
+      version: 1,
+      updated_at: "2026-03-08T12:00:00.000Z",
+      request: "todo app with login",
+      review: {
+        accepted: 1,
+        rejected: 2,
+        pending: 3,
+        suggested_write: 2,
+      },
+      proposals: [],
+    }));
+    try {
+      const output = captureStatusOutput(() => status({ cwd: tmpDir }));
+      assert.match(output, /Draft session:/);
+      assert.match(output, /todo app with login/);
+      assert.match(output, /Accepted:\s+1/);
+      assert.match(output, /Rejected:\s+2/);
+      assert.match(output, /Pending:\s+3/);
+      assert.match(output, /Suggested:\s+2/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

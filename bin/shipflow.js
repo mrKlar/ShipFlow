@@ -12,6 +12,14 @@ const optionValue = (name) => {
   const arg = args.find(a => a.startsWith(prefix));
   return arg ? arg.slice(prefix.length) : undefined;
 };
+const optionValues = (name) => {
+  const prefix = `--${name}=`;
+  return args
+    .filter(a => a.startsWith(prefix))
+    .flatMap(arg => arg.slice(prefix.length).split(","))
+    .map(value => value.trim())
+    .filter(Boolean);
+};
 const verbose = flags.has("--verbose") || flags.has("-v");
 const quiet = flags.has("--quiet") || flags.has("-q");
 
@@ -40,8 +48,12 @@ Flags:
   --verbose, -v        Show detailed output
   --quiet, -q          Minimal output
   --json               Machine-readable output for map/lint
-  --write              Write draft starter files to vp/ (for shipflow draft)
+  --write              Write selected draft proposals to vp/ (for shipflow draft)
   --ai                 Ask the configured draft provider to refine draft proposals
+  --accept=<path>      Mark a draft proposal as accepted
+  --reject=<path>      Mark a draft proposal as rejected
+  --pending=<path>     Reset a draft proposal back to pending
+  --update-existing    Allow accepted draft proposals to replace existing vp files
   --provider=<name>    Override provider for shipflow draft/implement
   --model=<id>         Override model for shipflow draft/implement
 
@@ -90,6 +102,10 @@ Exit codes:
       json: flags.has("--json"),
       write: flags.has("--write"),
       ai: flags.has("--ai"),
+      accept: optionValues("accept"),
+      reject: optionValues("reject"),
+      pending: optionValues("pending"),
+      updateExisting: flags.has("--update-existing"),
       provider: optionValue("provider"),
       model: optionValue("model"),
     });

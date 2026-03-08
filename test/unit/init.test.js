@@ -63,11 +63,12 @@ describe("init", () => {
     });
   });
 
-  it("creates .gitignore with .gen/ and evidence/", () => {
+  it("creates .gitignore with ShipFlow working directories", () => {
     withTmpDir(tmpDir => {
       init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       const gi = fs.readFileSync(path.join(tmpDir, ".gitignore"), "utf-8");
       assert.ok(gi.includes(".gen/"));
+      assert.ok(gi.includes(".shipflow/"));
       assert.ok(gi.includes("evidence/"));
     });
   });
@@ -89,6 +90,7 @@ describe("init", () => {
       const gi = fs.readFileSync(path.join(tmpDir, ".gitignore"), "utf-8");
       assert.ok(gi.includes("node_modules/"));
       assert.ok(gi.includes(".gen/"));
+      assert.ok(gi.includes(".shipflow/"));
     });
   });
 
