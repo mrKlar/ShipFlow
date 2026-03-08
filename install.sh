@@ -79,11 +79,11 @@ npm install -g "$INSTALL_DIR" --silent 2>/dev/null
 info "Global commands: shipflow, shipflow-guard, shipflow-stop"
 
 # --- 3. Detect and configure AI platforms ---
-step "3/4" "Detecting AI coding agents"
+step "3/4" "Detecting and configuring AI coding agents"
 
 FOUND=()
 
-# Claude Code
+# --- Claude Code ---
 if command -v claude &>/dev/null; then
   info "Claude Code found"
   FOUND+=("claude")
@@ -96,18 +96,119 @@ else
   skip "Claude Code not found"
 fi
 
-# Codex CLI
+# --- Codex CLI ---
 if command -v codex &>/dev/null; then
   info "Codex CLI found"
   FOUND+=("codex")
+
+  # Global exec policy rules
+  mkdir -p "$HOME/.codex/rules"
+  cp "$INSTALL_DIR/templates/codex-rules.rules" "$HOME/.codex/rules/shipflow.rules"
+  info "Exec policy: ~/.codex/rules/shipflow.rules"
+
+  # Global instructions (append to existing or create)
+  CODEX_INSTRUCTIONS="$HOME/.codex/instructions.md"
+  SHIPFLOW_MARKER="<!-- shipflow -->"
+  if [ -f "$CODEX_INSTRUCTIONS" ]; then
+    if ! grep -q "$SHIPFLOW_MARKER" "$CODEX_INSTRUCTIONS" 2>/dev/null; then
+      printf "\n%s\n" "$SHIPFLOW_MARKER" >> "$CODEX_INSTRUCTIONS"
+      cat "$INSTALL_DIR/templates/AGENTS.md" >> "$CODEX_INSTRUCTIONS"
+      info "Instructions appended to ~/.codex/instructions.md"
+    else
+      # Replace existing ShipFlow block
+      TMPFILE=$(mktemp)
+      sed "/$SHIPFLOW_MARKER/,\$d" "$CODEX_INSTRUCTIONS" > "$TMPFILE"
+      printf "%s\n" "$SHIPFLOW_MARKER" >> "$TMPFILE"
+      cat "$INSTALL_DIR/templates/AGENTS.md" >> "$TMPFILE"
+      mv "$TMPFILE" "$CODEX_INSTRUCTIONS"
+      info "Instructions updated in ~/.codex/instructions.md"
+    fi
+  else
+    printf "%s\n" "$SHIPFLOW_MARKER" > "$CODEX_INSTRUCTIONS"
+    cat "$INSTALL_DIR/templates/AGENTS.md" >> "$CODEX_INSTRUCTIONS"
+    info "Instructions created: ~/.codex/instructions.md"
+  fi
 else
   skip "Codex CLI not found"
 fi
 
-# Gemini CLI
+# --- Gemini CLI ---
 if command -v gemini &>/dev/null; then
   info "Gemini CLI found"
   FOUND+=("gemini")
+
+  # Global instructions
+  GEMINI_MD="$HOME/.gemini/GEMINI.md"
+  SHIPFLOW_MARKER="<!-- shipflow -->"
+  if [ -f "$GEMINI_MD" ]; then
+    if ! grep -q "$SHIPFLOW_MARKER" "$GEMINI_MD" 2>/dev/null; then
+      printf "\n%s\n" "$SHIPFLOW_MARKER" >> "$GEMINI_MD"
+      cat "$INSTALL_DIR/templates/GEMINI.md" >> "$GEMINI_MD"
+      info "Instructions appended to ~/.gemini/GEMINI.md"
+    else
+      TMPFILE=$(mktemp)
+      sed "/$SHIPFLOW_MARKER/,\$d" "$GEMINI_MD" > "$TMPFILE"
+      printf "%s\n" "$SHIPFLOW_MARKER" >> "$TMPFILE"
+      cat "$INSTALL_DIR/templates/GEMINI.md" >> "$TMPFILE"
+      mv "$TMPFILE" "$GEMINI_MD"
+      info "Instructions updated in ~/.gemini/GEMINI.md"
+    fi
+  else
+    mkdir -p "$HOME/.gemini"
+    printf "%s\n" "$SHIPFLOW_MARKER" > "$GEMINI_MD"
+    cat "$INSTALL_DIR/templates/GEMINI.md" >> "$GEMINI_MD"
+    info "Instructions created: ~/.gemini/GEMINI.md"
+  fi
+
+  # Merge hooks into settings.json
+  GEMINI_SETTINGS="$HOME/.gemini/settings.json"
+  GUARD_CMD="shipflow-gemini-guard"
+  if [ -f "$GEMINI_SETTINGS" ]; then
+    if ! grep -q "shipflow" "$GEMINI_SETTINGS" 2>/dev/null; then
+      # Merge ShipFlow hooks into existing settings using node
+      node -e "
+        const fs = require('fs');
+        const settings = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf-8'));
+        if (!settings.hooks) settings.hooks = {};
+        if (!settings.hooks.BeforeTool) settings.hooks.BeforeTool = [];
+        settings.hooks.BeforeTool.push({
+          matcher: 'write_file|replace',
+          hooks: [{
+            name: 'shipflow-guard',
+            type: 'command',
+            command: '$GUARD_CMD',
+            timeout: 5000
+          }]
+        });
+        fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
+      "
+      info "Hooks merged into ~/.gemini/settings.json"
+    else
+      info "Hooks already in ~/.gemini/settings.json"
+    fi
+  else
+    mkdir -p "$HOME/.gemini"
+    cat > "$GEMINI_SETTINGS" << EOJSON
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "shipflow-guard",
+            "type": "command",
+            "command": "$GUARD_CMD",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
+EOJSON
+    info "Settings created: ~/.gemini/settings.json"
+  fi
 else
   skip "Gemini CLI not found"
 fi
@@ -123,12 +224,12 @@ step "4/4" "Done"
 printf "\n${G}${B}ShipFlow installed successfully.${R}\n\n"
 
 if [ ${#FOUND[@]} -gt 0 ]; then
-  printf "${B}Detected platforms:${R}\n"
+  printf "${B}Configured platforms:${R}\n"
   for p in "${FOUND[@]}"; do
     case "$p" in
-      claude) printf "  ${C}Claude Code${R}  — plugin ready (restart Claude Code)\n" ;;
-      codex)  printf "  ${C}Codex CLI${R}    — run: shipflow init --codex\n" ;;
-      gemini) printf "  ${C}Gemini CLI${R}   — run: shipflow init --gemini\n" ;;
+      claude) printf "  ${C}Claude Code${R}  — plugin + hooks (restart Claude Code)\n" ;;
+      codex)  printf "  ${C}Codex CLI${R}    — global rules + instructions\n" ;;
+      gemini) printf "  ${C}Gemini CLI${R}   — global hooks + instructions\n" ;;
     esac
   done
   echo ""
@@ -136,17 +237,24 @@ fi
 
 printf "${B}Quick start:${R}\n\n"
 echo "  cd your-project"
+echo "  shipflow init          # scaffold vp/, config, .gitignore"
 echo ""
 
 if [[ " ${FOUND[*]:-} " == *" claude "* ]]; then
-  printf "  ${D}# With Claude Code (restart it first):${R}\n"
+  printf "  ${D}# Claude Code:${R}\n"
   echo "  /shipflow-verifications a todo app"
   echo "  /shipflow-impl"
   echo ""
 fi
 
-printf "  ${D}# With the CLI:${R}\n"
-echo "  shipflow init          # scaffold project"
-echo "  shipflow gen           # compile verifications → tests"
-echo "  shipflow verify        # run tests"
-echo ""
+if [[ " ${FOUND[*]:-} " == *" codex "* ]]; then
+  printf "  ${D}# Codex CLI:${R}\n"
+  echo "  codex \"read vp/ and implement the app until shipflow verify passes\""
+  echo ""
+fi
+
+if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
+  printf "  ${D}# Gemini CLI:${R}\n"
+  echo "  gemini \"read vp/ and implement the app until shipflow verify passes\""
+  echo ""
+fi
