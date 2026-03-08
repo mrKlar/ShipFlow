@@ -44,7 +44,8 @@ In any project directory:
 shipflow init
 ```
 
-This creates `vp/` directories, `CLAUDE.md`, `.claude/hooks.json`, `shipflow.json`, and `.gitignore`.
+This creates `vp/` directories, `shipflow.json`, `.gitignore`, and the files for the selected platform(s), such as `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `KIRO.md`, `.claude/hooks.json`, or `.gemini/settings.json`.
+By default, `shipflow init` scaffolds the files for the currently detected CLI. Use explicit flags when you want another surface or multiple surfaces.
 
 Your project needs Playwright:
 
@@ -112,7 +113,7 @@ Review and iterate with the AI. Then:
 Open your project. Skills auto-activate when your request matches:
 
 ```
-"create shipflow verifications for a todo app with login"
+"let's draft ShipFlow verifications for a todo app with login"
 ```
 
 Review and iterate with the AI. Then:
@@ -128,7 +129,7 @@ Review and iterate with the AI. Then:
 ### CLI commands
 
 ```bash
-shipflow draft       # Standard flow: co-draft and refine the verification pack
+shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
 shipflow implement   # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
@@ -459,8 +460,8 @@ Canonical example:
 
 ```bash
 shipflow map
-shipflow draft
-shipflow draft --write
+shipflow draft "todo app with login"
+shipflow draft "todo app with login" --write
 shipflow doctor
 shipflow lint
 shipflow gen
@@ -468,8 +469,8 @@ shipflow gen
 
 Recommended usage:
 1. `shipflow map` to inspect the current repo surface.
-2. `shipflow draft` to see the understood coverage, gaps, ambiguities, and proposed starter files.
-3. `shipflow draft --write` to write starter files for the highest-confidence gaps.
+2. `shipflow draft "..."` to see the understood coverage, request-driven gaps, ambiguities, and proposed starter files.
+3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps.
 4. Review/edit the VP files.
 5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
 
@@ -523,8 +524,8 @@ shipflow verify
 5. Writes aggregate `evidence/run.json`
 6. Exits 0 if all tests pass
 
-`shipflow implement` also writes `evidence/implement.json` with loop-level metrics such as iteration count, first-pass success, provider/model, VP counts, and generated counts by verification type.
-It also appends `evidence/implement-history.json`, which keeps a bounded multi-run summary for `shipflow status` with pass rate, first-pass rate, average iterations, and recent success/failure timestamps.
+`shipflow implement` also writes `evidence/implement.json` with the latest loop result so you can inspect the last implementation pass.
+If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.
 
 ### Check status
 

@@ -1,12 +1,12 @@
 # ShipFlow
 
-This project uses ShipFlow for verification-first development.
+This project uses ShipFlow for verification-first development with Kiro.
 
 ## Two Phases
 
 ### Phase 1: Verification (human + AI)
 
-Draft verifications in `vp/` — YAML files describing what the app must do.
+Draft verifications in `vp/` together with the user. Use natural language collaboration to refine coverage before writing or updating files.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -24,27 +24,36 @@ You MAY modify `vp/` files during this phase only.
 
 Implement app code that passes all generated tests. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
-## Normal Flow
+## Kiro Flow
 
+Use the low-friction flow first:
+
+```text
+1. Collaborate with the user on the verification pack
+2. Prefer `shipflow draft "<user request>"` when starter proposals would help
+3. Prefer `shipflow implement` for the standard implementation loop
+4. Use granular commands only for debugging or inspection
 ```
-1. Draft verifications collaboratively in `vp/`
-2. Prefer `shipflow implement` for the normal implementation loop
-3. Use granular commands only when debugging or inspecting the pipeline
-```
 
-Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
+Typical handoff:
+- user asks to draft or refine ShipFlow verifications
+- you help review and tighten the pack
+- once the pack is reviewed, run `shipflow implement`
 
-## Protected Paths — NEVER Modify During Implementation
+Do NOT report completion until `shipflow verify` exits 0.
 
-- `vp/**` — Verification pack (source of truth)
-- `.gen/**` — Generated tests
-- `evidence/**` — Verification output
-- `shipflow.json` — Framework config
-- `playwright.config.ts` — Test runner config
+## Protected Paths
 
-If a verification seems wrong, STOP. Go back to Phase 1 with the human.
+Never modify these during implementation:
+- `vp/**`
+- `.gen/**`
+- `evidence/**`
+- `shipflow.json`
+- `playwright.config.ts`
 
-## What to Match in Your Implementation
+If a verification seems wrong, stop and go back to the verification phase with the user.
+
+## What to Match
 
 The generated Playwright tests use these locators:
 
@@ -76,16 +85,3 @@ shipflow gen            # Advanced: generate runnable tests from the pack
 shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
-
-## On Verify Failure
-
-Read the Playwright error output. Common fixes:
-- **Element not found** → missing `data-testid`, wrong label/button text
-- **Text mismatch** → wrong textContent in your HTML/JS
-- **Timeout** → element never appears; check rendering
-- **Count mismatch** → wrong number of elements
-- **URL mismatch** → navigation doesn't produce expected URL
-- **Status mismatch** → API returns wrong HTTP status
-- **JSON mismatch** → API response body doesn't match assertions
-
-Fix the code, run `shipflow verify` again. Repeat until green.

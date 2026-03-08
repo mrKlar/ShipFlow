@@ -1,90 +1,81 @@
 # ShipFlow
 
-This project uses ShipFlow for verification-first development.
+This project uses ShipFlow for verification-first development with Gemini CLI.
 
 ## Two Phases
 
 ### Phase 1: Verification (human + AI)
 
-Draft verifications in `vp/` — YAML files describing what the app must do.
+Draft verifications in `vp/` together with the user. Use natural-language collaboration to tighten coverage before writing or updating files.
 
-Six types of verifications:
-- `vp/ui/*.yml` — UI checks (browser interactions + assertions)
-- `vp/behavior/*.yml` — behavior checks (Given/When/Then scenarios)
-- `vp/api/*.yml` — API checks (HTTP requests + response assertions)
-- `vp/db/*.yml` — DB checks (SQL queries + row/cell assertions)
-- `vp/nfr/*.yml` — NFR checks (load/performance thresholds)
-- `vp/ui/_fixtures/*.yml` — reusable setup flows (login, etc.)
+Seven verification types:
+- `vp/ui/*.yml` — UI checks
+- `vp/behavior/*.yml` — behavior checks
+- `vp/api/*.yml` — API checks
+- `vp/db/*.yml` — database checks
+- `vp/nfr/*.yml` — performance checks
+- `vp/security/*.yml` — security checks
+- `vp/technical/*.yml` — technical checks
+- `vp/ui/_fixtures/*.yml` — reusable setup flows
 
 You MAY modify `vp/` files during this phase only.
 
-### Phase 2: Implementation (AI autonomous)
+### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes all generated tests. The human does not write code.
+Implement app code that passes the generated verification checks. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
-## The Implementation Loop
+## Gemini Flow
 
+Use the low-friction flow first:
+
+```text
+1. Collaborate on the verification pack
+2. Prefer `shipflow draft "<user request>"` when starter proposals would help
+3. Prefer `shipflow implement` for the standard implementation loop
+4. Use granular commands only for debugging or inspection
 ```
-1. Read VP       →  Read all vp/**/*.yml
-2. Generate      →  Run: shipflow gen
-3. Read tests    →  Read .gen/playwright/*.test.ts
-4. Implement     →  Write app code under src/
-5. Verify        →  Run: shipflow verify
-6. Pass?         →  If exit 0: DONE. If not: read errors, fix code, goto 5.
-```
 
-Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
+Typical handoff:
+- `/shipflow:verifications` to draft or refine the pack
+- review and tighten the pack with the user
+- `/shipflow:implement` once the pack is reviewed
 
-## Protected Paths — NEVER Modify During Implementation
+Do NOT report completion until `shipflow verify` exits 0.
 
-- `vp/**` — Verification pack (source of truth)
-- `.gen/**` — Generated tests
-- `evidence/**` — Verification output
-- `shipflow.json` — Framework config
-- `playwright.config.ts` — Test runner config
+## Protected Paths
 
-If a verification seems wrong, STOP. Go back to Phase 1 with the human.
+Never modify these during implementation:
+- `vp/**`
+- `.gen/**`
+- `evidence/**`
+- `shipflow.json`
+- `playwright.config.ts`
 
-## What to Match in Your Implementation
+## What to Match
 
-The generated Playwright tests use these locators:
+The generated checks are the contract:
+- match UI locators, text, visibility, and routes exactly
+- match API method, path, headers, status, and JSON/body expectations exactly
+- match database state and assertions exactly
+- match security, technical, and performance constraints exactly
 
-| VP concept | Your code must provide |
-|---|---|
-| `testid: foo` | `data-testid="foo"` attribute |
-| `label: Email` | `<label>Email</label>` + associated input |
-| `click: { name: Submit }` | `<button>Submit</button>` |
-| `role: link, name: Home` | `<a>Home</a>` |
-| `visible: { testid: x }` | Element visible in DOM |
-| `hidden: { testid: x }` | Element in DOM but hidden |
-| `count: { testid: x, equals: 3 }` | Exactly 3 elements with that testid |
-
-For API checks: implement endpoints matching the `method`, `path`, response `status`, headers, and JSON body.
-
-For DB checks: ensure the database schema and data match the `query` and assertions.
+If a verification seems wrong, stop and return to the verification phase with the user.
 
 ## Commands
 
 ```bash
-shipflow gen      # Compile vp/ → .gen/playwright/*.test.ts + vp.lock.json
-shipflow verify   # Run tests → evidence/run.json, exit 0 if all pass
-shipflow status   # Show VP counts, test counts, last run
+shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
+shipflow implement      # Standard flow: validate, generate, implement, verify
+shipflow map            # Advanced: review repo surfaces and coverage gaps
+shipflow doctor         # Advanced: check local tools, runners, and adapters
+shipflow lint           # Advanced: lint verification quality
+shipflow gen            # Advanced: generate runnable tests from the pack
+shipflow verify         # Advanced: run generated tests and write evidence
+shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
-## Custom Commands
+## Gemini Commands
 
-- `/shipflow:verifications [description]` — Draft verifications for your app
-- `/shipflow:impl` — Implement the app until all verifications pass
-
-## On Verify Failure
-
-Read the Playwright error output. Common fixes:
-- **Element not found** → missing `data-testid`, wrong label/button text
-- **Text mismatch** → wrong textContent in your HTML/JS
-- **Timeout** → element never appears; check rendering
-- **Count mismatch** → wrong number of elements
-- **URL mismatch** → navigation doesn't produce expected URL
-- **Status mismatch** → API returns wrong HTTP status
-- **JSON mismatch** → API response body doesn't match assertions
-
-Fix the code, run `shipflow verify` again. Repeat until green.
+- `/shipflow:verifications [description]` — Collaboratively draft or refine the verification pack
+- `/shipflow:implement` — Run the standard implementation loop
+- `/shipflow:impl` — Legacy alias

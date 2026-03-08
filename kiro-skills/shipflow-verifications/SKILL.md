@@ -23,13 +23,14 @@ shipflow init
 - read the user request
 - review existing `vp/` files
 - run `shipflow map --json` when repo context matters
-- run `shipflow draft --json` when starter proposals would help
+- run `shipflow draft --json "<user request>"` when starter proposals would help
 
 3. Draft or refine the verification pack:
 - write focused checks under `vp/`
 - prefer one observable behavior per file
 - cover the relevant types: UI, behavior, API, database, performance, security, technical
 - call out ambiguities instead of burying them
+- use `shipflow draft --write "<user request>"` only when starter files are actually useful
 
 4. Validate every pass:
 

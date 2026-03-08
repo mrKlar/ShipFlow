@@ -41,16 +41,17 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
 3. Runs generated Playwright tests per verification type and writes `evidence/*.json`
 4. Runs k6 NFR scripts (if `.gen/k6/*.js` exist and k6 is available) → `evidence/load.json`
 5. Emits aggregate `evidence/run.json` with group summaries
-6. `shipflow implement` emits `evidence/implement.json` with loop metrics
-7. `shipflow implement` appends `evidence/implement-history.json` with bounded multi-run KPIs
+6. `shipflow implement` emits `evidence/implement.json` with the latest loop result
+7. `shipflow status` may also show recent implementation history when available
 8. Prints colored summary
 9. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
 
 `shipflow draft`:
 1. Builds a repo coverage map
-2. Summarizes gaps and ambiguities
-3. Proposes starter verifications
-4. Optionally writes starter files to `vp/` with `--write`
+2. Folds in the user request when provided
+3. Summarizes gaps and ambiguities
+4. Proposes starter verifications
+5. Optionally writes starter files to `vp/` with `--write`
 
 ## Anti-Cheat Invariants
 

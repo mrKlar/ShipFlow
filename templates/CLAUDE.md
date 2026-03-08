@@ -67,7 +67,7 @@ For technical checks: ensure the repository structure, manifests, workflows, arc
 ## Commands
 
 ```bash
-shipflow draft          # Standard flow: co-draft and refine the verification pack
+shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
 shipflow implement      # Standard flow: validate, generate, implement, verify
 shipflow map            # Advanced: review repo surfaces and coverage gaps
 shipflow doctor         # Advanced: check local tools, runners, and adapters

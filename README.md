@@ -37,7 +37,7 @@ This is a **first-principles failure.** If you have an agent that can write, tes
 
 </div>
 
-> Don't like the implementation? `rm -rf src/ && shipflow implement` — the AI rebuilds the entire app from scratch, guaranteed to pass every verification. **Legacy code doesn't exist** when you can regenerate on demand. No more "don't touch that, nobody knows how it works." No more drift. No more tech debt that compounds for years. Your verifications are the single source of truth — the code is just a **replaceable artifact**.
+> If the implementation drifts, you can reset the working code and rerun `shipflow implement`. The verification pack stays the source of truth, and the generated tests keep the rebuild honest.
 
 ---
 
@@ -51,7 +51,7 @@ This is a **first-principles failure.** If you have an agent that can write, tes
 | 🧪 | No test generation — you test manually after | Auto-generated tests: UI, API, DB, behavior, security, load |
 | 🔄 | Specs drift — no enforcement mechanism | Lock file + SHA-256 hashes detect any divergence |
 | 🗑️ | Rewrite = start the whole spec process over | `rm -rf src/` — regenerate from verifications in minutes |
-| 🔁 | Linear: specify → plan → tasks → implement | **Autonomous loop:** generate → implement → verify → repeat |
+| 🔁 | Linear: specify → plan → tasks → implement | **Pack-controlled loop:** generate → implement → verify → repeat |
 | 🤖 | Human workflow adapted for AI | Process **designed from scratch** for AI agents |
 
 ---
@@ -92,7 +92,7 @@ Open any project in your AI coding agent and start with a collaborative verifica
 | ![Claude Code](https://img.shields.io/badge/Claude_Code-da7756?style=flat-square&logo=claude&logoColor=white) | `/shipflow-verifications a todo app` | `/shipflow-implement` |
 | ![Codex CLI](https://img.shields.io/badge/Codex_CLI-000000?style=flat-square&logoColor=white) | `$shipflow-verifications a todo app` | `$shipflow-implement` |
 | ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-8E75B2?style=flat-square&logo=googlegemini&logoColor=white) | `/shipflow:verifications a todo app` | `/shipflow:implement` |
-| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"draft ShipFlow verifications for a todo app"` | `"run shipflow implement against the reviewed verification pack"` |
+| ![Kiro CLI](https://img.shields.io/badge/Kiro_CLI-a855f7?style=flat-square&logoColor=white) | `"let's draft ShipFlow verifications for a todo app"` | `"run shipflow implement against the reviewed verification pack"` |
 
 **Step 1** — Human + AI draft the verification pack together. Review it, tighten it, add missing coverage, and remove weak checks.
 
@@ -207,15 +207,15 @@ your-app/
 │   ├── policy.json
 │   ├── ui.json / api.json / security.json ...
 │   └── load.json
-├── 📂 src/                       # 💻 App code (AI writes this)
+├── 📂 src/                       # 💻 App code written during the implementation loop
 └── ⚙️ shipflow.json               # Config
 ```
 
 ## 🛠️ CLI
 
 ```bash
-shipflow init [--claude|--codex|--gemini|--kiro|--all]  # Set up ShipFlow in a project
-shipflow draft [--write] [--ai]                         # Standard flow: co-draft the verification pack
+shipflow init [--claude|--codex|--gemini|--kiro|--all]  # Set up ShipFlow for the detected or selected CLI
+shipflow draft [description] [--write] [--ai]           # Standard flow: co-draft the verification pack
 shipflow implement                                      # Standard flow: validate, generate, implement, verify
 
 # Advanced / debug
@@ -285,7 +285,7 @@ assert:
 }
 ```
 
-`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, or `gemini`), and falls back to the API provider/runtime defaults when needed.
+`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, `gemini`, or `kiro`), and falls back to the API provider/runtime defaults when needed.
 
 ## 🔄 CI
 

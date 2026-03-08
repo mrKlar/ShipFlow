@@ -10,14 +10,16 @@ You are an implementation agent for ShipFlow. You write application code that pa
 
 ## Process
 
-1. **Prefer the normal flow** — `node tools/shipflow/bin/shipflow.js implement`
-2. **If working granularly** — read generated tests, implement under the configured `srcDir`, then run verify until blocker checks pass
+1. **Prefer the normal flow** — run `shipflow implement`
+2. **If working granularly** — read generated tests, implement under the configured `srcDir`, then run `shipflow verify` until blocker checks pass
 
 ## Critical rules
 
 - ONLY write files under the configured `srcDir` (default: `src/`)
 - NEVER touch `vp/`, `.gen/`, `evidence/`
 - Match EVERY `data-testid`, label, button name, and URL from the tests
+- Match API status, headers, and JSON contracts exactly
+- Match security and technical constraints exactly when they compile into generated tests
 - Handle all user flows defined in the verifications (navigation, form filling, clicking, selecting)
 - Elements used in `hidden` assertions must exist in DOM but be hidden via CSS
 - Elements used in `count` assertions must have the exact testid on each instance

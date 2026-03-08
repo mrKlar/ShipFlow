@@ -17,20 +17,21 @@ Your job is to help the user shape a precise verification pack under `vp/`, then
 1. If the project has no `shipflow.json`, run:
 
 ```bash
-shipflow init --codex
+shipflow init
 ```
 
 2. Build context before writing:
 - Read the user request
 - Review existing `vp/` files if they exist
 - Run `shipflow map --json` when repo context matters
-- Run `shipflow draft --json` when starter proposals would help
+- Run `shipflow draft --json "<user request>"` when starter proposals would help
 
 3. Draft or refine the verification pack in collaboration with the user:
 - Write focused checks under `vp/`
 - Prefer one observable behavior per file
 - Cover the relevant types: UI, behavior, API, database, performance, security, technical
 - Call out ambiguities instead of hiding them
+- Use `shipflow draft --write "<user request>"` only when starter files are actually useful
 
 4. Validate every pass:
 

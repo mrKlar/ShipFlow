@@ -49,6 +49,20 @@ describe("buildDraft", () => {
       assert.ok(result.ambiguities.length > 0);
     });
   });
+
+  it("tracks request-driven coverage gaps and ambiguities", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "todo app with login, REST API, postgres, and CI");
+      assert.deepEqual(result.request.inferred_types, ["behavior", "ui", "api", "database", "security", "technical"]);
+      assert.ok(result.request.gaps.some(gap => gap.includes("api")));
+      assert.ok(result.request.gaps.some(gap => gap.includes("security")));
+      assert.ok(result.ambiguities.some(item => item.includes("no concrete endpoint")));
+      assert.ok(result.ambiguities.some(item => item.includes("no concrete routes")));
+    });
+  });
 });
 
 describe("draft", () => {
@@ -135,6 +149,76 @@ describe("draft", () => {
       assert.ok(result.ai.enabled);
       assert.equal(result.ai.provider, "command");
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/ai-users.yml" && proposal.source === "ai"));
+      assert.equal(result.proposal_validation.invalid, 0);
+    });
+  });
+
+  it("does not write invalid AI starter proposals", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      for (const dir of ["ui", "behavior", "api", "db", "nfr", "security", "technical"]) {
+        fs.mkdirSync(path.join(tmpDir, "vp", dir), { recursive: true });
+      }
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), `app.get("/api/users", handler);`);
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "command",
+        },
+      }));
+
+      const { result } = await draft({
+        cwd: tmpDir,
+        write: true,
+        json: false,
+        generateText: async () => JSON.stringify({
+          summary: "AI returned one invalid proposal",
+          proposals: [{
+            type: "api",
+            path: "vp/api/invalid-users.yml",
+            confidence: "high",
+            reason: "Missing the required app.kind value",
+            data: {
+              id: "api-invalid-users",
+              title: "Broken API proposal",
+              severity: "blocker",
+              app: { base_url: "http://localhost:3000" },
+              request: { method: "GET", path: "/api/users" },
+              assert: [{ status: 200 }],
+            },
+          }],
+        }),
+      });
+
+      const invalid = result.proposals.find(proposal => proposal.path === "vp/api/invalid-users.yml");
+      assert.equal(result.proposal_validation.invalid, 1);
+      assert.equal(invalid.validation.ok, false);
+      assert.ok(invalid.validation.issues.some(issue => issue.code === "schema.invalid"));
+      assert.ok(!fs.existsSync(path.join(tmpDir, "vp", "api", "invalid-users.yml")));
+    });
+  });
+
+  it("passes the user request into AI draft refinement", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "behavior"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "command",
+        },
+      }));
+
+      let capturedPrompt = "";
+      await draft({
+        cwd: tmpDir,
+        input: "todo app with login and admin API",
+        json: false,
+        generateText: async ({ prompt }) => {
+          capturedPrompt = prompt;
+          return JSON.stringify({ summary: "ok", proposals: [] });
+        },
+      });
+
+      assert.ok(capturedPrompt.includes("todo app with login and admin API"));
+      assert.ok(capturedPrompt.includes("\"inferred_types\""));
     });
   });
 });

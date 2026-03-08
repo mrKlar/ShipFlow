@@ -241,7 +241,7 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   # Global steering context
   KIRO_STEERING="$HOME/.kiro/steering"
   mkdir -p "$KIRO_STEERING"
-  cp "$INSTALL_DIR/templates/CLAUDE.md" "$KIRO_STEERING/shipflow.md"
+  cp "$INSTALL_DIR/templates/KIRO.md" "$KIRO_STEERING/shipflow.md"
   info "Steering: ~/.kiro/steering/shipflow.md"
 else
   skip "Kiro CLI not found"
@@ -298,7 +298,7 @@ fi
 
 if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
   printf "  ${D}# Kiro CLI (skills auto-activate):${R}\n"
-  echo "  \"draft ShipFlow verifications for a todo app\""
+  echo "  \"let's draft ShipFlow verifications for a todo app\""
   echo "  \"run shipflow implement against the reviewed verification pack\""
   echo ""
 fi

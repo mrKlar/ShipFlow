@@ -16,18 +16,19 @@ This phase is human + AI collaboration, not an autonomous one-shot.
 1. If the project has no `shipflow.json`, run:
 
 ```bash
-shipflow init --gemini
+shipflow init
 ```
 
 2. Build context before writing:
 - review existing `vp/` files
 - run `shipflow map --json` when repo context matters
-- run `shipflow draft --json` when starter proposals would help
+- run `shipflow draft --json "{{args}}"` when starter proposals would help
 
 3. Draft or refine the verification pack in `vp/`:
 - prefer one observable behavior per file
 - cover the relevant types: UI, behavior, API, database, performance, security, technical
 - surface ambiguities instead of hiding them
+- use `shipflow draft --write "{{args}}"` only when starter files are actually useful
 
 4. Validate every pass:
 

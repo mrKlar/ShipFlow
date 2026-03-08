@@ -14,7 +14,7 @@ Use this command when the user wants to implement or fix the project against an 
 1. If the project has no `shipflow.json`, run:
 
 ```bash
-shipflow init --gemini
+shipflow init
 ```
 
 2. Run the standard path first:

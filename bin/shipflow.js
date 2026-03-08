@@ -3,7 +3,9 @@ import { gen } from "../lib/gen.js";
 import { verify } from "../lib/verify.js";
 
 const args = process.argv.slice(2);
-const cmd = args.find(a => !a.startsWith("-"));
+const positional = args.filter(a => !a.startsWith("-"));
+const cmd = positional[0];
+const input = positional.slice(1).join(" ").trim();
 const flags = new Set(args.filter(a => a.startsWith("-")));
 const optionValue = (name) => {
   const prefix = `--${name}=`;
@@ -16,27 +18,23 @@ const quiet = flags.has("--quiet") || flags.has("-q");
 async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
-Usage:
-  Standard flow:
-    shipflow draft         Human + AI draft and refine the verification pack
-    shipflow implement     Standard loop: validate pack, generate tests, implement, verify
+Standard flow:
+  shipflow draft [description] Human + AI draft and refine the verification pack
+  shipflow implement           Standard loop: validate pack, generate tests, implement, verify
 
-  Advanced / debug:
-    shipflow map           Review repo surfaces and coverage gaps before drafting
-    shipflow lint          Lint verification quality before generation
-    shipflow doctor        Check local tools, runners, and AI CLI adapters
-    shipflow gen           Generate runnable tests from the verification pack
-    shipflow verify        Run generated tests and write evidence
-    shipflow status        Show pack, generated tests, and evidence
-    shipflow implement-once  Single implementation pass without the retry loop
-    shipflow run           Legacy alias for shipflow implement
+Advanced / debug:
+  shipflow map                 Review repo surfaces and coverage gaps before drafting
+  shipflow lint                Lint verification quality before generation
+  shipflow doctor              Check local tools, runners, and AI CLI adapters
+  shipflow gen                 Generate runnable tests from the verification pack
+  shipflow verify              Run generated tests and write evidence
+  shipflow status              Show pack, generated tests, and evidence
+  shipflow implement-once      Single implementation pass without the retry loop
+  shipflow run                 Legacy alias for shipflow implement
 
-  Setup:
-  shipflow init        Set up verification directories + platform config
-    --claude             Setup for Claude Code (default)
-    --codex              Setup for OpenAI Codex CLI
-    --gemini             Setup for Google Gemini CLI
-    --all                Setup for all supported platforms
+Setup:
+  shipflow init [--claude|--codex|--gemini|--kiro|--all]
+                               Set up shared files plus active or detected platform config
 
 Flags:
   --verbose, -v        Show detailed output
@@ -88,6 +86,7 @@ Exit codes:
     const { draft } = await import("../lib/draft.js");
     const { exitCode } = await draft({
       cwd: process.cwd(),
+      input,
       json: flags.has("--json"),
       write: flags.has("--write"),
       ai: flags.has("--ai"),
@@ -110,14 +109,14 @@ Exit codes:
   }
 
   if (cmd === "init") {
-    const { init } = await import("../lib/init.js");
+    const { init, recommendedPlatforms } = await import("../lib/init.js");
     const platforms = [];
     if (flags.has("--all")) platforms.push("claude", "codex", "gemini", "kiro");
     if (flags.has("--claude")) platforms.push("claude");
     if (flags.has("--codex")) platforms.push("codex");
     if (flags.has("--gemini")) platforms.push("gemini");
     if (flags.has("--kiro")) platforms.push("kiro");
-    if (platforms.length === 0) platforms.push("claude");
+    if (platforms.length === 0) platforms.push(...recommendedPlatforms(process.cwd()));
     init({ cwd: process.cwd(), platforms: [...new Set(platforms)] });
     return;
   }

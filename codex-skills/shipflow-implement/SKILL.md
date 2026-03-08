@@ -28,7 +28,7 @@ That command already runs the useful pipeline:
 1. If the project has no `shipflow.json`, run:
 
 ```bash
-shipflow init --codex
+shipflow init
 ```
 
 2. Run the standard loop first:

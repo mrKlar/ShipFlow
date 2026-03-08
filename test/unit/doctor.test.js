@@ -59,4 +59,20 @@ describe("buildDoctor", () => {
       assert.equal(result.checks.impl_provider_ready, true);
     });
   });
+
+  it("recognizes kiro-cli as a supported installed AI CLI", () => {
+    withTmpDir(tmpDir => {
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "auto" } }));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ devDependencies: { "@playwright/test": "^1.0.0" } }));
+      fs.writeFileSync(path.join(tmpDir, "KIRO.md"), "# ShipFlow\n");
+      const available = new Set(["node", "npm", "npx", "kiro-cli"]);
+      const result = buildDoctor(tmpDir, {
+        commandExists: cmd => available.has(cmd),
+        env: {},
+      });
+      assert.equal(result.checks.kiro, true);
+      assert.equal(result.checks.impl_provider, "kiro");
+      assert.equal(result.checks.impl_provider_ready, true);
+    });
+  });
 });

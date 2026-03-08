@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { init } from "../../lib/init.js";
+import { init, recommendedPlatforms } from "../../lib/init.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,7 +19,7 @@ function withTmpDir(fn) {
 describe("init", () => {
   it("creates vp/ subdirectories", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "ui", "_fixtures")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "behavior")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "api")));
@@ -33,7 +33,7 @@ describe("init", () => {
 
   it("creates shipflow.json", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       const config = JSON.parse(fs.readFileSync(path.join(tmpDir, "shipflow.json"), "utf-8"));
       assert.equal(config.draft.provider, "local");
       assert.equal(config.draft.aiProvider, "auto");
@@ -46,7 +46,7 @@ describe("init", () => {
 
   it("creates CLAUDE.md from template (default platform)", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       assert.ok(fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
       const content = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       assert.ok(content.includes("ShipFlow"));
@@ -55,7 +55,7 @@ describe("init", () => {
 
   it("creates .claude/hooks.json (default platform)", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       assert.ok(fs.existsSync(path.join(tmpDir, ".claude", "hooks.json")));
       const hooks = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude", "hooks.json"), "utf-8"));
       assert.ok(hooks.hooks.PreToolUse);
@@ -65,7 +65,7 @@ describe("init", () => {
 
   it("creates .gitignore with .gen/ and evidence/", () => {
     withTmpDir(tmpDir => {
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       const gi = fs.readFileSync(path.join(tmpDir, ".gitignore"), "utf-8");
       assert.ok(gi.includes(".gen/"));
       assert.ok(gi.includes("evidence/"));
@@ -76,7 +76,7 @@ describe("init", () => {
     withTmpDir(tmpDir => {
       fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), "custom content");
       fs.writeFileSync(path.join(tmpDir, "shipflow.json"), '{"custom": true}');
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       assert.equal(fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8"), "custom content");
       assert.equal(fs.readFileSync(path.join(tmpDir, "shipflow.json"), "utf-8"), '{"custom": true}');
     });
@@ -85,7 +85,7 @@ describe("init", () => {
   it("appends to existing .gitignore", () => {
     withTmpDir(tmpDir => {
       fs.writeFileSync(path.join(tmpDir, ".gitignore"), "node_modules/\n");
-      init({ cwd: tmpDir });
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       const gi = fs.readFileSync(path.join(tmpDir, ".gitignore"), "utf-8");
       assert.ok(gi.includes("node_modules/"));
       assert.ok(gi.includes(".gen/"));
@@ -136,6 +136,60 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "GEMINI.md")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".gemini", "settings.json")));
       assert.ok(fs.existsSync(path.join(tmpDir, "KIRO.md")));
+    });
+  });
+
+  it("recommends the active Codex platform when detected", () => {
+    withTmpDir(tmpDir => {
+      const platforms = recommendedPlatforms(tmpDir, {
+        env: { CODEX_THREAD_ID: "thread-1" },
+        commandExists: (cmd) => cmd === "codex",
+      });
+      assert.deepEqual(platforms, ["codex"]);
+    });
+  });
+
+  it("falls back to Claude when no active platform is detected", () => {
+    withTmpDir(tmpDir => {
+      const platforms = recommendedPlatforms(tmpDir, {
+        env: {},
+        commandExists: () => false,
+      });
+      assert.deepEqual(platforms, ["claude"]);
+    });
+  });
+
+  it("recommends all detected installed CLIs when no active platform is signaled", () => {
+    withTmpDir(tmpDir => {
+      const platforms = recommendedPlatforms(tmpDir, {
+        env: {},
+        commandExists: (cmd) => cmd === "codex" || cmd === "gemini",
+      });
+      assert.deepEqual(platforms, ["codex", "gemini"]);
+    });
+  });
+
+  it("creates active-platform files by default in a Codex session", () => {
+    withTmpDir(tmpDir => {
+      init({
+        cwd: tmpDir,
+        deps: {
+          env: { CODEX_THREAD_ID: "thread-1" },
+          commandExists: (cmd) => cmd === "codex",
+        },
+      });
+      assert.ok(fs.existsSync(path.join(tmpDir, "AGENTS.md")));
+      assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "config.toml")));
+      assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
+    });
+  });
+
+  it("creates KIRO.md from the Kiro template", () => {
+    withTmpDir(tmpDir => {
+      init({ cwd: tmpDir, platforms: ["kiro"] });
+      const kiro = fs.readFileSync(path.join(tmpDir, "KIRO.md"), "utf-8");
+      assert.ok(kiro.includes("with Kiro"));
+      assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
     });
   });
 });
