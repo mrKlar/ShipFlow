@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseFiles, buildPrompt, resolveImplOptions } from "../../lib/impl.js";
+import { parseFiles, buildPrompt, resolveImplOptions, resolveWritePolicy, isAllowedImplPath } from "../../lib/impl.js";
 
 describe("parseFiles", () => {
   it("parses single file", () => {
@@ -61,53 +61,60 @@ describe("buildPrompt", () => {
   const vpFiles = [{ path: "vp/ui/test.yml", content: "id: test\n" }];
   const genFiles = [{ path: ".gen/playwright/test.test.ts", content: "test('x', ...)" }];
   const config = { impl: { srcDir: "src", context: "Node.js app" } };
+  const writePolicy = { roots: ["src"], files: ["package.json"] };
 
   it("includes VP verifications", () => {
-    const p = buildPrompt(vpFiles, [], [], config, null);
+    const p = buildPrompt(vpFiles, [], [], config, null, writePolicy);
     assert.ok(p.includes("vp/ui/test.yml"));
     assert.ok(p.includes("id: test"));
   });
 
   it("includes generated tests", () => {
-    const p = buildPrompt(vpFiles, genFiles, [], config, null);
+    const p = buildPrompt(vpFiles, genFiles, [], config, null, writePolicy);
     assert.ok(p.includes(".gen/playwright/test.test.ts"));
     assert.ok(p.includes("test('x', ...)"));
   });
 
   it("includes project context", () => {
-    const p = buildPrompt(vpFiles, [], [], config, null);
+    const p = buildPrompt(vpFiles, [], [], config, null, writePolicy);
     assert.ok(p.includes("Node.js app"));
   });
 
   it("includes current source code", () => {
     const srcFiles = [{ path: "src/server.js", content: "const x = 1;" }];
-    const p = buildPrompt(vpFiles, [], srcFiles, config, null);
+    const p = buildPrompt(vpFiles, [], srcFiles, config, null, writePolicy);
     assert.ok(p.includes("src/server.js"));
     assert.ok(p.includes("const x = 1;"));
   });
 
   it("includes errors on retry", () => {
-    const p = buildPrompt(vpFiles, [], [], config, "Error: element not found");
+    const p = buildPrompt(vpFiles, [], [], config, "Error: element not found", writePolicy);
     assert.ok(p.includes("Test Failures"));
     assert.ok(p.includes("Error: element not found"));
   });
 
   it("truncates long errors to 8000 chars", () => {
     const longError = "x".repeat(10000);
-    const p = buildPrompt(vpFiles, [], [], config, longError);
+    const p = buildPrompt(vpFiles, [], [], config, longError, writePolicy);
     assert.ok(p.includes("x".repeat(8000)));
     assert.ok(!p.includes("x".repeat(9000)));
   });
 
   it("includes output format instructions", () => {
-    const p = buildPrompt(vpFiles, [], [], config, null);
-    assert.ok(p.includes("--- FILE: src/"));
+    const p = buildPrompt(vpFiles, [], [], config, null, writePolicy);
+    assert.ok(p.includes("--- FILE: path/to/file ---"));
     assert.ok(p.includes("--- END FILE ---"));
   });
 
   it("uses default srcDir if not configured", () => {
-    const p = buildPrompt(vpFiles, [], [], {}, null);
-    assert.ok(p.includes('"src/"'));
+    const p = buildPrompt(vpFiles, [], [], {}, null, { roots: ["src"], files: [] });
+    assert.ok(p.includes("src/**"));
+  });
+
+  it("lists repo-level editable targets when they are allowed", () => {
+    const p = buildPrompt(vpFiles, [], [], config, null, { roots: ["src", ".github/workflows"], files: ["package.json"] });
+    assert.ok(p.includes(".github/workflows/**"));
+    assert.ok(p.includes("package.json"));
   });
 });
 
@@ -152,6 +159,7 @@ describe("resolveImplOptions", () => {
       assert.equal(options.provider, "codex");
       assert.equal(options.model, "gpt-5-codex");
       assert.equal(options.srcDir, "src");
+      assert.ok(options.writePolicy.roots.includes("src"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -165,6 +173,34 @@ describe("resolveImplOptions", () => {
         env: { CODEX_THREAD_ID: "thread-123" },
       });
       assert.equal(options.provider, "codex");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("derives repo-level write targets from technical checks", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "technical"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "technical", "ci.yml"), `id: technical-ci
+title: CI workflow exists
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: ".github/workflows/ci.yml" }
+  - dependency_present: { name: "@playwright/test", section: devDependencies }
+`);
+      const policy = resolveWritePolicy(tmpDir, { impl: { srcDir: "src" } });
+      assert.ok(policy.roots.includes(".github/workflows"));
+      assert.ok(policy.files.includes("package.json"));
+      assert.equal(isAllowedImplPath(".github/workflows/ci.yml", policy), true);
+      assert.equal(isAllowedImplPath("README.md", policy), false);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
