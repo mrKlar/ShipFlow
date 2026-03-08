@@ -1,0 +1,7 @@
+{
+  "name": "shipflow",
+  "description": "Verification-first development workflow. AI writes specs with the human, generates tests, implements the app, and loops until all tests pass.",
+  "author": {
+    "name": "ShipFlow"
+  }
+}

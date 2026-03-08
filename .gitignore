@@ -1,4 +1,5 @@
 node_modules/
+dist/
 
 # Ignore Windows NTFS alternate data stream metadata files
 *Zone.Identifier
