@@ -69,6 +69,7 @@ That's it. The installer **auto-detects** every AI coding agent on your machine 
 | 🟣 **Claude Code** | Installs the ShipFlow **plugin** + anti-cheat hooks |
 | 🟢 **Codex CLI** | Installs **skills** + exec policy rules + global instructions |
 | 🔵 **Gemini CLI** | Installs **extension** + BeforeTool guard hooks |
+| 🟠 **Kiro CLI** | Installs **skills** + steering context |
 
 ### Uninstall
 
@@ -89,6 +90,7 @@ Open any project in your AI coding agent and use the **native commands:**
 | 🟣 Claude Code | `/shipflow-verifications a todo app` | `/shipflow-impl` |
 | 🟢 Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-impl` |
 | 🔵 Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:impl` |
+| 🟠 Kiro CLI | `shipflow-verifications a todo app` | `shipflow-impl` |
 
 **Step 1** — The AI drafts **50+ verifications in seconds**. Review them, tweak if needed.
 
@@ -155,20 +157,22 @@ ShipFlow doesn't just "support" AI agents. It installs **native extensions** tha
 | 🟣 **Claude Code** | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
 | 🟢 **Codex CLI** | Skills (`$skill` invocation) | Sandbox + exec policy rules |
 | 🔵 **Gemini CLI** | Extension (slash commands + context) | BeforeTool guard hooks |
+| 🟠 **Kiro CLI** | Skills (auto-activated) + steering | PreToolUse guard hooks |
 
 Every integration includes the **full verification schema**, **implementation loop instructions**, and **platform-specific anti-cheat enforcement.** The AI knows exactly what to do, and it can't cheat.
 
 ---
 
-## 📋 Six Verification Types
+## 📋 Six Verification Types + Policy Gates
 
 | | Type | Path | What it tests |
 |---|---|---|---|
 | 🖥️ | **UI Checks** | `vp/ui/*.yml` | Browser interactions & visual assertions |
 | 📖 | **Behavior Checks** | `vp/behavior/*.yml` | Given/When/Then business logic |
 | 🌐 | **API Checks** | `vp/api/*.yml` | HTTP request/response |
-| 🗄️ | **DB Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
-| ⚡ | **NFR Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
+| 🗄️ | **Database Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
+| ⚡ | **Performance Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
+| 🔐 | **Security Checks** | `vp/security/*.yml` | Auth, authz, headers, exposure |
 | 📜 | **Policy Gates** | `vp/policy/*.rego` | Organizational rules via OPA |
 
 Plus 🧩 **fixtures** (`vp/ui/_fixtures/*.yml`) for reusable setup flows.
@@ -184,9 +188,13 @@ your-app/
 │   ├── behavior/*.yml
 │   ├── api/*.yml
 │   ├── db/*.yml
+│   ├── nfr/*.yml
+│   ├── security/*.yml
+│   ├── policy/*.rego
 │   └── ui/_fixtures/*.yml
 ├── 📂 .gen/                      # 🤖 Generated tests (don't touch)
-│   └── playwright/*.test.ts
+│   ├── playwright/*.test.ts
+│   └── k6/*.js
 ├── 📂 evidence/                  # 📊 Results (don't touch)
 │   └── run.json
 ├── 📂 src/                       # 💻 App code (AI writes this)
@@ -196,8 +204,12 @@ your-app/
 ## 🛠️ CLI
 
 ```bash
+shipflow init [--claude|--codex|--gemini]   # 📦 Scaffold project
+shipflow map                                 # 🗺️  Analyze repo + coverage gaps before drafting
+shipflow lint                                # 🔎  Lint VP quality before generation
 shipflow gen                                 # ⚙️  Compile verifications → tests
 shipflow verify                              # ✅ Run tests → evidence
+shipflow run                                 # 🔁 Full autonomous loop: gen → impl → verify
 shipflow status                              # 📊 Show project state
 ```
 
@@ -236,7 +248,7 @@ jobs:
 
 ### 📋 Requirements
 
-**Node.js 18+** · **Claude Code** or **Codex CLI** or **Gemini CLI**
+**Node.js 18+** · **Claude Code** or **Codex CLI** or **Gemini CLI** or **Kiro CLI**
 
 <br>
 

@@ -22,7 +22,7 @@ step()  { printf "\n${B}[%s]${R} %s\n" "$1" "$2"; }
 printf "\n${B}ShipFlow Uninstaller${R}\n"
 
 # --- 1. Claude Code ---
-step "1/4" "Claude Code"
+step "1/5" "Claude Code"
 
 if command -v claude &>/dev/null; then
   claude plugin uninstall shipflow@shipflow 2>/dev/null || true
@@ -33,7 +33,7 @@ else
 fi
 
 # --- 2. Codex CLI ---
-step "2/4" "Codex CLI"
+step "2/5" "Codex CLI"
 
 if [ -d "$HOME/.agents/skills/shipflow-verifications" ] || [ -d "$HOME/.agents/skills/shipflow-impl" ]; then
   rm -rf "$HOME/.agents/skills/shipflow-verifications" "$HOME/.agents/skills/shipflow-impl"
@@ -68,7 +68,7 @@ else
 fi
 
 # --- 3. Gemini CLI ---
-step "3/4" "Gemini CLI"
+step "3/5" "Gemini CLI"
 
 if command -v gemini &>/dev/null; then
   gemini extensions uninstall shipflow 2>/dev/null || true
@@ -96,12 +96,29 @@ else
   skip "No Gemini hooks found"
 fi
 
-# --- 4. Global CLI & source ---
-step "4/4" "ShipFlow CLI"
+# --- 4. Kiro CLI ---
+step "4/5" "Kiro CLI"
+
+if [ -d "$HOME/.kiro/skills/shipflow-verifications" ] || [ -d "$HOME/.kiro/skills/shipflow-impl" ]; then
+  rm -rf "$HOME/.kiro/skills/shipflow-verifications" "$HOME/.kiro/skills/shipflow-impl"
+  info "Skills removed"
+else
+  skip "No Kiro skills found"
+fi
+
+if [ -f "$HOME/.kiro/steering/shipflow.md" ]; then
+  rm -f "$HOME/.kiro/steering/shipflow.md"
+  info "Steering removed"
+else
+  skip "No Kiro steering found"
+fi
+
+# --- 5. Global CLI & source ---
+step "5/5" "ShipFlow CLI"
 
 # Remove symlinks
 LOCAL_BIN="$HOME/.local/bin"
-for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard; do
+for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
   if [ -L "$LOCAL_BIN/$cmd" ]; then
     rm -f "$LOCAL_BIN/$cmd"
   fi

@@ -83,7 +83,7 @@ NPM_BIN="$(npm prefix -g)/bin"
 LOCAL_BIN="$HOME/.local/bin"
 if [ -d "$NPM_BIN" ] && [ -f "$NPM_BIN/shipflow" ]; then
   mkdir -p "$LOCAL_BIN"
-  for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard; do
+  for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
     if [ -f "$NPM_BIN/$cmd" ] && [ ! -f "$LOCAL_BIN/$cmd" ]; then
       ln -sf "$NPM_BIN/$cmd" "$LOCAL_BIN/$cmd"
     fi
@@ -223,9 +223,31 @@ else
   skip "Gemini CLI not found"
 fi
 
+# --- Kiro CLI ---
+if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
+  info "Kiro CLI found"
+  FOUND+=("kiro")
+
+  # Install skills (global: ~/.kiro/skills/)
+  KIRO_SKILLS="$HOME/.kiro/skills"
+  mkdir -p "$KIRO_SKILLS"
+  rm -rf "$KIRO_SKILLS/shipflow-verifications" "$KIRO_SKILLS/shipflow-impl"
+  cp -r "$INSTALL_DIR/kiro-skills/shipflow-verifications" "$KIRO_SKILLS/"
+  cp -r "$INSTALL_DIR/kiro-skills/shipflow-impl" "$KIRO_SKILLS/"
+  info "Skills installed: shipflow-verifications, shipflow-impl"
+
+  # Global steering context
+  KIRO_STEERING="$HOME/.kiro/steering"
+  mkdir -p "$KIRO_STEERING"
+  cp "$INSTALL_DIR/templates/CLAUDE.md" "$KIRO_STEERING/shipflow.md"
+  info "Steering: ~/.kiro/steering/shipflow.md"
+else
+  skip "Kiro CLI not found"
+fi
+
 if [ ${#FOUND[@]} -eq 0 ]; then
   warn "No AI coding agents detected"
-  warn "Install one: Claude Code, Codex CLI, or Gemini CLI"
+  warn "Install one: Claude Code, Codex CLI, Gemini CLI, or Kiro CLI"
 fi
 
 # --- 4. Summary ---
@@ -240,6 +262,7 @@ if [ ${#FOUND[@]} -gt 0 ]; then
       claude) printf "  ${C}Claude Code${R}  — plugin + hooks (restart Claude Code)\n" ;;
       codex)  printf "  ${C}Codex CLI${R}    — skills + rules + instructions\n" ;;
       gemini) printf "  ${C}Gemini CLI${R}   — extension + hooks\n" ;;
+      kiro)   printf "  ${C}Kiro CLI${R}     — skills + steering\n" ;;
     esac
   done
   echo ""
@@ -268,5 +291,12 @@ if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
   printf "  ${D}# Gemini CLI:${R}\n"
   echo "  /shipflow:verifications a todo app"
   echo "  /shipflow:impl"
+  echo ""
+fi
+
+if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
+  printf "  ${D}# Kiro CLI:${R}\n"
+  echo "  shipflow-verifications a todo app"
+  echo "  shipflow-impl"
   echo ""
 fi
