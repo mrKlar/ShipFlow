@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { countVerificationPack, buildImplementationReport, summarizeImplementationHistory, writeImplementationHistory } from "../../lib/loop.js";
+import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
+import { countVerificationPack, buildImplementationReport, summarizeImplementationHistory, writeImplementationHistory, run } from "../../lib/loop.js";
 
 describe("countVerificationPack", () => {
   it("counts verifications by type", () => {
@@ -134,6 +135,188 @@ describe("implementation history", () => {
       assert.equal(history.summary.failed_runs, 1);
       assert.equal(history.runs[0].started_at, "2026-03-08T11:00:00.000Z");
       assert.equal(history.runs[1].started_at, "2026-03-08T12:00:00.000Z");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("run", () => {
+  it("blocks implementation when the draft review still has pending proposals", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-draft-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), JSON.stringify({
+        version: 1,
+        request: "todo app",
+        review: {
+          accepted: 0,
+          rejected: 0,
+          pending: 1,
+          suggested_write: 1,
+        },
+        proposals: [{
+          path: "vp/ui/home.yml",
+          type: "ui",
+          confidence: "high",
+          review: {
+            decision: "pending",
+            suggested_write: true,
+          },
+          data: {
+            id: "ui-home",
+            title: "Home screen is visible",
+            severity: "blocker",
+            app: { kind: "web", base_url: "http://localhost:3000" },
+            flow: [{ open: "/" }],
+            assert: [{ visible: { testid: "home" } }],
+          },
+        }],
+      }, null, 2));
+
+      const exitCode = await run({ cwd: tmpDir });
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "draft");
+      assert.equal(evidence.iterations, 0);
+      assert.equal(evidence.ok, false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("lets implementation continue past the draft gate when accepted proposals are already written", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-doctor-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+      const proposal = {
+        id: "ui-home",
+        title: "Home screen is visible",
+        severity: "blocker",
+        app: { kind: "web", base_url: "http://localhost:3000" },
+        flow: [{ open: "/" }],
+        assert: [{ visible: { testid: "home" } }],
+      };
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      const vpSnapshot = computeVerificationPackSnapshot(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), JSON.stringify({
+        version: 1,
+        request: "todo app",
+        review: {
+          accepted: 1,
+          rejected: 0,
+          pending: 0,
+          suggested_write: 1,
+        },
+        vp_snapshot: vpSnapshot,
+        proposals: [{
+          path: "vp/ui/home.yml",
+          type: "ui",
+          confidence: "high",
+          review: {
+            decision: "accept",
+            suggested_write: true,
+          },
+          data: proposal,
+        }],
+        written: ["vp/ui/home.yml"],
+      }, null, 2));
+
+      const exitCode = await run({ cwd: tmpDir });
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "doctor");
+      assert.equal(evidence.iterations, 0);
+      assert.equal(evidence.ok, false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks implementation when the verification pack changed after the last draft review", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-stale-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      const reviewedSnapshot = computeVerificationPackSnapshot(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: changed-home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), JSON.stringify({
+        version: 1,
+        request: "todo app",
+        review: {
+          accepted: 1,
+          rejected: 0,
+          pending: 0,
+          suggested_write: 1,
+        },
+        vp_snapshot: reviewedSnapshot,
+        proposals: [{
+          path: "vp/ui/home.yml",
+          type: "ui",
+          confidence: "high",
+          review: {
+            decision: "accept",
+            suggested_write: true,
+          },
+          data: {
+            id: "ui-home",
+            title: "Home screen is visible",
+            severity: "blocker",
+            app: { kind: "web", base_url: "http://localhost:3000" },
+            flow: [{ open: "/" }],
+            assert: [{ visible: { testid: "home" } }],
+          },
+        }],
+      }, null, 2));
+
+      const exitCode = await run({ cwd: tmpDir });
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "draft");
+      assert.equal(evidence.iterations, 0);
+      assert.equal(evidence.ok, false);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

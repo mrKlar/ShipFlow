@@ -7,6 +7,7 @@ This project uses ShipFlow for verification-first development.
 ### Phase 1: Verification (human + AI)
 
 Draft verifications in `vp/` — YAML files describing what the app must do.
+Use `shipflow draft` as a proposal review workflow: inspect candidate checks, accept or reject them, then write accepted proposals into `vp/`.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -33,6 +34,8 @@ Implement app code that passes all generated tests. Treat the reviewed verificat
 ```
 
 Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
+
+Before `shipflow implement`, run `shipflow status --json`. Only continue when there is no `draft_session`, or `draft_session.ready_for_implement === true`.
 
 ## Protected Paths — NEVER Modify During Implementation
 
@@ -68,6 +71,11 @@ For technical checks: ensure the repository structure, manifests, workflows, arc
 
 ```bash
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
+shipflow draft --clear-session
+shipflow draft --accept=vp/path.yml
+shipflow draft --reject=vp/path.yml
+shipflow draft --accept=vp/path.yml --write
+shipflow draft --accept=vp/path.yml --update-existing --write
 shipflow implement      # Standard flow: validate, generate, implement, verify
 shipflow map "<user request>"  # Advanced: review repo surfaces and coverage gaps
 shipflow doctor         # Advanced: check local tools, runners, and adapters
@@ -76,6 +84,8 @@ shipflow gen            # Advanced: generate runnable tests from the pack
 shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
+
+Only use `--update-existing` when the human explicitly approved replacing an existing verification file.
 
 ## On Verify Failure
 

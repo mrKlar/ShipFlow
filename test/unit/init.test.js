@@ -106,6 +106,8 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "config.toml")));
       const toml = fs.readFileSync(path.join(tmpDir, ".codex", "config.toml"), "utf-8");
       assert.ok(toml.includes("sandbox_mode"));
+      assert.ok(toml.includes("\"vp/\""));
+      assert.ok(toml.includes("\".shipflow/\""));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules")));
       // Claude files NOT created
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));

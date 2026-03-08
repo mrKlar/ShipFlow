@@ -12,8 +12,13 @@ Use this skill when the user wants to implement or fix the project against an al
 The standard path is a single command:
 
 ```bash
+shipflow status --json
 shipflow implement
 ```
+
+Only continue when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
+
+If `draft_session.ready_for_implement !== true`, stop and send the user back to `$shipflow-verifications`.
 
 That command already runs the useful pipeline:
 - doctor

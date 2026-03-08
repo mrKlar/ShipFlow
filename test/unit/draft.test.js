@@ -339,6 +339,10 @@ describe("draft", () => {
 
       const sessionFile = path.join(tmpDir, ".shipflow", "draft-session.json");
       assert.ok(fs.existsSync(sessionFile));
+      const initialSession = JSON.parse(fs.readFileSync(sessionFile, "utf-8"));
+      assert.ok(initialSession.vp_snapshot);
+      assert.ok(Array.isArray(initialSession.vp_snapshot.files));
+      assert.equal(typeof initialSession.vp_snapshot.vp_sha256, "string");
 
       const acceptedPath = "vp/db/requested-sqlite-data-lifecycle.yml";
       const rejectedPath = "vp/security/requested-protection-api-me.yml";
@@ -352,6 +356,8 @@ describe("draft", () => {
 
       assert.equal(reviewed.result.review_updates.accepted, 1);
       assert.equal(reviewed.result.review_updates.rejected, 1);
+      assert.equal(reviewed.result.session.ready_for_implement, false);
+      assert.ok(reviewed.result.session.blocking_reasons.length > 0);
 
       const session = JSON.parse(fs.readFileSync(sessionFile, "utf-8"));
       const accepted = session.proposals.find(proposal => proposal.path === acceptedPath);
@@ -405,6 +411,126 @@ describe("draft", () => {
     });
   });
 
+  it("does not carry review decisions into a different explicit request", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      await draft({
+        cwd: tmpDir,
+        input: "todo app with login and sqlite",
+        json: false,
+        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+      });
+
+      const fresh = await draft({
+        cwd: tmpDir,
+        input: "todo app with profile and sqlite",
+        json: false,
+      });
+
+      const database = fresh.result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      assert.ok(database);
+      assert.equal(database.review.decision, "pending");
+    });
+  });
+
+  it("uses the saved draft session for review-only commands without calling the AI provider", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      await draft({
+        cwd: tmpDir,
+        input: "todo app with login and sqlite",
+        json: false,
+      });
+
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "command",
+        },
+      }));
+
+      let called = false;
+      const result = await draft({
+        cwd: tmpDir,
+        json: false,
+        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        generateText: async () => {
+          called = true;
+          return JSON.stringify({ summary: "should not run", proposals: [] });
+        },
+      });
+
+      assert.equal(result.exitCode, 0);
+      assert.equal(called, false);
+      const database = result.result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      assert.equal(database.review.decision, "accept");
+    });
+  });
+
+  it("fails review-only commands when no session or request is available", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = await draft({
+        cwd: tmpDir,
+        json: false,
+        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+      });
+
+      assert.equal(result.exitCode, 2);
+      assert.match(result.result.error, /existing draft session or a new request/i);
+      assert.ok(!fs.existsSync(path.join(tmpDir, ".shipflow", "draft-session.json")));
+    });
+  });
+
+  it("fails when the same proposal path appears in conflicting review flags", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = await draft({
+        cwd: tmpDir,
+        input: "todo app with login and sqlite",
+        json: false,
+        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        reject: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+      });
+
+      assert.equal(result.exitCode, 2);
+      assert.match(result.result.error, /appears in both --accept and --reject/i);
+    });
+  });
+
+  it("clears the saved draft session explicitly", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      await draft({
+        cwd: tmpDir,
+        input: "todo app with login and sqlite",
+        json: false,
+      });
+
+      const sessionFile = path.join(tmpDir, ".shipflow", "draft-session.json");
+      assert.ok(fs.existsSync(sessionFile));
+
+      const cleared = await draft({
+        cwd: tmpDir,
+        json: false,
+        clearSession: true,
+      });
+
+      assert.equal(cleared.exitCode, 0);
+      assert.equal(cleared.result.cleared, true);
+      assert.ok(!fs.existsSync(sessionFile));
+    });
+  });
+
   it("updates an existing verification only when explicitly allowed", async () => {
     await withTmpDir(async tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "vp", "api"), { recursive: true });
@@ -448,6 +574,7 @@ describe("draft", () => {
 
       const protectedWrite = await draft({
         cwd: tmpDir,
+        input: "users api contract",
         json: false,
         write: true,
         accept: ["vp/api/existing-users.yml"],
@@ -458,6 +585,7 @@ describe("draft", () => {
 
       const updatedWrite = await draft({
         cwd: tmpDir,
+        input: "users api contract",
         json: false,
         write: true,
         accept: ["vp/api/existing-users.yml"],

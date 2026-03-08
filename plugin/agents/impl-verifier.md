@@ -10,8 +10,9 @@ You are an implementation agent for ShipFlow. You write application code that pa
 
 ## Process
 
-1. **Prefer the normal flow** — run `shipflow implement`
-2. **If working granularly** — read generated tests, implement under the allowed write targets, then run `shipflow verify` until blocker checks pass
+1. **Check the review gate first** — only proceed when `shipflow status --json` shows no `draft_session`, or `draft_session.ready_for_implement === true`
+2. **Prefer the normal flow** — run `shipflow implement`
+3. **If working granularly** — read generated tests, implement under the allowed write targets, then run `shipflow verify` until blocker checks pass
 
 ## Critical rules
 

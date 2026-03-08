@@ -47,12 +47,13 @@ Setup:
 Flags:
   --verbose, -v        Show detailed output
   --quiet, -q          Minimal output
-  --json               Machine-readable output for map/lint
+  --json               Machine-readable output for map/lint/status/draft
   --write              Write selected draft proposals to vp/ (for shipflow draft)
   --ai                 Ask the configured draft provider to refine draft proposals
   --accept=<path>      Mark a draft proposal as accepted
   --reject=<path>      Mark a draft proposal as rejected
   --pending=<path>     Reset a draft proposal back to pending
+  --clear-session      Remove the saved draft review session before continuing
   --update-existing    Allow accepted draft proposals to replace existing vp files
   --provider=<name>    Override provider for shipflow draft/implement
   --model=<id>         Override model for shipflow draft/implement
@@ -105,6 +106,7 @@ Exit codes:
       accept: optionValues("accept"),
       reject: optionValues("reject"),
       pending: optionValues("pending"),
+      clearSession: flags.has("--clear-session"),
       updateExisting: flags.has("--update-existing"),
       provider: optionValue("provider"),
       model: optionValue("model"),
@@ -139,8 +141,8 @@ Exit codes:
 
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
-    status({ cwd: process.cwd() });
-    return;
+    const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
   }
 
   console.error(`Unknown command: ${cmd}`);

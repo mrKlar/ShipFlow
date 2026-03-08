@@ -34,8 +34,16 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" init
 Start with the normal low-friction command:
 
 ```bash
+node "$SHIPFLOW_DIR/bin/shipflow.js" status --json
 node "$SHIPFLOW_DIR/bin/shipflow.js" implement
 ```
+
+Only continue to implementation when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
+
+If `draft_session.ready_for_implement !== true`, stop and send the user back to `/shipflow-verifications`. Typical blocking reasons are:
+- pending review items
+- accepted proposals not yet written into `vp/**`
+- the verification pack changed after the last reviewed draft session
 
 That command already runs:
 - doctor

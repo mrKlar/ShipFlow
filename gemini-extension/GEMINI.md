@@ -7,6 +7,7 @@ This project uses ShipFlow for verification-first development with Gemini CLI.
 ### Phase 1: Verification (human + AI)
 
 Draft verifications in `vp/` together with the user. Use natural-language collaboration to tighten coverage before writing or updating files.
+Use `shipflow draft` as a proposal review workflow: inspect candidate checks, accept or reject them, then write accepted proposals into `vp/`.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks
@@ -42,6 +43,8 @@ Typical handoff:
 
 Do NOT report completion until `shipflow verify` exits 0.
 
+Before `shipflow implement`, run `shipflow status --json`. Only continue when there is no `draft_session`, or `draft_session.ready_for_implement === true`.
+
 ## Protected Paths
 
 Never modify these during implementation:
@@ -65,6 +68,11 @@ If a verification seems wrong, stop and return to the verification phase with th
 
 ```bash
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
+shipflow draft --clear-session
+shipflow draft --accept=vp/path.yml
+shipflow draft --reject=vp/path.yml
+shipflow draft --accept=vp/path.yml --write
+shipflow draft --accept=vp/path.yml --update-existing --write
 shipflow implement      # Standard flow: validate, generate, implement, verify
 shipflow map            # Advanced: review repo surfaces and coverage gaps
 shipflow doctor         # Advanced: check local tools, runners, and adapters
@@ -73,6 +81,8 @@ shipflow gen            # Advanced: generate runnable tests from the pack
 shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
+
+Only use `--update-existing` when the human explicitly approved replacing an existing verification file.
 
 ## Gemini Commands
 

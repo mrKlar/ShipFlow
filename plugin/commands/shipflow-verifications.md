@@ -45,6 +45,9 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" map --json "$ARGUMENTS"
 node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
 ```
 
+If the user is continuing an existing review session, you may omit `$ARGUMENTS` and let ShipFlow reuse the saved draft request.
+If the user wants to restart the review from scratch, use `node "$SHIPFLOW_DIR/bin/shipflow.js" draft --clear-session`.
+
 ### 2. Before writing, surface what the system understood
 
 Give the user a short review:
@@ -52,14 +55,33 @@ Give the user a short review:
 - what coverage gaps look important
 - what remains ambiguous and needs a human decision
 
-### 3. Draft or refine the verification pack with the user
+### 3. Review proposals with the user before writing
 
-Write or update focused checks under `vp/`.
+Treat `shipflow draft` as a review workflow:
+- review the candidate proposals with the user
+- accept or reject them explicitly
+- only then write accepted proposals into `vp/`
 
-When starter files would help, prefer:
+Use:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --write "$ARGUMENTS"
+node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml
+node "$SHIPFLOW_DIR/bin/shipflow.js" draft --reject=vp/path.yml
+node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml --write
+```
+
+Use `--update-existing` only with explicit user approval when replacing an existing verification file:
+
+```bash
+node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml --update-existing --write
+```
+
+For precise refinements that do not fit a proposal cleanly, edit focused checks under `vp/` manually.
+
+When proposal files would help, prefer:
+
+```bash
+node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
 ```
 
 Use the right verification type:
@@ -106,5 +128,7 @@ Move to the standard implementation loop with:
 
 - Do not present the first draft as complete by default
 - Do not hide ambiguity; surface it
+- Do not write proposal files before the user has reviewed them unless the user explicitly asks for automatic materialization
+- Do not replace an existing `vp/` file unless the user explicitly approved that update
 - Do not present the pack as ready if `lint` or `gen` fails
 - If the user wants code implementation, switch to `/shipflow-implement`

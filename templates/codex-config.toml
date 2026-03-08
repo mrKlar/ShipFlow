@@ -1,9 +1,10 @@
 # ShipFlow — Codex CLI configuration
-# Restricts the AI to only write under src/ via OS-level sandboxing.
+# Allows ShipFlow runtime writes for verification drafting and generated artifacts.
+# The agent must still treat vp/, .gen/, evidence/, and shipflow.json as protected during implementation.
 
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-# Only allow writes to src/ (and /tmp for transient files)
-writable_roots = ["src/"]
+# Allow app code plus ShipFlow working directories
+writable_roots = ["src/", "vp/", ".shipflow/", ".gen/", "evidence/"]
 network_access = true

@@ -26,12 +26,19 @@ shipflow init
 - Run `shipflow map --json "<user request>"` when repo context matters
 - Run `shipflow draft --json "<user request>"` when starter proposals would help
 
-3. Draft or refine the verification pack in collaboration with the user:
-- Write focused checks under `vp/`
+If the user is continuing an existing review session, you may omit the request and let ShipFlow reuse the saved draft request.
+If the user wants to restart the review from scratch, use `shipflow draft --clear-session`.
+
+3. Review proposals in collaboration with the user before writing:
+- Treat `shipflow draft` as a proposal review workflow
+- Use `shipflow draft --accept=vp/path.yml` and `shipflow draft --reject=vp/path.yml` to record decisions
+- Use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
+- Use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
+- For precise changes that do not fit a proposal cleanly, edit focused checks under `vp/` manually
 - Prefer one observable behavior per file
 - Cover the relevant types: UI, behavior, API, database, performance, security, technical
 - Call out ambiguities instead of hiding them
-- Use `shipflow draft --write "<user request>"` only when starter files are actually useful
+- Do not jump straight to `--write` before the user has reviewed the proposal set
 
 4. Validate every pass:
 
@@ -63,4 +70,5 @@ $shipflow-impl
 - Do not optimize for check count; optimize for precision
 - Prefer stable selectors and concrete assertions
 - Use `warn` only for genuinely non-blocking checks
+- Do not replace an existing `vp/` file unless the user explicitly approved that update
 - If validation fails, fix the pack before presenting it as ready
