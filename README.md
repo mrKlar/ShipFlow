@@ -26,8 +26,8 @@ The AI **cannot cheat** — cryptographic locks and runtime hooks make it imposs
 ## 30-Second Demo
 
 ```bash
-# Install (once)
-git clone https://github.com/mrKlar/ShipFlow.git && cd ShipFlow && ./install.sh
+# Install (once) — auto-detects Claude Code, Codex CLI, Gemini CLI
+curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | bash
 ```
 
 Restart Claude Code. Open any project:

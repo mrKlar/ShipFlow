@@ -12,15 +12,23 @@ The only files you write and review are under `vp/`. Everything else is generate
 
 ## Installation
 
+One command — auto-detects your AI coding agents:
+
 ```bash
-git clone https://github.com/mrKlar/ShipFlow.git
-cd ShipFlow
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | bash
 ```
 
-This installs:
-1. `shipflow` as a global CLI command (via `npm install -g`)
-2. Claude Code plugin with `/shipflow-verifications` and `/shipflow-impl` commands
+Or from a cloned repo:
+
+```bash
+git clone https://github.com/mrKlar/ShipFlow.git
+cd ShipFlow && ./install.sh
+```
+
+The installer:
+1. Installs `shipflow` as a global CLI command
+2. Detects Claude Code, Codex CLI, Gemini CLI
+3. Installs the Claude Code plugin if Claude is found
 
 Restart Claude Code after installing.
 
