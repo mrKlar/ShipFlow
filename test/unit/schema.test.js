@@ -109,6 +109,17 @@ describe("UiCheck schema — flow steps", () => {
     assert.equal(r.flow[0].wait_for.ms, undefined);
   });
 
+  it("accepts route_block with path and status", () => {
+    const r = UiCheck.parse({ ...base, flow: [{ route_block: { path: "/api/calc", status: 500 } }], assert: [] });
+    assert.equal(r.flow[0].route_block.path, "/api/calc");
+    assert.equal(r.flow[0].route_block.status, 500);
+  });
+
+  it("route_block defaults status to 500", () => {
+    const r = UiCheck.parse({ ...base, flow: [{ route_block: { path: "/api/calc" } }], assert: [] });
+    assert.equal(r.flow[0].route_block.status, 500);
+  });
+
   it("rejects unknown step", () => {
     assert.throws(() => {
       UiCheck.parse({ ...base, flow: [{ unknown: "x" }], assert: [] });

@@ -111,6 +111,13 @@ describe("genStep", () => {
     assert.equal(genStep({ wait_for: {} }, base), "await page.waitForTimeout(250);");
   });
 
+  it("generates route_block", () => {
+    assert.equal(
+      genStep({ route_block: { path: "/api/calculate", status: 500 } }, base),
+      'await page.route("**/api/calculate", route => route.fulfill({ status: 500, body: "" }));',
+    );
+  });
+
   it("throws on unknown step", () => {
     assert.throws(() => genStep({ unknown: true }, base), /Unknown step/);
   });
