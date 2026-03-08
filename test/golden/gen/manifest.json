@@ -18,19 +18,22 @@
           "id": "ui-dashboard-items",
           "title": "Dashboard shows item count",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_ui_dashboard.test.ts"
+          "file": ".gen/playwright/vp_ui_dashboard.test.ts",
+          "companion_files": []
         },
         {
           "id": "ui-login",
           "title": "User can log in",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_ui_login.test.ts"
+          "file": ".gen/playwright/vp_ui_login.test.ts",
+          "companion_files": []
         },
         {
           "id": "ui-nav-menu",
           "title": "Navigation menu works on hover",
           "severity": "warn",
-          "file": ".gen/playwright/vp_ui_nav.test.ts"
+          "file": ".gen/playwright/vp_ui_nav.test.ts",
+          "companion_files": []
         }
       ]
     },
@@ -48,9 +51,19 @@
           "id": "checkout-flow",
           "title": "User adds item and checks out",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_behavior_checkout.test.ts"
+          "file": ".gen/playwright/vp_behavior_checkout.test.ts",
+          "companion_files": []
         }
       ]
+    },
+    "behavior_gherkin": {
+      "label": "Behavior (Gherkin)",
+      "output_kind": "cucumber",
+      "output_dir": "cucumber",
+      "evidence_file": "behavior-gherkin.json",
+      "count": 0,
+      "files": [],
+      "checks": []
     },
     "api": {
       "label": "API",
@@ -66,7 +79,8 @@
           "id": "list-users",
           "title": "GET /api/users returns user list",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_api_list-users.test.ts"
+          "file": ".gen/playwright/vp_api_list-users.test.ts",
+          "companion_files": []
         }
       ]
     },
@@ -84,7 +98,8 @@
           "id": "users-seeded",
           "title": "Users table has expected seed data",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_db_users-seeded.test.ts"
+          "file": ".gen/playwright/vp_db_users-seeded.test.ts",
+          "companion_files": []
         }
       ]
     },
@@ -102,7 +117,8 @@
           "id": "security-unauthenticated-admin",
           "title": "Guest access to admin endpoint is rejected",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_security_unauthenticated-admin.test.ts"
+          "file": ".gen/playwright/vp_security_unauthenticated-admin.test.ts",
+          "companion_files": []
         }
       ]
     },
@@ -120,7 +136,8 @@
           "id": "technical-ci-stack",
           "title": "Repository uses GitHub Actions and Playwright",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_technical_ci-stack.test.ts"
+          "file": ".gen/playwright/vp_technical_ci-stack.test.ts",
+          "companion_files": []
         }
       ]
     },
@@ -138,7 +155,8 @@
           "id": "load-homepage",
           "title": "Homepage handles 50 concurrent users",
           "severity": "blocker",
-          "file": ".gen/k6/vp_nfr_load-test.js"
+          "file": ".gen/k6/vp_nfr_load-test.js",
+          "companion_files": []
         }
       ]
     }

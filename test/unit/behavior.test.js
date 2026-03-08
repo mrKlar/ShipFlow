@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { BehaviorCheck } from "../../lib/schema/behavior-check.zod.js";
-import { genBehaviorTest } from "../../lib/gen-behavior.js";
+import { genBehaviorTest, genBehaviorFeature, genBehaviorSteps, genBehaviorCucumberArtifacts, isGherkinBehavior } from "../../lib/gen-behavior.js";
 
 const base = {
   id: "test-bdd",
@@ -38,6 +38,7 @@ describe("BehaviorCheck schema", () => {
   it("accepts tags and examples for scenario outlines", () => {
     const r = BehaviorCheck.parse({
       ...base,
+      runner: { kind: "gherkin", framework: "cucumber" },
       tags: ["smoke", "checkout"],
       given: [{ open: "/checkout/<region>" }],
       when: [{ click: { testid: "continue-<region>" } }],
@@ -46,6 +47,7 @@ describe("BehaviorCheck schema", () => {
     });
     assert.equal(r.tags.length, 2);
     assert.equal(r.examples.length, 2);
+    assert.equal(r.runner.framework, "cucumber");
   });
 
   it("given/when use FlowStep, then uses Assert", () => {
@@ -155,5 +157,56 @@ describe("genBehaviorTest", () => {
     assert.ok(code.includes('goto("http://localhost:3000/checkout/eu")'));
     assert.ok(code.includes('continue-eu'));
     assert.ok(code.includes('// tags: smoke'));
+  });
+
+  it("detects gherkin/cucumber behavior checks", () => {
+    assert.equal(isGherkinBehavior({ runner: { kind: "gherkin" } }), true);
+    assert.equal(isGherkinBehavior({ runner: { framework: "cucumber" } }), true);
+    assert.equal(isGherkinBehavior({ runner: { kind: "playwright" } }), false);
+  });
+
+  it("generates a Gherkin feature file", () => {
+    const code = genBehaviorFeature({
+      ...check,
+      runner: { kind: "gherkin", framework: "cucumber" },
+      tags: ["smoke"],
+      scenario: "Checkout in <region>",
+      given: [{ open: "/checkout/<region>" }],
+      when: [{ click: { testid: "continue-<region>" } }],
+      then: [{ url_matches: { regex: "/checkout/<region>/payment" } }],
+      examples: [{ region: "eu" }],
+    });
+    assert.ok(code.includes("Feature: Calculator"));
+    assert.ok(code.includes("@smoke"));
+    assert.ok(code.includes("Scenario: test-bdd[1]: Checkout in eu"));
+    assert.ok(code.includes("Given ShipFlow given step 1"));
+    assert.ok(code.includes("When ShipFlow when step 1"));
+    assert.ok(code.includes("Then ShipFlow assert 1"));
+    assert.ok(code.includes("[mutation guard]"));
+  });
+
+  it("generates Cucumber step definitions", () => {
+    const code = genBehaviorSteps({
+      ...check,
+      runner: { kind: "gherkin", framework: "cucumber" },
+    });
+    assert.ok(code.includes('@cucumber/cucumber'));
+    assert.ok(code.includes('chromium'));
+    assert.ok(code.includes('ShipFlow setup step'));
+    assert.ok(code.includes('ShipFlow when step'));
+    assert.ok(code.includes('ShipFlow mutation guard'));
+  });
+
+  it("generates paired Cucumber artifacts", () => {
+    const artifacts = genBehaviorCucumberArtifacts({
+      ...check,
+      __file: "vp/behavior/adding.yml",
+      runner: { kind: "gherkin", framework: "cucumber" },
+    });
+    assert.equal(artifacts.length, 2);
+    assert.equal(artifacts[0].kind, "cucumber-feature");
+    assert.equal(artifacts[1].kind, "cucumber-steps");
+    assert.ok(artifacts[0].name.endsWith(".feature"));
+    assert.ok(artifacts[1].name.endsWith(".steps.mjs"));
   });
 });

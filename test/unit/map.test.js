@@ -48,6 +48,8 @@ describe("buildMap", () => {
       assert.ok(result.recommendations.some(r => r.type === "security"));
       assert.ok(result.recommendations.some(r => r.type === "technical"));
       assert.ok(result.detected.technical_files.includes(".github/workflows"));
+      assert.deepEqual(result.framework_recommendations.behavior, ["playwright", "cucumber"]);
+      assert.ok(result.framework_recommendations.technical.includes("tsarch"));
     });
   });
 

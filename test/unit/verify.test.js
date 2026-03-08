@@ -316,4 +316,52 @@ describe("verify", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it("runs generated Cucumber behavior features", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
+    const binDir = path.join(tmpDir, "bin");
+    const previousPath = process.env.PATH;
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "behavior"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "cucumber", "features"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "cucumber", "step_definitions"), { recursive: true });
+      fs.mkdirSync(binDir, { recursive: true });
+
+      fs.writeFileSync(path.join(tmpDir, "vp", "behavior", "checkout.yml"), "id: checkout\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "cucumber", "features", "checkout.feature"), "Feature: Checkout\n  Scenario: checkout\n    Given ShipFlow noop\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "cucumber", "step_definitions", "checkout.steps.mjs"), "import { Given } from \"@cucumber/cucumber\";\nGiven(\"ShipFlow noop\", async function () {});\n");
+
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
+      fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
+        version: 1,
+        outputs: {
+          behavior_gherkin: {
+            files: [
+              ".gen/cucumber/features/checkout.feature",
+              ".gen/cucumber/step_definitions/checkout.steps.mjs",
+            ],
+            checks: [{
+              id: "behavior-checkout",
+              severity: "blocker",
+              file: ".gen/cucumber/features/checkout.feature",
+              companion_files: [".gen/cucumber/step_definitions/checkout.steps.mjs"],
+            }],
+          },
+        },
+      }, null, 2));
+
+      writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\nif [ \"$1\" = \"cucumber-js\" ]; then echo '1 passed'; exit 0; fi\necho '0 passed'\n");
+      process.env.PATH = `${binDir}:${previousPath}`;
+      const result = await verify({ cwd: tmpDir, capture: true });
+
+      assert.equal(result.exitCode, 0);
+      const behavior = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "behavior-gherkin.json"), "utf-8"));
+      assert.equal(behavior.ok, true);
+      assert.ok(behavior.files.some(file => file.endsWith(".feature")));
+    } finally {
+      process.env.PATH = previousPath;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

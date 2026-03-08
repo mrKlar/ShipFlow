@@ -219,4 +219,40 @@ describe("buildDoctor", () => {
       assert.deepEqual(result.checks.requirements.technical_frameworks, ["tsarch"]);
     });
   });
+
+  it("requires @cucumber/cucumber when behavior checks request the gherkin runner", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "behavior"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "auto" } }));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        devDependencies: { "@playwright/test": "^1.0.0" },
+      }));
+      fs.writeFileSync(path.join(tmpDir, "vp", "behavior", "checkout.yml"), [
+        "id: behavior-checkout",
+        "feature: Checkout",
+        "scenario: Guest checkout",
+        "severity: blocker",
+        "runner:",
+        "  kind: gherkin",
+        "  framework: cucumber",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "given:",
+        "  - open: /checkout",
+        "when:",
+        "  - click:",
+        "      testid: continue",
+        "then:",
+        "  - visible:",
+        "      testid: payment",
+        "",
+      ].join("\n"));
+      const available = new Set(["node", "npm", "npx", "codex"]);
+      const result = buildDoctor(tmpDir, { commandExists: cmd => available.has(cmd), env: {} });
+      assert.equal(result.ok, false);
+      assert.deepEqual(result.checks.requirements.behavior_frameworks, ["cucumber"]);
+      assert.ok(result.issues.some(issue => issue.includes("@cucumber/cucumber") || issue.includes("cucumber")));
+    });
+  });
 });

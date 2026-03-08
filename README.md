@@ -154,7 +154,7 @@ Every integration includes the verification schema, the implementation-loop inst
 | | Type | Path | What it tests |
 |---|---|---|---|
 | 🖥️ | **UI Checks** | `vp/ui/*.yml` | Browser interactions and visual assertions |
-| 📖 | **Behavior Checks** | `vp/behavior/*.yml` | Given/When/Then business logic |
+| 📖 | **Behavior Checks** | `vp/behavior/*.yml` | Given/When/Then business logic with Playwright or Cucumber/Gherkin |
 | 🌐 | **API Checks** | `vp/api/*.yml` | HTTP request/response behavior |
 | 🗄️ | **Database Checks** | `vp/db/*.yml` | Database state (SQLite, PostgreSQL) |
 | ⚡ | **Performance Checks** | `vp/nfr/*.yml` | Performance under load (k6) |
@@ -182,6 +182,9 @@ your-app/
 │   └── ui/_fixtures/*.yml
 ├── .gen/                       # Generated tests and harnesses
 │   ├── playwright/*.test.ts
+│   ├── cucumber/
+│   │   ├── features/*.feature
+│   │   └── step_definitions/*.steps.mjs
 │   ├── k6/*.js
 │   └── manifest.json
 ├── evidence/                   # Verification results
@@ -211,6 +214,20 @@ shipflow verify                                         # Run generated tests an
 shipflow status                                         # Show pack, generated tests, and evidence
 shipflow implement-once                                 # Single implementation pass, no retry loop
 ```
+
+### Recommended Verification Frameworks
+
+ShipFlow now has a practical default per verification type:
+
+| Type | Default | Strong alternates |
+|---|---|---|
+| UI | Playwright | |
+| Behavior | Playwright | Cucumber / Gherkin |
+| API | Playwright request | Pactum |
+| Database | Built-in SQL harness | pgTAP (PostgreSQL) |
+| Performance | k6 | |
+| Security | Playwright request | OWASP ZAP |
+| Technical | Built-in repo inspection + command checks | dependency-cruiser, tsarch, madge, eslint-plugin-boundaries |
 
 ### Example Technical Checks
 

@@ -237,12 +237,16 @@ All steps support three locator strategies — use one per step:
 ### Behavior Checks — `vp/behavior/*.yml`
 
 Given/When/Then structure for business logic scenarios. Uses the same flow steps and assertions.
+Default runner is Playwright. You can also target Gherkin/Cucumber generation and execution.
 
 ```yaml
 id: checkout
 feature: Shopping Cart
 scenario: User completes purchase
 severity: blocker
+runner:
+  kind: gherkin                # optional: playwright or gherkin
+  framework: cucumber          # optional: playwright or cucumber
 setup: login-as-user
 app:
   kind: web
@@ -258,6 +262,8 @@ then:
   - url_matches: { regex: "/confirmation" }
   - visible: { testid: success-message }
 ```
+
+When `runner.kind: gherkin` or `runner.framework: cucumber` is selected, ShipFlow generates `.feature` files plus Cucumber step definitions under `.gen/cucumber/` and executes them with `npx cucumber-js`.
 
 ### API Checks — `vp/api/*.yml`
 
@@ -376,7 +382,7 @@ scenario:
   ramp_up: 10s
 ```
 
-Requires `k6` installed. Runs during `shipflow verify` if available.
+Requires `k6` installed. Runs during `shipflow verify`; missing `k6` is a failure, not a skip.
 
 ### Technical Checks — `vp/technical/*.yml`
 
@@ -410,6 +416,18 @@ assert:
 `archtest` is for architecture-oriented checks; use it when you want to enforce layering or boundary rules with assertions such as forbidden imports.
 
 Typical `runner.framework` values: `dependency-cruiser`, `tsarch`, `madge`, `eslint-plugin-boundaries`.
+
+#### Recommended Frameworks By Type
+
+| Type | Default | Strong alternates |
+|---|---|---|
+| UI | Playwright | |
+| Behavior | Playwright | Cucumber / Gherkin |
+| API | Playwright request | Pactum |
+| Database | Built-in SQL harness | pgTAP (PostgreSQL) |
+| Performance | k6 | |
+| Security | Playwright request | OWASP ZAP |
+| Technical | Built-in repo inspection + command checks | dependency-cruiser, `tsarch`, `madge`, `eslint-plugin-boundaries` |
 
 Example architecture rule with `tsarch`:
 

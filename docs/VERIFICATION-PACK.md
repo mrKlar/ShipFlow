@@ -17,7 +17,7 @@ Only `vp/` is human-readable and reviewed. Everything else is generated or opaqu
 | Type | Path | Schema | Generates |
 |---|---|---|---|
 | UI | `vp/ui/*.yml` | Flow + assert | Playwright browser tests |
-| Behavior | `vp/behavior/*.yml` | Given/when/then | Playwright browser tests (BDD structure) |
+| Behavior | `vp/behavior/*.yml` | Given/when/then | Playwright browser tests or Cucumber/Gherkin artifacts |
 | API | `vp/api/*.yml` | Request + assert | Playwright API tests (no browser) |
 | Database | `vp/db/*.yml` | Query + assert | Playwright tests with CLI (sqlite3/psql) |
 | Performance | `vp/nfr/*.yml` | Scenario + thresholds | k6 load test scripts |
@@ -29,6 +29,7 @@ Only `vp/` is human-readable and reviewed. Everything else is generated or opaqu
 ## Generated Output
 
 Functional verifications, security verifications, and technical verifications compile to `.gen/playwright/*.test.ts`.
+Behavior checks can also compile to `.gen/cucumber/features/*.feature` plus `.gen/cucumber/step_definitions/*.steps.mjs` when the Cucumber runner is selected.
 Performance verifications compile to `.gen/k6/*.js`.
 
 The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
