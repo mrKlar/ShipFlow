@@ -78,6 +78,27 @@ info "Dependencies installed"
 npm install -g "$INSTALL_DIR" --silent 2>/dev/null
 info "Global commands: shipflow, shipflow-guard, shipflow-stop"
 
+# Ensure commands are in a standard PATH location (for AI agents that skip shell init)
+NPM_BIN="$(npm prefix -g)/bin"
+LOCAL_BIN="$HOME/.local/bin"
+if [ -d "$NPM_BIN" ] && [ -f "$NPM_BIN/shipflow" ]; then
+  mkdir -p "$LOCAL_BIN"
+  for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard; do
+    if [ -f "$NPM_BIN/$cmd" ] && [ ! -f "$LOCAL_BIN/$cmd" ]; then
+      ln -sf "$NPM_BIN/$cmd" "$LOCAL_BIN/$cmd"
+    fi
+  done
+  # Add ~/.local/bin to PATH if not already there
+  if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
+    for rcfile in "$HOME/.bashrc" "$HOME/.zshrc"; do
+      if [ -f "$rcfile" ] && ! grep -q 'local/bin' "$rcfile" 2>/dev/null; then
+        printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rcfile"
+      fi
+    done
+  fi
+  info "Symlinks in ~/.local/bin (accessible to all AI agents)"
+fi
+
 # --- 3. Detect and configure AI platforms ---
 step "3/4" "Detecting and configuring AI coding agents"
 
