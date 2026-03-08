@@ -428,6 +428,10 @@ assert:
   - command_succeeds: { command: "npx tsarch --help" }
 ```
 
+Canonical example:
+
+`examples/api-db-service/vp/technical/architecture-boundaries.yml` shows a more realistic layered service rule set using `layer_dependencies` plus a `tsarch` command check.
+
 #### Technical Assertions
 
 ```yaml

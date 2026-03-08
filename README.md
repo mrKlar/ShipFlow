@@ -247,6 +247,8 @@ assert:
   - command_succeeds: { command: "npx tsarch --help" }
 ```
 
+See `examples/api-db-service/vp/technical/architecture-boundaries.yml` for a fuller layered-service example. The same `archtest` pattern also works with `dependency-cruiser`, `madge`, or `eslint-plugin-boundaries`.
+
 ```yaml
 # vp/technical/ci-stack.yml
 id: technical-ci-stack

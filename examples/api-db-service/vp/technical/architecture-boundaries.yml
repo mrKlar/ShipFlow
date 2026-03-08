@@ -1,0 +1,34 @@
+id: technical-architecture-boundaries
+title: API service keeps clean domain and application boundaries
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: tsarch
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden:
+      files: "src/domain/**/*.ts"
+      patterns: ["src/api/", "src/web/", "express", "fastify", "react"]
+  - layer_dependencies:
+      layers:
+        - name: api
+          files: "src/api/**/*.ts"
+          may_import: ["application", "shared"]
+        - name: application
+          files: "src/application/**/*.ts"
+          may_import: ["domain", "shared"]
+        - name: domain
+          files: "src/domain/**/*.ts"
+          may_import: ["shared"]
+        - name: shared
+          files: "src/shared/**/*.ts"
+          may_import: ["shared"]
+      allow_external: true
+      allow_unmatched_relative: false
+      allow_same_layer: true
+  - command_stdout_contains:
+      command: "npx tsarch --help"
+      text: "tsarch"
