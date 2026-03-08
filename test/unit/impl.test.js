@@ -44,6 +44,14 @@ line3
     assert.equal(files[0].content, "line1\nline2\nline3\n");
   });
 
+  it("parses file blocks wrapped in markdown fences", () => {
+    const text = "```text\n--- FILE: src/app.js ---\nconsole.log(\"ok\");\n--- END FILE ---\n```";
+    const files = parseFiles(text);
+    assert.equal(files.length, 1);
+    assert.equal(files[0].path, "src/app.js");
+    assert.equal(files[0].content, 'console.log("ok");\n');
+  });
+
   it("returns empty array for no files", () => {
     assert.deepEqual(parseFiles("no files here"), []);
   });

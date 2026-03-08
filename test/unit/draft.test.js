@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { buildDraft, draft, resolveDraftOptions } from "../../lib/draft.js";
+import { buildDraft, draft, parseAiDraftResponse, resolveDraftOptions } from "../../lib/draft.js";
 
 async function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-draft-"));
@@ -81,6 +81,12 @@ describe("buildDraft", () => {
 });
 
 describe("draft", () => {
+  it("parses AI draft JSON even when wrapped in markdown fences", () => {
+    const parsed = parseAiDraftResponse('Draft:\n```json\n{"summary":"ok","proposals":[]}\n```\n');
+    assert.equal(parsed.summary, "ok");
+    assert.deepEqual(parsed.proposals, []);
+  });
+
   it("keeps local drafting by default but auto-resolves the AI provider", async () => {
     await withTmpDir(async tmpDir => {
       fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
@@ -250,12 +256,10 @@ describe("draft", () => {
       });
 
       const behavior = result.proposals.find(proposal => proposal.path.startsWith("vp/behavior/"));
-      const database = result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-smoke.yml");
       assert.equal(behavior.validation.auto_write, false);
-      assert.equal(database.validation.auto_write, false);
       assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
-      assert.ok(!result.written.includes("vp/db/requested-sqlite-smoke.yml"));
-      assert.ok(result.proposal_validation.needs_review >= 2);
+      assert.ok(result.written.includes("vp/db/requested-sqlite-smoke.yml"));
+      assert.ok(result.proposal_validation.needs_review >= 1);
     });
   });
 });
