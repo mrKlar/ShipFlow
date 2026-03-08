@@ -501,7 +501,7 @@ ShipFlow enforces separation between verification and implementation:
 | Protected | Contents | Who writes |
 |---|---|---|
 | `vp/` | Verifications (YAML) | Human + AI (verification phase only) |
-| `.gen/` | Generated Playwright tests | `shipflow gen` |
+| `.gen/` | Generated tests (Playwright, k6, technical) | `shipflow gen` |
 | `evidence/` | Test results | `shipflow verify` |
 
 Hooks enforce this automatically per platform:

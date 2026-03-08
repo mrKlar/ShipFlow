@@ -194,7 +194,7 @@ your-app/
 │   ├── technical/*.yml
 │   ├── policy/*.rego
 │   └── ui/_fixtures/*.yml
-├── 📂 .gen/                      # 🤖 Generated tests (don't touch)
+├── 📂 .gen/                      # 🤖 Generated tests — all types (don't touch)
 │   ├── playwright/*.test.ts
 │   └── k6/*.js
 ├── 📂 evidence/                  # 📊 Results (don't touch)
@@ -206,13 +206,52 @@ your-app/
 ## 🛠️ CLI
 
 ```bash
-shipflow init [--claude|--codex|--gemini]   # 📦 Scaffold project
+shipflow init [--claude|--codex|--gemini|--kiro|--all]   # 📦 Scaffold project
 shipflow map                                 # 🗺️  Analyze repo + coverage gaps before drafting
+shipflow draft [--write]                     # ✍️  Local drafting workflow + optional VP starter files
+shipflow doctor                              # 🩺  Check local tools and AI CLI integrations
 shipflow lint                                # 🔎  Lint VP quality before generation
 shipflow gen                                 # ⚙️  Compile verifications → tests
 shipflow verify                              # ✅ Run tests → evidence
 shipflow run                                 # 🔁 Full autonomous loop: gen → impl → verify
 shipflow status                              # 📊 Show project state
+```
+
+### Example Technical Checks
+
+```yaml
+# vp/technical/architecture-boundaries.yml
+id: technical-architecture-boundaries
+title: Domain layer stays isolated from UI
+severity: blocker
+category: architecture
+runner:
+  kind: archtest
+  framework: tsarch
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
+  - command_succeeds: { command: "npx tsarch --help" }
+```
+
+```yaml
+# vp/technical/ci-stack.yml
+id: technical-ci-stack
+title: Repository uses GitHub Actions and Playwright
+severity: blocker
+category: ci
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists: { path: ".github/workflows/ci.yml" }
+  - dependency_present: { name: "@playwright/test", section: devDependencies }
+  - github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/checkout@v4" }
 ```
 
 ## ⚙️ Configuration
