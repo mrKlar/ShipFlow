@@ -33,7 +33,7 @@ Traditional spec-driven development was designed for humans writing code. You sp
 |---|---|---|
 | 📝 | Write specs, then code separately | Verifications ARE the spec AND the test |
 | 🔄 | Specs drift from implementation | Lock file detects any divergence |
-| 🧪 | Manual testing against specs | Automated Playwright tests, every time |
+| 🧪 | Manual testing against specs | Auto-generated tests: UI, API, DB, behavior, load |
 | 🤞 | Trust the developer followed the spec | Hooks block the AI from cheating |
 | ⏱️ | Weeks to go from spec to working app | **Minutes.** The AI loops until green. |
 
