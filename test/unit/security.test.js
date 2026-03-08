@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { SecurityCheck } from "../../lib/schema/security-check.zod.js";
-import { securityAssertExpr, genSecurityTest } from "../../lib/gen-security.js";
+import { securityAssertConditionExpr, securityAssertExpr, genSecurityTest } from "../../lib/gen-security.js";
 
 const base = {
   id: "security-authz",
@@ -72,6 +72,12 @@ describe("securityAssertExpr", () => {
   });
 });
 
+describe("securityAssertConditionExpr", () => {
+  it("generates status condition", () => {
+    assert.equal(securityAssertConditionExpr({ status: 401 }), "res.status() === 401");
+  });
+});
+
 describe("genSecurityTest", () => {
   it("generates request-based Playwright security test", () => {
     const code = genSecurityTest({
@@ -84,6 +90,7 @@ describe("genSecurityTest", () => {
     assert.ok(code.includes("MUTATION_REQUEST_SPEC"));
     assert.ok(code.includes("sendShipFlowSecurityRequest"));
     assert.ok(code.includes("toBe(401)"));
+    assert.ok(code.includes("[mutation guard]"));
   });
 
   it("generates POST security test with body and headers", () => {

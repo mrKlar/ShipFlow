@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { DbCheck } from "../../lib/schema/db-check.zod.js";
-import { dbAssertExpr, genDbTest } from "../../lib/gen-db.js";
+import { dbAssertConditionExpr, dbAssertExpr, genDbTest } from "../../lib/gen-db.js";
 
 const base = {
   id: "users-check",
@@ -119,6 +119,18 @@ describe("dbAssertExpr", () => {
 
   it("throws on unknown assert", () => {
     assert.throws(() => dbAssertExpr({ unknown: {} }), /Unknown DB assert/);
+  });
+});
+
+describe("dbAssertConditionExpr", () => {
+  it("generates row_count condition", () => {
+    assert.equal(dbAssertConditionExpr({ row_count: 3 }), "rows.length === 3");
+  });
+
+  it("generates column_contains condition", () => {
+    const code = dbAssertConditionExpr({ column_contains: { column: "name", value: "Bob" } });
+    assert.ok(code.includes("rows.some"));
+    assert.ok(code.includes('"Bob"'));
   });
 });
 

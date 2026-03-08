@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { ApiCheck } from "../../lib/schema/api-check.zod.js";
-import { apiAssertExpr, genApiTest } from "../../lib/gen-api.js";
+import { apiAssertConditionExpr, apiAssertExpr, genApiTest } from "../../lib/gen-api.js";
 
 const base = {
   id: "get-users",
@@ -168,6 +168,17 @@ describe("apiAssertExpr", () => {
   });
 });
 
+describe("apiAssertConditionExpr", () => {
+  it("generates status condition", () => {
+    assert.equal(apiAssertConditionExpr({ status: 200 }), "res.status() === 200");
+  });
+
+  it("generates body condition", () => {
+    const code = apiAssertConditionExpr({ body_not_contains: "stack" });
+    assert.ok(code.includes("rawBody.includes"));
+  });
+});
+
 describe("genApiTest", () => {
   it("generates GET request", () => {
     const code = genApiTest({ ...base, assert: [{ status: 200 }] });
@@ -176,6 +187,7 @@ describe("genApiTest", () => {
     assert.ok(code.includes("sendShipFlowRequest"));
     assert.ok(code.includes('"path":"/api/users"'));
     assert.ok(code.includes("toBe(200)"));
+    assert.ok(code.includes("[mutation guard]"));
   });
 
   it("generates POST with body_json", () => {
