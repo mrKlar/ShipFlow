@@ -27,6 +27,18 @@ Traditional spec-driven development was designed for humans writing code. You sp
 
 ---
 
+<div align="center">
+
+## 🗑️ Delete Everything. Regenerate Anytime.
+
+### Your code is **disposable**. Your verifications are **permanent**.
+
+</div>
+
+> Don't like the implementation? `rm -rf src/ && shipflow impl` — the AI rebuilds the entire app from scratch, guaranteed to pass every verification. **Legacy code doesn't exist** when you can regenerate on demand. No more "don't touch that, nobody knows how it works." No more drift. No more tech debt that compounds for years. Your verifications are the single source of truth — the code is just a **replaceable artifact**.
+
+---
+
 ## ⚡ Why ShipFlow
 
 | | Spec-driven *(old)* | ShipFlow *(new)* |
@@ -36,6 +48,7 @@ Traditional spec-driven development was designed for humans writing code. You sp
 | 🧪 | Manual testing against specs | Auto-generated tests: UI, API, DB, behavior, load |
 | 🤞 | Trust the developer followed the spec | Hooks block the AI from cheating |
 | ⏱️ | Weeks to go from spec to working app | **Minutes.** The AI loops until green. |
+| 🗑️ | Rewrite = months of work lost | **Delete & regenerate.** Code is disposable, verifications are forever. |
 
 ---
 
