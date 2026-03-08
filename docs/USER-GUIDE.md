@@ -5,7 +5,7 @@
 ShipFlow is a verification-first framework. You describe what your app must do in YAML files. ShipFlow compiles those into Playwright tests and runs them. The AI implements the code and loops until every test passes.
 
 ```
-vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.spec.ts  →  shipflow verify  →  evidence/run.json
+vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts  →  shipflow verify  →  evidence/run.json
 ```
 
 The only files you write and review are under `vp/`. Everything else is generated.
@@ -271,7 +271,7 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright specs into `.gen/playwright/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, and creates `.gen/vp.lock.json` (SHA-256 hash of all VP files).
 
 ### Run verification
 

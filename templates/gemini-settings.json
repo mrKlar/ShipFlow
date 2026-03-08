@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "shipflow-guard",
+            "type": "command",
+            "command": "node tools/shipflow/hooks/gemini-guard.js",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

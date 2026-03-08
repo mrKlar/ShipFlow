@@ -2,16 +2,35 @@
 import { gen } from "../lib/gen.js";
 import { verify } from "../lib/verify.js";
 
-const cmd = process.argv[2];
+const args = process.argv.slice(2);
+const cmd = args.find(a => !a.startsWith("-"));
+const flags = new Set(args.filter(a => a.startsWith("-")));
+const verbose = flags.has("--verbose") || flags.has("-v");
+const quiet = flags.has("--quiet") || flags.has("-q");
 
 async function main() {
-  if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
+  if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Usage:
-  shipflow gen       Compile VP specs into runnable tests
-  shipflow verify    Run generated tests, produce evidence
-  shipflow impl      AI generates app code from VP + tests
-  shipflow run       Full loop: gen → impl → verify (repeat until green)
+  shipflow gen         Compile VP verifications into runnable tests
+  shipflow verify      Run generated tests, produce evidence
+  shipflow impl        AI generates app code from VP + tests
+  shipflow run         Full loop: gen → impl → verify (repeat until green)
+  shipflow init        Scaffold vp/ directories + platform config
+    --claude             Setup for Claude Code (default)
+    --codex              Setup for OpenAI Codex CLI
+    --gemini             Setup for Google Gemini CLI
+  shipflow status      Show verification state (VP, generated, evidence)
+
+Flags:
+  --verbose, -v        Show detailed output
+  --quiet, -q          Minimal output
+
+Exit codes:
+  0    Success (all tests pass)
+  1    Test failure or runtime error
+  2    Usage error (unknown command)
+  3    Policy violation
 `);
     process.exit(0);
   }
@@ -22,7 +41,7 @@ Usage:
   }
 
   if (cmd === "verify") {
-    const { exitCode } = await verify({ cwd: process.cwd() });
+    const { exitCode } = await verify({ cwd: process.cwd(), verbose });
     process.exit(exitCode);
   }
 
@@ -38,11 +57,28 @@ Usage:
     process.exit(code);
   }
 
+  if (cmd === "init") {
+    const { init } = await import("../lib/init.js");
+    const platforms = [];
+    if (flags.has("--claude")) platforms.push("claude");
+    if (flags.has("--codex")) platforms.push("codex");
+    if (flags.has("--gemini")) platforms.push("gemini");
+    if (platforms.length === 0) platforms.push("claude");
+    init({ cwd: process.cwd(), platforms });
+    return;
+  }
+
+  if (cmd === "status") {
+    const { status } = await import("../lib/status.js");
+    status({ cwd: process.cwd() });
+    return;
+  }
+
   console.error(`Unknown command: ${cmd}`);
   process.exit(2);
 }
 
 main().catch((err) => {
-  console.error(err?.stack || String(err));
+  if (!quiet) console.error(err?.stack || String(err));
   process.exit(1);
 });

@@ -1,0 +1,9 @@
+# ShipFlow — Codex CLI configuration
+# Restricts the AI to only write under src/ via OS-level sandboxing.
+
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# Only allow writes to src/ (and /tmp for transient files)
+writable_roots = ["src/"]
+network_access = true

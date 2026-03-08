@@ -8,11 +8,12 @@ This project uses ShipFlow for verification-first development.
 
 Draft verifications in `vp/` — YAML files describing what the app must do.
 
-Four types of verifications:
+Five types of verifications:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
 - `vp/behavior/*.yml` — behavior checks (Given/When/Then scenarios)
 - `vp/api/*.yml` — API checks (HTTP requests + response assertions)
 - `vp/db/*.yml` — DB checks (SQL queries + row/cell assertions)
+- `vp/nfr/*.yml` — NFR checks (load/performance thresholds)
 - `vp/ui/_fixtures/*.yml` — reusable setup flows (login, etc.)
 
 You MAY modify `vp/` files during this phase only.

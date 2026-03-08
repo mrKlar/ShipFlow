@@ -1,6 +1,6 @@
 # Todo App — ShipFlow Example
 
-This example demonstrates the full ShipFlow loop: **define specs → generate tests → AI implements → verify → loop until green**.
+This example demonstrates the full ShipFlow loop: **define verifications → generate tests → AI implements → verify → loop until green**.
 
 No human writes app code. The `src/` directory starts empty and is generated entirely by the AI.
 
@@ -13,9 +13,9 @@ todo-app/
   package.json               # Scripts and dependencies
   vp/                        # Verification Pack (human-written)
     ui/
-      add-todo.yml           # Spec: add a todo item
-      complete-todo.yml      # Spec: mark a todo as complete
-      filter-todos.yml       # Spec: filter todos by status
+      add-todo.yml           # Verification: add a todo item
+      complete-todo.yml      # Verification: mark a todo as complete
+      filter-todos.yml       # Verification: filter todos by status
       _fixtures/
         login.yml            # Reusable login flow
   src/                       # App code (AI-generated, starts empty)
@@ -38,7 +38,7 @@ npm run shipflow:run
 ```
 
 ShipFlow will:
-1. Compile `vp/` specs into Playwright tests (`.gen/`)
+1. Compile `vp/` verifications into Playwright tests (`.gen/`)
 2. Call Claude to generate the app code (`src/`)
 3. Run Playwright to verify the implementation
 4. If tests fail, feed errors back to Claude and retry

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { ApiCheck } from "../../lib/schema/api-check.zod.js";
-import { apiAssertExpr, genApiSpec } from "../../lib/gen-api.js";
+import { apiAssertExpr, genApiTest } from "../../lib/gen-api.js";
 
 const base = {
   id: "get-users",
@@ -129,12 +129,12 @@ describe("apiAssertExpr", () => {
   });
 });
 
-describe("genApiSpec", () => {
+describe("genApiTest", () => {
   it("generates GET request", () => {
-    const spec = genApiSpec({ ...base, assert: [{ status: 200 }] });
-    assert.ok(spec.includes("request.get("));
-    assert.ok(spec.includes('"http://localhost:3000/api/users"'));
-    assert.ok(spec.includes("toBe(200)"));
+    const code = genApiTest({ ...base, assert: [{ status: 200 }] });
+    assert.ok(code.includes("request.get("));
+    assert.ok(code.includes('"http://localhost:3000/api/users"'));
+    assert.ok(code.includes("toBe(200)"));
   });
 
   it("generates POST with body_json", () => {
@@ -143,9 +143,9 @@ describe("genApiSpec", () => {
       request: { method: "POST", path: "/api/users", body_json: { name: "Bob" } },
       assert: [{ status: 201 }],
     };
-    const spec = genApiSpec(check);
-    assert.ok(spec.includes("request.post("));
-    assert.ok(spec.includes('"name":"Bob"'));
+    const code = genApiTest(check);
+    assert.ok(code.includes("request.post("));
+    assert.ok(code.includes('"name":"Bob"'));
   });
 
   it("generates headers", () => {
@@ -154,9 +154,9 @@ describe("genApiSpec", () => {
       request: { method: "GET", path: "/x", headers: { Authorization: "Bearer tok" } },
       assert: [],
     };
-    const spec = genApiSpec(check);
-    assert.ok(spec.includes("Authorization"));
-    assert.ok(spec.includes("Bearer tok"));
+    const code = genApiTest(check);
+    assert.ok(code.includes("Authorization"));
+    assert.ok(code.includes("Bearer tok"));
   });
 
   it("parses JSON body when json assertions exist", () => {
@@ -164,13 +164,13 @@ describe("genApiSpec", () => {
       ...base,
       assert: [{ json_equals: { path: "$.name", equals: "Alice" } }],
     };
-    const spec = genApiSpec(check);
-    assert.ok(spec.includes("await res.json()"));
-    assert.ok(spec.includes("body.name"));
+    const code = genApiTest(check);
+    assert.ok(code.includes("await res.json()"));
+    assert.ok(code.includes("body.name"));
   });
 
   it("does not parse JSON when only status check", () => {
-    const spec = genApiSpec({ ...base, assert: [{ status: 200 }] });
-    assert.ok(!spec.includes("res.json()"));
+    const code = genApiTest({ ...base, assert: [{ status: 200 }] });
+    assert.ok(!code.includes("res.json()"));
   });
 });

@@ -12,7 +12,7 @@ This project uses ShipFlow for verification-first development.
 ```
 1. Read VP       →  Read all vp/**/*.yml
 2. Generate      →  Run: node ../../bin/shipflow.js gen
-3. Read tests    →  Read .gen/playwright/*.spec.ts
+3. Read tests    →  Read .gen/playwright/*.test.ts
 4. Implement     →  Write app code under src/
 5. Verify        →  Run: node ../../bin/shipflow.js verify
 6. Pass?         →  If exit 0: DONE. If not: read errors, fix code, goto 5.

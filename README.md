@@ -13,7 +13,7 @@ ShipFlow is a verification-first framework for [Claude Code](https://docs.anthro
 
 ### Phase 1 — Verification (`/shipflow-verifications`)
 
-You describe what you want. The AI immediately drafts verifications — no interview, no spec documents. You review and refine.
+You describe what you want. The AI immediately drafts verifications — no interview, no lengthy documents. You review and refine.
 
 ```yaml
 # vp/ui/add-numbers.yml
@@ -75,7 +75,7 @@ To scaffold a project with hooks and CLAUDE.md:
 
 ## Verification Types
 
-ShipFlow supports four types of verifications. All compile to Playwright tests.
+ShipFlow supports five types of verifications, plus policy gates.
 
 ### UI Checks — `vp/ui/*.yml`
 
@@ -176,6 +176,31 @@ assert:
 
 **Assertions**: `row_count`, `cell_equals`, `cell_matches`, `column_contains`
 
+### NFR Checks — `vp/nfr/*.yml`
+
+Verify performance under load. Generates [k6](https://k6.io) scripts.
+
+```yaml
+id: homepage-load
+title: Homepage handles 100 concurrent users
+severity: blocker
+app:
+  kind: nfr
+  base_url: http://localhost:3000
+scenario:
+  endpoint: /
+  method: GET
+  thresholds:
+    http_req_duration_p95: 500
+    http_req_failed: 0.01
+  vus: 100
+  duration: 30s
+```
+
+**Thresholds**: `http_req_duration_p95`, `http_req_duration_p99`, `http_req_failed`
+
+Requires `k6` to be installed. NFR checks run during `shipflow verify` if k6 is available.
+
 ### Fixtures — `vp/ui/_fixtures/*.yml`
 
 Reusable setup flows (login, etc.) for UI and behavior checks via `setup:`.
@@ -192,6 +217,21 @@ flow:
   - click: { name: "Sign in" }
 ```
 
+### Policy Gates — `vp/policy/*.rego`
+
+OPA/Rego policies evaluated before tests run. Block verification if organizational rules are violated.
+
+```rego
+package shipflow
+
+deny[msg] {
+  count(input.vp_files) == 0
+  msg := "No verification files found"
+}
+```
+
+Requires `opa` to be installed. Policies are optional — if no `.rego` files exist, the gate is skipped.
+
 ## Project Structure
 
 ```
@@ -201,12 +241,16 @@ your-app/
 │   ├── behavior/*.yml
 │   ├── api/*.yml
 │   ├── db/*.yml
+│   ├── nfr/*.yml
+│   ├── policy/*.rego
 │   └── ui/_fixtures/*.yml
-├── .gen/                        # Generated tests (do not edit)
-│   ├── playwright/*.spec.ts
+├── .gen/                        # Generated (do not edit)
+│   ├── playwright/*.test.ts
+│   ├── k6/*.js
 │   └── vp.lock.json
-├── evidence/                    # Test results (do not edit)
-│   └── run.json
+├── evidence/                    # Results (do not edit)
+│   ├── run.json
+│   └── policy.json
 ├── src/                         # Application code (AI writes this)
 └── shipflow.json                # Config
 ```
@@ -214,9 +258,15 @@ your-app/
 ## CLI
 
 ```bash
-shipflow gen       # vp/ → .gen/playwright/*.spec.ts + vp.lock.json
+shipflow init      # Scaffold vp/, CLAUDE.md, hooks, .gitignore
+shipflow gen       # vp/ → .gen/playwright/*.test.ts + .gen/k6/*.js + vp.lock.json
 shipflow verify    # Run tests → evidence/run.json, exit 0 if all pass
+shipflow status    # Show verification state (VP, generated, evidence)
 ```
+
+**Flags**: `--verbose` / `-v`, `--quiet` / `-q`
+
+**Exit codes**: `0` success, `1` test failure, `2` usage error, `3` policy violation
 
 ## Anti-Cheat
 

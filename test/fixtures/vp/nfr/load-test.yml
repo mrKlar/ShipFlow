@@ -1,0 +1,14 @@
+id: load-homepage
+title: Homepage handles 50 concurrent users
+severity: blocker
+app:
+  kind: nfr
+  base_url: http://localhost:3000
+scenario:
+  endpoint: /
+  method: GET
+  thresholds:
+    http_req_duration_p95: 500
+    http_req_failed: 0.01
+  vus: 50
+  duration: 30s

@@ -56,10 +56,10 @@ line3
 
 describe("buildPrompt", () => {
   const vpFiles = [{ path: "vp/ui/test.yml", content: "id: test\n" }];
-  const genFiles = [{ path: ".gen/playwright/test.spec.ts", content: "test('x', ...)" }];
+  const genFiles = [{ path: ".gen/playwright/test.test.ts", content: "test('x', ...)" }];
   const config = { impl: { srcDir: "src", context: "Node.js app" } };
 
-  it("includes VP specs", () => {
+  it("includes VP verifications", () => {
     const p = buildPrompt(vpFiles, [], [], config, null);
     assert.ok(p.includes("vp/ui/test.yml"));
     assert.ok(p.includes("id: test"));
@@ -67,7 +67,7 @@ describe("buildPrompt", () => {
 
   it("includes generated tests", () => {
     const p = buildPrompt(vpFiles, genFiles, [], config, null);
-    assert.ok(p.includes(".gen/playwright/test.spec.ts"));
+    assert.ok(p.includes(".gen/playwright/test.test.ts"));
     assert.ok(p.includes("test('x', ...)"));
   });
 

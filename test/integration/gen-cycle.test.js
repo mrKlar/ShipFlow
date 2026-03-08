@@ -24,10 +24,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(fs.existsSync(path.join(genDir, "playwright")));
   });
 
-  it("generates one spec per check YAML (UI + behavior + API + DB)", () => {
-    const specs = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".spec.ts"));
+  it("generates one test per check YAML (UI + behavior + API + DB)", () => {
+    const tests = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".test.ts"));
     // 3 UI + 1 behavior + 1 API + 1 DB = 6
-    assert.equal(specs.length, 6);
+    assert.equal(tests.length, 6);
   });
 
   it("generates vp.lock.json with correct structure", () => {
@@ -48,19 +48,19 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(paths.some(p => p.includes("_fixtures")));
   });
 
-  it("all generated specs have Playwright import", () => {
+  it("all generated tests have Playwright import", () => {
     const dir = path.join(genDir, "playwright");
-    const specs = fs.readdirSync(dir).filter(f => f.endsWith(".spec.ts"));
-    for (const spec of specs) {
-      const content = fs.readFileSync(path.join(dir, spec), "utf-8");
+    const tests = fs.readdirSync(dir).filter(f => f.endsWith(".test.ts"));
+    for (const t of tests) {
+      const content = fs.readFileSync(path.join(dir, t), "utf-8");
       assert.ok(content.includes('import { test, expect } from "@playwright/test"'));
     }
   });
 
-  it("login spec contains fill, url_matches, visible", () => {
+  it("login test contains fill, url_matches, visible", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("login"));
-    assert.ok(file, "login spec file should exist");
+    assert.ok(file, "login test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes(".fill("), "should contain fill");
     assert.ok(content.includes("toHaveURL("), "should contain url_matches");
@@ -69,10 +69,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("ui-login: User can log in"), "should contain test title");
   });
 
-  it("dashboard spec inlines setup fixture", () => {
+  it("dashboard test inlines setup fixture", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("dashboard"));
-    assert.ok(file, "dashboard spec file should exist");
+    assert.ok(file, "dashboard test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes("// setup: login-fixture"), "should reference fixture");
     assert.ok(content.includes(".fill("), "should inline fixture fill steps");
@@ -80,20 +80,20 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("toBeHidden()"), "should contain hidden assertion");
   });
 
-  it("nav spec contains hover and selectOption", () => {
+  it("nav test contains hover and selectOption", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("nav"));
-    assert.ok(file, "nav spec file should exist");
+    assert.ok(file, "nav test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes(".hover()"), "should contain hover");
     assert.ok(content.includes(".selectOption("), "should contain selectOption");
     assert.ok(content.includes("toHaveText(new RegExp("), "should contain text_matches regex");
   });
 
-  it("behavior spec has test.describe and Given/When/Then", () => {
+  it("behavior test has test.describe and Given/When/Then", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("behavior"));
-    assert.ok(file, "behavior spec file should exist");
+    assert.ok(file, "behavior test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes("test.describe("), "should use test.describe");
     assert.ok(content.includes("// Given"), "should have Given comment");
@@ -102,10 +102,10 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("// setup: login-fixture"), "should inline fixture");
   });
 
-  it("API spec uses request fixture", () => {
+  it("API test uses request fixture", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("api"));
-    assert.ok(file, "API spec file should exist");
+    assert.ok(file, "API test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes("{ request }"), "should use request fixture");
     assert.ok(content.includes("request.get("), "should call request.get");
@@ -114,16 +114,28 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("Bearer test-token"), "should include auth header");
   });
 
-  it("DB spec uses execFileSync and sqlite3", () => {
+  it("DB test uses execFileSync and sqlite3", () => {
     const dir = path.join(genDir, "playwright");
     const file = fs.readdirSync(dir).find(f => f.includes("db"));
-    assert.ok(file, "DB spec file should exist");
+    assert.ok(file, "DB test file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
     assert.ok(content.includes("execFileSync"), "should import execFileSync");
     assert.ok(content.includes("sqlite3"), "should use sqlite3 CLI");
     assert.ok(content.includes("function query(sql)"), "should define query helper");
     assert.ok(content.includes("exec("), "should call exec for setup_sql");
     assert.ok(content.includes("toHaveLength(1)"), "should check row_count");
+  });
+
+  it("generates k6 script for NFR check", () => {
+    const k6Dir = path.join(genDir, "k6");
+    assert.ok(fs.existsSync(k6Dir), ".gen/k6/ should exist");
+    const scripts = fs.readdirSync(k6Dir).filter(f => f.endsWith(".js"));
+    assert.equal(scripts.length, 1, "should have 1 k6 script");
+    const content = fs.readFileSync(path.join(k6Dir, scripts[0]), "utf-8");
+    assert.ok(content.includes('import http from "k6/http"'), "should import k6");
+    assert.ok(content.includes("vus: 50"), "should have vus");
+    assert.ok(content.includes("p(95)<500"), "should have threshold");
+    assert.ok(content.includes("http.get("), "should have GET request");
   });
 });
 

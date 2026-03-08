@@ -1,4 +1,4 @@
-# Block 1: Harden the UI vertical — Tasks
+# Block 1: Harden the UI vertical — Tasks ✅ COMPLETE
 
 ## 1.1 Add `fill` step
 
@@ -6,7 +6,7 @@ Allow text input in forms.
 
 - Add `fill` to the Zod union in `lib/schema/ui-check.zod.js`
   - Schema: `{ fill: { testid: string, value: string } }` or `{ fill: { role: string, name: string, value: string } }`
-- Add `fill` branch in `genPlaywrightSpec()` in `lib/gen.js`
+- Add `fill` branch in `genPlaywrightTest()` in `lib/gen.js`
   - Output: `await page.getByTestId("x").fill("value")` or `await page.getByRole("textbox", { name: "x" }).fill("value")`
 - Test with a sample `vp/ui/` fixture
 
@@ -16,7 +16,7 @@ Allow dropdown selection.
 
 - Add `select` to the Zod union in `ui-check.zod.js`
   - Schema: `{ select: { testid: string, value: string } }` or by label
-- Add `select` branch in `genPlaywrightSpec()`
+- Add `select` branch in `genPlaywrightTest()`
   - Output: `await page.getByTestId("x").selectOption("value")`
 - Test with a sample fixture
 
@@ -26,7 +26,7 @@ Allow hover interactions (menus, tooltips).
 
 - Add `hover` to the Zod union in `ui-check.zod.js`
   - Schema: `{ hover: { role: string, name: string } }` (same locator logic as `click`)
-- Add `hover` branch in `genPlaywrightSpec()`
+- Add `hover` branch in `genPlaywrightTest()`
   - Output: `await page.getByRole("button", { name: "x" }).hover()`
 - Reuse `locatorExpr()` helper
 
@@ -64,7 +64,7 @@ Allow a check to declare a `setup` referencing another check or a reusable fixtu
 
 - Define fixture format: `vp/ui/_fixtures/*.yml` with an `id` and a `flow` (no asserts)
 - Add optional `setup: fixture-id` field to `UiCheck` schema
-- In `genPlaywrightSpec()`, emit a `test.beforeEach` block that replays the fixture flow
+- In `genPlaywrightTest()`, emit a `test.beforeEach` block that replays the fixture flow
 - Generate fixture helpers as shared modules in `.gen/playwright/fixtures/`
 
 ## 1.8 Better schema validation errors

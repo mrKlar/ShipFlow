@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { DbCheck } from "../../lib/schema/db-check.zod.js";
-import { dbAssertExpr, genDbSpec } from "../../lib/gen-db.js";
+import { dbAssertExpr, genDbTest } from "../../lib/gen-db.js";
 
 const base = {
   id: "users-check",
@@ -101,15 +101,15 @@ describe("dbAssertExpr", () => {
   });
 });
 
-describe("genDbSpec", () => {
+describe("genDbTest", () => {
   it("generates sqlite test with helpers", () => {
     const check = { ...base, assert: [{ row_count: 1 }] };
-    const spec = genDbSpec(check);
-    assert.ok(spec.includes('import { execFileSync }'));
-    assert.ok(spec.includes("sqlite3"));
-    assert.ok(spec.includes("-json"));
-    assert.ok(spec.includes("function query(sql)"));
-    assert.ok(spec.includes("toHaveLength(1)"));
+    const code = genDbTest(check);
+    assert.ok(code.includes('import { execFileSync }'));
+    assert.ok(code.includes("sqlite3"));
+    assert.ok(code.includes("-json"));
+    assert.ok(code.includes("function query(sql)"));
+    assert.ok(code.includes("toHaveLength(1)"));
   });
 
   it("generates postgresql test with json_agg wrapper", () => {
@@ -118,10 +118,10 @@ describe("genDbSpec", () => {
       app: { kind: "db", engine: "postgresql", connection: "postgresql://localhost/test" },
       assert: [{ row_count: 2 }],
     };
-    const spec = genDbSpec(check);
-    assert.ok(spec.includes("psql"));
-    assert.ok(spec.includes("json_agg"));
-    assert.ok(spec.includes("row_to_json"));
+    const code = genDbTest(check);
+    assert.ok(code.includes("psql"));
+    assert.ok(code.includes("json_agg"));
+    assert.ok(code.includes("row_to_json"));
   });
 
   it("generates setup_sql execution", () => {
@@ -130,9 +130,9 @@ describe("genDbSpec", () => {
       setup_sql: "INSERT INTO users VALUES ('x');",
       assert: [],
     };
-    const spec = genDbSpec(check);
-    assert.ok(spec.includes("exec("));
-    assert.ok(spec.includes("INSERT INTO users"));
+    const code = genDbTest(check);
+    assert.ok(code.includes("exec("));
+    assert.ok(code.includes("INSERT INTO users"));
   });
 
   it("generates cell assertions", () => {
@@ -143,8 +143,8 @@ describe("genDbSpec", () => {
         { cell_matches: { row: 0, column: "email", matches: "@test" } },
       ],
     };
-    const spec = genDbSpec(check);
-    assert.ok(spec.includes('rows[0]["name"]'));
-    assert.ok(spec.includes("toMatch"));
+    const code = genDbTest(check);
+    assert.ok(code.includes('rows[0]["name"]'));
+    assert.ok(code.includes("toMatch"));
   });
 });

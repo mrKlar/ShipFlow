@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { locatorExpr, genStep, assertExpr, genPlaywrightSpec } from "../../lib/gen.js";
+import { locatorExpr, genStep, assertExpr, genPlaywrightTest } from "../../lib/gen.js";
 
 describe("locatorExpr", () => {
   it("generates getByTestId", () => {
@@ -171,7 +171,7 @@ describe("assertExpr", () => {
   });
 });
 
-describe("genPlaywrightSpec", () => {
+describe("genPlaywrightTest", () => {
   const check = {
     id: "test-1",
     title: "Basic test",
@@ -186,14 +186,14 @@ describe("genPlaywrightSpec", () => {
     ],
   };
 
-  it("generates valid Playwright spec", () => {
-    const spec = genPlaywrightSpec(check);
-    assert.ok(spec.includes('import { test, expect } from "@playwright/test"'));
-    assert.ok(spec.includes('"test-1: Basic test"'));
-    assert.ok(spec.includes('await page.goto("http://localhost:3000")'));
-    assert.ok(spec.includes('await page.goto("http://localhost:3000/page")'));
-    assert.ok(spec.includes('.click()'));
-    assert.ok(spec.includes('toHaveText("OK")'));
+  it("generates valid Playwright test", () => {
+    const code = genPlaywrightTest(check);
+    assert.ok(code.includes('import { test, expect } from "@playwright/test"'));
+    assert.ok(code.includes('"test-1: Basic test"'));
+    assert.ok(code.includes('await page.goto("http://localhost:3000")'));
+    assert.ok(code.includes('await page.goto("http://localhost:3000/page")'));
+    assert.ok(code.includes('.click()'));
+    assert.ok(code.includes('toHaveText("OK")'));
   });
 
   it("inlines setup fixture flow", () => {
@@ -208,27 +208,27 @@ describe("genPlaywrightSpec", () => {
         ],
       }],
     ]);
-    const spec = genPlaywrightSpec(withSetup, fixturesMap);
-    assert.ok(spec.includes("// setup: auth"));
-    assert.ok(spec.includes('goto("http://localhost:3000/login")'));
-    assert.ok(spec.includes('.fill("a@b.com")'));
+    const code = genPlaywrightTest(withSetup, fixturesMap);
+    assert.ok(code.includes("// setup: auth"));
+    assert.ok(code.includes('goto("http://localhost:3000/login")'));
+    assert.ok(code.includes('.fill("a@b.com")'));
     // Setup steps appear before the check's own flow
-    const setupIdx = spec.indexOf("// setup: auth");
-    const openIdx = spec.indexOf('goto("http://localhost:3000/page")');
+    const setupIdx = code.indexOf("// setup: auth");
+    const openIdx = code.indexOf('goto("http://localhost:3000/page")');
     assert.ok(setupIdx < openIdx);
   });
 
   it("throws on unknown fixture reference", () => {
     const withSetup = { ...check, setup: "missing" };
     assert.throws(
-      () => genPlaywrightSpec(withSetup, new Map()),
+      () => genPlaywrightTest(withSetup, new Map()),
       /Unknown fixture "missing"/,
     );
   });
 
   it("works without fixturesMap when no setup", () => {
-    const spec = genPlaywrightSpec(check);
-    assert.ok(spec.includes("test-1: Basic test"));
+    const code = genPlaywrightTest(check);
+    assert.ok(code.includes("test-1: Basic test"));
   });
 
   it("generates all assertion types", () => {
@@ -244,11 +244,11 @@ describe("genPlaywrightSpec", () => {
         { count: { testid: "e", equals: 2 } },
       ],
     };
-    const spec = genPlaywrightSpec(c);
-    assert.ok(spec.includes("toHaveText("));
-    assert.ok(spec.includes("toBeVisible()"));
-    assert.ok(spec.includes("toBeHidden()"));
-    assert.ok(spec.includes("toHaveURL("));
-    assert.ok(spec.includes("toHaveCount(2)"));
+    const code = genPlaywrightTest(c);
+    assert.ok(code.includes("toHaveText("));
+    assert.ok(code.includes("toBeVisible()"));
+    assert.ok(code.includes("toBeHidden()"));
+    assert.ok(code.includes("toHaveURL("));
+    assert.ok(code.includes("toHaveCount(2)"));
   });
 });

@@ -24,7 +24,7 @@ if (blocked) {
   process.stderr.write(
     `BLOCKED by ShipFlow: cannot modify ${rel}\n` +
     `Protected paths: ${PROTECTED.join("/*, ")}/*\n` +
-    `You can only modify files under src/. Fix the implementation, not the specs or tests.\n`,
+    `You can only modify files under src/. Fix the implementation, not the verifications or tests.\n`,
   );
   process.exit(2);
 }

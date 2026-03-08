@@ -8,7 +8,7 @@
     ],
     "Stop": [
       {
-        "command": "node tools/shipflow/bin/shipflow.js gen && node tools/shipflow/bin/shipflow.js verify"
+        "command": "node tools/shipflow/hooks/stop-verify.js"
       }
     ]
   }

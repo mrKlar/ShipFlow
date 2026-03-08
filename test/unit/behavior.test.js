@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { BehaviorCheck } from "../../lib/schema/behavior-check.zod.js";
-import { genBehaviorSpec } from "../../lib/gen-behavior.js";
+import { genBehaviorTest } from "../../lib/gen-behavior.js";
 
 const base = {
   id: "test-bdd",
@@ -73,7 +73,7 @@ describe("BehaviorCheck schema", () => {
   });
 });
 
-describe("genBehaviorSpec", () => {
+describe("genBehaviorTest", () => {
   const check = {
     ...base,
     given: [{ open: "/calc" }],
@@ -82,27 +82,27 @@ describe("genBehaviorSpec", () => {
   };
 
   it("generates test.describe with feature name", () => {
-    const spec = genBehaviorSpec(check);
-    assert.ok(spec.includes('test.describe("Calculator"'));
+    const code = genBehaviorTest(check);
+    assert.ok(code.includes('test.describe("Calculator"'));
   });
 
   it("generates test with id and scenario", () => {
-    const spec = genBehaviorSpec(check);
-    assert.ok(spec.includes('"test-bdd: Adding two numbers"'));
+    const code = genBehaviorTest(check);
+    assert.ok(code.includes('"test-bdd: Adding two numbers"'));
   });
 
   it("generates Given/When/Then comments", () => {
-    const spec = genBehaviorSpec(check);
-    assert.ok(spec.includes("// Given"));
-    assert.ok(spec.includes("// When"));
-    assert.ok(spec.includes("// Then"));
+    const code = genBehaviorTest(check);
+    assert.ok(code.includes("// Given"));
+    assert.ok(code.includes("// When"));
+    assert.ok(code.includes("// Then"));
   });
 
   it("generates flow steps and assertions", () => {
-    const spec = genBehaviorSpec(check);
-    assert.ok(spec.includes('goto("http://localhost:3000/calc")'));
-    assert.ok(spec.includes('.click()'));
-    assert.ok(spec.includes('toHaveText("5")'));
+    const code = genBehaviorTest(check);
+    assert.ok(code.includes('goto("http://localhost:3000/calc")'));
+    assert.ok(code.includes('.click()'));
+    assert.ok(code.includes('toHaveText("5")'));
   });
 
   it("inlines setup fixture", () => {
@@ -114,13 +114,13 @@ describe("genBehaviorSpec", () => {
         flow: [{ open: "/login" }, { fill: { testid: "email", value: "a@b.com" } }],
       }],
     ]);
-    const spec = genBehaviorSpec(withSetup, fixturesMap);
-    assert.ok(spec.includes("// setup: auth"));
-    assert.ok(spec.includes('goto("http://localhost:3000/login")'));
+    const code = genBehaviorTest(withSetup, fixturesMap);
+    assert.ok(code.includes("// setup: auth"));
+    assert.ok(code.includes('goto("http://localhost:3000/login")'));
   });
 
   it("throws on unknown fixture", () => {
     const withSetup = { ...check, setup: "missing" };
-    assert.throws(() => genBehaviorSpec(withSetup, new Map()), /Unknown fixture "missing"/);
+    assert.throws(() => genBehaviorTest(withSetup, new Map()), /Unknown fixture "missing"/);
   });
 });

@@ -1,0 +1,29 @@
+# ShipFlow — Codex CLI execution policy rules
+# Prevents destructive operations during implementation.
+# Place in .codex/rules/ in your project.
+
+# Block rm -rf on protected directories
+prefix_rule(
+    pattern=["rm", "-rf", "vp"],
+    decision="forbidden",
+    justification="ShipFlow: cannot delete verification pack"
+)
+
+prefix_rule(
+    pattern=["rm", "-rf", ".gen"],
+    decision="forbidden",
+    justification="ShipFlow: cannot delete generated tests"
+)
+
+prefix_rule(
+    pattern=["rm", "-rf", "evidence"],
+    decision="forbidden",
+    justification="ShipFlow: cannot delete evidence"
+)
+
+# Require approval for git operations
+prefix_rule(
+    pattern=["git", ["push", "reset", "rebase"]],
+    decision="prompt",
+    justification="ShipFlow: require approval for git operations"
+)

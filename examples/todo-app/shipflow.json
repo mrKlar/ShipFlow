@@ -1,6 +1,6 @@
 {
   "models": {
-    "spec": "claude-opus-4-6",
+    "verification": "claude-opus-4-6",
     "impl": "claude-sonnet-4-6"
   },
   "impl": {

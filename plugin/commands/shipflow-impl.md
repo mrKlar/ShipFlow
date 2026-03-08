@@ -25,7 +25,7 @@ Store the path as `SHIPFLOW` for all commands below.
 
 Execute in order. Do NOT skip steps. Do NOT report completion until verify exits 0.
 
-### 1. Read VP specs
+### 1. Read VP verifications
 
 Read silently:
 - `vp/ui/*.yml` — behavior checks
@@ -40,7 +40,7 @@ node $SHIPFLOW gen
 
 ### 3. Read generated tests
 
-Read `.gen/playwright/*.spec.ts`. Match every locator exactly:
+Read `.gen/playwright/*.test.ts`. Match every locator exactly:
 
 | In the test | Your HTML must have |
 |---|---|
@@ -88,4 +88,4 @@ Hooks enforce these constraints:
 - `PreToolUse` blocks Write/Edit to `vp/`, `.gen/`, `evidence/`
 - `Stop` hook runs verify and blocks if tests fail
 
-If a spec seems wrong, STOP and tell the user to run `/shipflow-verifications` to fix it.
+If a verification seems wrong, STOP and tell the user to run `/shipflow-verifications` to fix it.
