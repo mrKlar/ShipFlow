@@ -96,13 +96,13 @@ It is the fastest way to prove the core claim: delete the implementation, keep t
 
 ## 🚀 Agent Flow
 
-In your project directory, scaffold the local ShipFlow files first:
+In your project:
 
 ```bash
 shipflow init [--claude|--codex|--gemini|--kiro|--all]
 ```
 
-Then open that project in your AI coding agent, start with the draft flow, then run the standard implementation loop:
+Then use only two commands in your AI CLI:
 
 | Platform | Start the draft flow | Run the standard loop |
 |---|---|---|
@@ -111,17 +111,13 @@ Then open that project in your AI coding agent, start with the draft flow, then 
 | Gemini CLI | `/shipflow:draft a todo app` | `/shipflow:implement` |
 | Kiro CLI | `draft ShipFlow verifications for a todo app` | `run shipflow implement once the draft is ready` |
 
-Step 1. Start with `shipflow draft`. Use it to shape the verification pack before implementation.
+Step 1. `draft` defines the verification pack.
 
-Step 2. Run `shipflow implement`. It validates the pack, bootstraps the verification runtime it needs, generates tests and runners, implements, verifies, and retries within the configured budget.
+Step 2. `implement` runs the loop against that pack.
 
-Between those two steps, `shipflow draft` is the pack-definition workflow: keep speculative candidates pending, accept and write the ones that are now clear, and use reject only when something is explicitly out of scope or conflicting. Deterministic ShipFlow starters are there to cover universal foundations such as stack, protocol, architecture, delivery, and other base constraints. `shipflow implement` continues only when `shipflow status --json` reports `implementation_gate.ready === true`.
+That is the normal product flow: define the pack, then implement against it.
 
-Native debug commands are also exposed by each integration when you need them:
-- Claude Code: `/shipflow:map`, `/shipflow:doctor`, `/shipflow:lint`, `/shipflow:gen`, `/shipflow:verify`, `/shipflow:status`
-- Codex CLI: `$shipflow-map`, `$shipflow-doctor`, `$shipflow-lint`, `$shipflow-gen`, `$shipflow-verify`, `$shipflow-status`
-- Gemini CLI: `/shipflow:map`, `/shipflow:doctor`, `/shipflow:lint`, `/shipflow:gen`, `/shipflow:verify`, `/shipflow:status`
-- Kiro CLI: `shipflow-map`, `shipflow-doctor`, `shipflow-lint`, `shipflow-gen`, `shipflow-verify`, `shipflow-status`
+If you need debugging or granular commands such as `map`, `doctor`, `lint`, `gen`, `verify`, or `status`, use the [User Guide](./docs/USER-GUIDE.md).
 
 ## 🔬 How It Works
 
