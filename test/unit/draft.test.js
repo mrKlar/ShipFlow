@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { buildDraft, draft, parseAiDraftResponse, resolveDraftOptions } from "../../lib/draft.js";
+import { buildDraft, buildDraftPrompt, draft, parseAiDraftResponse, resolveDraftOptions } from "../../lib/draft.js";
 
 async function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-draft-"));
@@ -450,6 +450,19 @@ describe("buildDraft", () => {
 });
 
 describe("draft", () => {
+  it("includes canonical type format guidance in the AI draft prompt", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const prompt = buildDraftPrompt(buildDraft(tmpDir, "calculator app"));
+      assert.match(prompt, /Type format guide:/);
+      assert.match(prompt, /text_equals/);
+      assert.match(prompt, /feature\/scenario\/given\/when\/then/);
+      assert.match(prompt, /category \+ request \+ assert/i);
+    });
+  });
+
   it("parses AI draft JSON even when wrapped in markdown fences", () => {
     const parsed = parseAiDraftResponse('Draft:\n```json\n{"summary":"ok","proposals":[]}\n```\n');
     assert.equal(parsed.summary, "ok");
@@ -617,6 +630,68 @@ describe("draft", () => {
       assert.equal(invalid.validation.ok, false);
       assert.ok(invalid.validation.issues.some(issue => issue.code === "schema.invalid"));
       assert.ok(!fs.existsSync(path.join(tmpDir, "vp", "api", "invalid-users.yml")));
+    });
+  });
+
+  it("retries once when AI draft proposals are schema-invalid", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      let calls = 0;
+      const { result } = await draft({
+        cwd: tmpDir,
+        input: "simple web calculator app",
+        json: false,
+        provider: "command",
+        generateText: async () => {
+          calls += 1;
+          if (calls === 1) {
+            return JSON.stringify({
+              summary: "first pass invalid",
+              proposals: [{
+                type: "ui",
+                path: "vp/ui/calculator-basic-arithmetic.yml",
+                confidence: "high",
+                reason: "Cover basic arithmetic",
+                data: {
+                  id: "calculator-basic-arithmetic",
+                  title: "Basic arithmetic works",
+                  severity: "blocker",
+                  app: { kind: "web", base_url: "http://localhost:3000" },
+                  flow: [{ open: "/" }],
+                  assert: ["display shows 5"],
+                },
+              }],
+            });
+          }
+          return JSON.stringify({
+            summary: "fixed format",
+            proposals: [{
+              type: "ui",
+              path: "vp/ui/calculator-basic-arithmetic.yml",
+              confidence: "high",
+              reason: "Cover basic arithmetic",
+              data: {
+                id: "calculator-basic-arithmetic",
+                title: "Basic arithmetic works",
+                severity: "blocker",
+                app: { kind: "web", base_url: "http://localhost:3000" },
+                flow: [{ open: "/" }],
+                assert: [{ visible: { testid: "display" } }],
+              },
+            }],
+          });
+        },
+      });
+
+      assert.equal(calls, 2);
+      const proposal = result.proposals.find(item => item.path === "vp/ui/calculator-basic-arithmetic.yml");
+      assert.ok(proposal);
+      assert.equal(proposal.source, "ai");
+      assert.equal(proposal.validation.ok, true);
+      assert.equal(result.proposal_validation.invalid, 0);
+      assert.match(result.ai.summary, /fixed format|repaired/i);
     });
   });
 
