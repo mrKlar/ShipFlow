@@ -336,9 +336,13 @@ ShipFlow is built around the idea that the durable artifact is not the source co
 
 ## 📋 Requirements
 
-Node.js 18+ · Claude Code or Codex CLI or Gemini CLI or Kiro CLI
+- `Node.js 18+`
+- One AI coding CLI: `Claude Code`, `Codex CLI`, `Gemini CLI`, or `Kiro CLI`
 
-Built for the age of AI coding agents. Stop writing specs. Start shipping.
+---
+
+**Built for the age of AI coding agents.**
+Stop writing specs. Start shipping.
 
 ## License
 
