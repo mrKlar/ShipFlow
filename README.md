@@ -27,6 +27,12 @@ This is a first-principles failure. If you have an agent that can write, test, a
 
 🔒 The AI cannot win by editing the pack out from under the loop. Cryptographic locks and runtime hooks protect the verification pack and generated artifacts during implementation. The only way out is working code.
 
+## 📚 Docs
+
+| README | User Guide | Verification Pack | Scientific Foundations |
+|---|---|---|---|
+| You are here | [How to write verifications, commands, and workflows](./docs/USER-GUIDE.md) | [Pack structure, generated outputs, and execution model](./docs/VERIFICATION-PACK.md) | [Why verification-first shipping exists](./docs/SCIENTIFIC-FOUNDATIONS.md) |
+
 ## 🗑️ Delete Everything. Regenerate Anytime.
 
 Your code is disposable. Your verifications are permanent.
@@ -121,27 +127,9 @@ Native debug commands are also exposed by each integration when you need them:
 
 ### Phase 1 — ✏️ Verification
 
-You describe what you want. You and the AI draft verifications: executable YAML that defines the observable behavior your app must have.
+You describe what you want. You and the AI draft a verification pack under `vp/`. That pack is the contract: executable checks across UI, behavior, API, database, performance, security, technical constraints, and policy.
 
-```yaml
-# vp/ui/add-numbers.yml
-id: add-numbers
-title: Adding two numbers shows the correct result
-severity: blocker
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /
-  - click: { testid: btn-2 }
-  - click: { testid: btn-plus }
-  - click: { testid: btn-3 }
-  - click: { testid: btn-equals }
-assert:
-  - text_equals: { testid: display, equals: "5" }
-```
-
-This is not a spec document. It is a machine-readable contract that compiles directly to executable checks.
+The README stays high-level on purpose. For the YAML shapes, per-type examples, and verification-writing rules, use the [User Guide](./docs/USER-GUIDE.md#writing-verifications).
 
 ### Phase 2 — 🤖 Implementation
 
@@ -194,6 +182,8 @@ Every integration includes the verification schema, the draft workflow, the impl
 
 Plus fixtures under `vp/ui/_fixtures/*.yml` for reusable setup flows.
 
+For the concrete file formats, assertion keys, runners, and examples, use the [User Guide](./docs/USER-GUIDE.md#writing-verifications).
+
 ## 🧪 Canonical Greenfield Example
 
 [`examples/todo-app`](./examples/todo-app) is the single canonical example:
@@ -242,6 +232,8 @@ your-app/
 └── shipflow.json               # Config
 ```
 
+Need the exact semantics of those directories, generated outputs, and locks? See [Verification Pack](./docs/VERIFICATION-PACK.md).
+
 ## 🛠️ CLI
 
 ```bash
@@ -259,64 +251,11 @@ shipflow status                                         # Show pack, generated t
 shipflow implement-once                                 # Single implementation pass, no retry loop
 ```
 
-## Example Technical Checks
-
-```yaml
-# vp/technical/architecture-boundaries.yml
-id: technical-architecture-boundaries
-title: Domain layer stays isolated from UI
-severity: blocker
-category: architecture
-runner:
-  kind: archtest
-  framework: tsarch
-app:
-  kind: technical
-  root: .
-assert:
-  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/**", "react"] }
-  - no_circular_dependencies: { files: "src/**/*.ts", tsconfig: "tsconfig.json" }
-```
-
-`vp/technical/*.yml` compiles to a dedicated technical backend under `.gen/technical/*.runner.mjs`. ShipFlow uses built-in repo assertions for `runner.framework: custom`, and specialized executable backends for `dependency-cruiser`, `tsarch`, `madge`, and `eslint-plugin-boundaries`.
-
-```yaml
-# vp/technical/api-protocol.yml
-id: technical-api-protocol
-title: API stays GraphQL-first
-severity: blocker
-category: framework
-runner:
-  kind: custom
-  framework: custom
-app:
-  kind: technical
-  root: .
-assert:
-  - graphql_surface_present: { files: "**/*", endpoint: "/graphql" }
-  - rest_api_absent: { files: "**/*", path_prefix: "/api/", allow_paths: ["/graphql", "/api/graphql"] }
-```
-
 ## ⚙️ Configuration
 
-```json
-{
-  "draft": {
-    "provider": "local",
-    "aiProvider": "auto"
-  },
-  "impl": {
-    "provider": "auto",
-    "maxTokens": 16384,
-    "historyLimit": 50,
-    "srcDir": "src",
-    "writeRoots": [".github/workflows", "infra"],
-    "context": "Node.js HTTP server, no frameworks"
-  }
-}
-```
+`shipflow.json` configures draft and implementation providers, runtime bootstrap, source roots, and allowed write targets.
 
-`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, `gemini`, or `kiro`) and falls back to the configured runtime defaults when needed. `shipflow implement` always allows the configured `srcDir`, bootstraps its local verification runtime under `.shipflow/runtime/` when possible, derives extra repo-level write targets from `vp/technical/*.yml` when needed, and can be widened explicitly with `impl.writeRoots`.
+Use the [User Guide configuration section](./docs/USER-GUIDE.md#configuration) for the full shape and examples.
 
 ## 🔄 CI
 

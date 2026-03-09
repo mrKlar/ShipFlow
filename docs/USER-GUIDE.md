@@ -171,6 +171,36 @@ shipflow status
 shipflow implement-once
 ```
 
+## Configuration
+
+ShipFlow reads `shipflow.json` from the project root.
+
+Minimal example:
+
+```json
+{
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
+  },
+  "impl": {
+    "provider": "auto",
+    "srcDir": "src",
+    "historyLimit": 50
+  }
+}
+```
+
+Useful fields:
+
+- `draft.provider`: keep `local` for deterministic local drafting, or override explicitly.
+- `draft.aiProvider`: choose which CLI/provider refines draft proposals when AI refinement is enabled.
+- `impl.provider`: `auto` resolves to the active CLI when possible.
+- `impl.srcDir`: main implementation root.
+- `impl.writeRoots`: extra repo-level paths allowed during implementation, such as `.github/workflows` or `infra`.
+- `impl.context`: extra project context passed into implementation.
+- `impl.autoBootstrap`: whether ShipFlow should bootstrap its local verification runtime under `.shipflow/runtime/`.
+
 ## Writing Verifications
 
 ### UI Checks — `vp/ui/*.yml`
