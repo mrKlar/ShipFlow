@@ -233,6 +233,27 @@ describe("buildDraft", () => {
     });
   });
 
+  it("drafts calculator UI starters from a French request", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(
+        tmpDir,
+        "vérifie dans le ui de la calculatrice avec un test playwright que les opérations fonctionnent. en ce moment ça retourne toujours error pour chaque opération",
+      );
+      const uiAddition = result.proposals.find(proposal => proposal.path === "vp/ui/calculator-addition.yml");
+      const uiMultiplication = result.proposals.find(proposal => proposal.path === "vp/ui/calculator-multiplication.yml");
+
+      assert.ok(uiAddition);
+      assert.ok(uiAddition.data.flow.some(step => step.click?.testid === "btn-plus"));
+      assert.ok(uiAddition.data.assert.some(item => item.hidden?.testid === "calculator-error"));
+      assert.ok(uiMultiplication);
+      assert.ok(uiMultiplication.data.flow.some(step => step.click?.testid === "btn-multiply"));
+      assert.equal(result.proposals.some(proposal => proposal.path === "vp/ui/route-home.yml"), false);
+    });
+  });
+
   it("keeps vague PostgreSQL requests at the technical foundation layer on greenfield repos", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
@@ -500,6 +521,7 @@ describe("draft", () => {
       assert.match(prompt, /text_equals/);
       assert.match(prompt, /feature\/scenario\/given\/when\/then/);
       assert.match(prompt, /category \+ request \+ assert/i);
+      assert.match(prompt, /translate the relevant product, UI, API, and domain terms internally/i);
     });
   });
 
@@ -757,6 +779,7 @@ describe("draft", () => {
 
       assert.ok(capturedPrompt.includes("todo app with login and admin API"));
       assert.ok(capturedPrompt.includes("\"inferred_types\""));
+      assert.match(capturedPrompt, /translate the relevant product, UI, API, and domain terms internally/i);
     });
   });
 
