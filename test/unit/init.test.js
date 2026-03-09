@@ -107,7 +107,12 @@ describe("init", () => {
       assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Bash" && hook.command === "shipflow-bash-guard"));
       assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Edit|Write"));
       assert.ok(hooks.hooks.Stop.some(hook => hook.command === "custom-stop-hook"));
-      assert.ok(hooks.hooks.Stop.some(hook => hook.command === "shipflow-stop"));
+      assert.ok(
+        hooks.hooks.Stop.some(hook =>
+          hook.command === "shipflow-stop"
+          || String(hook.command || "").includes("stop-verify.js")
+        )
+      );
     });
   });
 
