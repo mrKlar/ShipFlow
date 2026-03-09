@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { bootstrapVerificationRuntime, detectPackageManager } from "../../lib/bootstrap.js";
+import { bootstrapVerificationRuntime, detectPackageManager, syncProjectDependencies } from "../../lib/bootstrap.js";
 
 function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-bootstrap-"));
@@ -17,6 +17,13 @@ function withTmpDir(fn) {
 function makeSpawnRecorder(cwd, calls) {
   return (bin, args, options = {}) => {
     calls.push({ bin, args: [...args], env: options.env || null });
+    if (bin === "bash" && args[0] === "-lc") {
+      const script = String(args[1] || "");
+      if (script.includes("command -v npm")) return { status: 0, stdout: "/usr/bin/npm\n", stderr: "" };
+      if (script.includes("command -v npx")) return { status: 0, stdout: "/usr/bin/npx\n", stderr: "" };
+      if (script.includes("command -v node")) return { status: 0, stdout: "/usr/bin/node\n", stderr: "" };
+      return { status: 0, stdout: "", stderr: "" };
+    }
     if (bin === "npm" && args[0] === "install") {
       const pkgPath = path.join(cwd, "package.json");
       const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, "utf-8")) : { name: "tmp", private: true };
@@ -29,9 +36,6 @@ function makeSpawnRecorder(cwd, calls) {
       return { status: 0, stdout: "", stderr: "" };
     }
     if (bin === "npx" && args[0] === "playwright" && args[1] === "install") {
-      return { status: 0, stdout: "", stderr: "" };
-    }
-    if (bin === "bash" && args[0] === "-lc") {
       return { status: 0, stdout: "", stderr: "" };
     }
     return { status: 0, stdout: "", stderr: "" };
@@ -123,6 +127,54 @@ describe("bootstrapVerificationRuntime", () => {
       const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8"));
       assert.ok(pkg.devDependencies["@playwright/test"]);
       assert.ok(pkg.devDependencies["@cucumber/cucumber"]);
+      assert.equal(fs.existsSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm")), true);
+      assert.equal(fs.existsSync(path.join(tmpDir, ".shipflow", "runtime", "activate.sh")), true);
+    });
+  });
+
+  it("captures a reusable local toolchain shim when the package manager is available", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+
+      const spawnSync = (bin, args) => {
+        if (bin === "bash" && args[0] === "-lc") {
+          const script = String(args[1] || "");
+          if (script.includes("command -v npm")) return { status: 0, stdout: "/opt/node/bin/npm\n", stderr: "" };
+          if (script.includes("command -v npx")) return { status: 0, stdout: "/opt/node/bin/npx\n", stderr: "" };
+          if (script.includes("command -v node")) return { status: 0, stdout: "/opt/node/bin/node\n", stderr: "" };
+          return { status: 0, stdout: "", stderr: "" };
+        }
+        if (bin === "npm" && args[0] === "install") return { status: 0, stdout: "", stderr: "" };
+        if (bin === "npx" && args[0] === "playwright") return { status: 0, stdout: "", stderr: "" };
+        return { status: 0, stdout: "", stderr: "" };
+      };
+
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        spawnSync,
+        commandExists: cmd => ["node", "npm", "npx"].includes(cmd),
+      });
+
+      assert.equal(result.ok, true);
+      assert.ok(result.actions.some(action => /local npm shim/i.test(action)));
+      const shim = fs.readFileSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm"), "utf-8");
+      assert.match(shim, /\/opt\/node\/bin\/npm/);
+      const activate = fs.readFileSync(path.join(tmpDir, ".shipflow", "runtime", "activate.sh"), "utf-8");
+      assert.match(activate, /SHIPFLOW_RUNTIME_DIR/);
+      assert.match(activate, /export PATH=/);
     });
   });
 
@@ -250,6 +302,36 @@ describe("bootstrapVerificationRuntime", () => {
       assert.equal(result.ok, true);
       assert.equal(result.playwright_browsers_reused, true);
       assert.equal(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install"), false);
+    });
+  });
+});
+
+describe("syncProjectDependencies", () => {
+  it("reuses the captured local package-manager shim when syncing the project", () => {
+    withTmpDir(tmpDir => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        name: "tmp-app",
+        private: true,
+        scripts: { dev: "node server.js" },
+      }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "{}");
+      fs.mkdirSync(path.join(tmpDir, ".shipflow", "runtime", "bin"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm"), "#!/usr/bin/env bash\nexit 0\n");
+      fs.chmodSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm"), 0o755);
+
+      const calls = [];
+      const result = syncProjectDependencies(tmpDir, {
+        spawnSync: (bin, args, options = {}) => {
+          calls.push({ bin, args: [...args], env: options.env || {} });
+          if (bin === "npm" && args[0] === "install") return { status: 0, stdout: "", stderr: "" };
+          if (bin === "bash" && args[0] === "-lc") return { status: 1, stdout: "", stderr: "" };
+          return { status: 0, stdout: "", stderr: "" };
+        },
+      });
+
+      assert.equal(result.ok, true);
+      assert.ok(calls.some(call => call.bin === "npm" && call.args[0] === "install"));
+      assert.ok(result.actions.some(action => /Synchronized project dependencies with npm/i.test(action)));
     });
   });
 });

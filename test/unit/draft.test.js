@@ -193,6 +193,34 @@ describe("buildDraft", () => {
     });
   });
 
+  it("drafts a calculator behavior matrix that asserts results instead of generic errors", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "calculator API with addition, multiplication, division, and invalid expression handling");
+      const behavior = result.proposals.find(proposal => proposal.path === "vp/behavior/calculate-basic-arithmetic.yml");
+      const invalid = result.proposals.find(proposal => proposal.path === "vp/behavior/calculate-invalid-expression.yml");
+      const api = result.proposals.find(proposal => proposal.path === "vp/api/post-api-calculate.yml" || proposal.path === "vp/api/post-calculate.yml");
+
+      assert.ok(behavior);
+      assert.equal(behavior.data.app.kind, "api");
+      assert.equal(Array.isArray(behavior.data.examples), true);
+      assert.equal(behavior.data.examples.some(example => example.expression === "2+3" && example.expected === "5"), true);
+      assert.equal(behavior.data.examples.some(example => example.expression === "8*8" && example.expected === "64"), true);
+      assert.ok(behavior.data.then.some(item => item.json_absent?.path === "$.error"));
+      assert.ok(behavior.data.then.some(item => item.body_not_contains === "error"));
+
+      assert.ok(invalid);
+      assert.ok(invalid.data.then.some(item => item.status === 400));
+      assert.ok(invalid.data.then.some(item => item.json_has?.path === "$.error"));
+
+      assert.ok(api);
+      assert.ok(api.data.assert.some(item => item.json_has?.path === "$.result"));
+      assert.ok(api.data.assert.some(item => item.json_absent?.path === "$.error"));
+    });
+  });
+
   it("keeps vague PostgreSQL requests at the technical foundation layer on greenfield repos", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });

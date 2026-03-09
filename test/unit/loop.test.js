@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
-import { countVerificationPack, buildImplementationReport, summarizeImplementationHistory, writeImplementationHistory, run } from "../../lib/loop.js";
+import { countVerificationPack, buildImplementationReport, projectRunHints, summarizeImplementationHistory, writeImplementationHistory, run } from "../../lib/loop.js";
 
 describe("countVerificationPack", () => {
   it("counts verifications by type", () => {
@@ -135,6 +135,32 @@ describe("implementation history", () => {
       assert.equal(history.summary.failed_runs, 1);
       assert.equal(history.runs[0].started_at, "2026-03-08T11:00:00.000Z");
       assert.equal(history.runs[1].started_at, "2026-03-08T12:00:00.000Z");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("projectRunHints", () => {
+  it("suggests a local-toolchain-safe dev command when ShipFlow captured a package manager shim", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-hints-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".shipflow", "runtime", "bin"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm"), "#!/usr/bin/env bash\nexit 0\n");
+      fs.chmodSync(path.join(tmpDir, ".shipflow", "runtime", "bin", "npm"), 0o755);
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "runtime", "activate.sh"), "#!/usr/bin/env bash\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        name: "tmp-app",
+        private: true,
+        scripts: {
+          dev: "node server.js",
+          test: "node --test",
+        },
+      }, null, 2));
+
+      const hints = projectRunHints(tmpDir);
+      assert.ok(hints.some(hint => hint.includes("source .shipflow/runtime/activate.sh && npm run dev")));
+      assert.ok(hints.some(hint => hint.includes("source .shipflow/runtime/activate.sh")));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
