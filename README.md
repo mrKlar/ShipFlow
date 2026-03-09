@@ -39,18 +39,20 @@ Your code is disposable. Your verifications are permanent.
 
 If the implementation drifts, you can reset the working code and rerun `shipflow implement`. The verification pack stays the source of truth, and the generated tests keep the rebuild honest.
 
-## ⚡ Why ShipFlow — not [spec-kit](https://github.com/github/spec-kit)
+## ⚡ Why ShipFlow
 
-| | Spec-driven *(spec-kit)* | Verification-first *(ShipFlow)* |
-|---|---|---|
-| 📝 | Specs are documents the AI reads | Verifications compile to real tests |
-| ✅ | AI says "done" and you hope it is right | AI cannot finish until `shipflow verify` exits `0` |
-| 🔐 | Nothing stops the AI from ignoring the spec | Cryptographic locks + hooks keep the locked pack enforced |
-| 🧪 | No test generation; you test manually after | Auto-generated tests: UI, behavior, API, database, load, security, technical |
-| 🔄 | Specs drift with no enforcement mechanism | Lock file + SHA-256 hashes detect divergence |
-| 🗑️ | Rewrite means restarting the whole spec process | Regenerate from the verification pack in minutes |
-| 🔁 | Linear: specify → plan → tasks → implement | Pack-controlled loop: draft → generate → implement → verify → repeat |
-| 🤖 | Human workflow adapted for AI | Process designed from scratch for AI agents |
+Most AI dev workflows still look like human workflows:
+- write a spec
+- turn it into plans and tasks
+- let the agent implement
+- hope the result matches the spec
+
+ShipFlow replaces that with one durable artifact: the verification pack.
+
+- You define what must be true.
+- ShipFlow turns that into real tests and runners.
+- The agent implements against that locked pack.
+- The loop ends only when verification is green.
 
 ## ⚡ Install — One Command, Fully Automatic
 
@@ -58,16 +60,7 @@ If the implementation drifts, you can reset the working code and rerun `shipflow
 curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | bash
 ```
 
-That is it for the global install. The installer auto-detects the supported AI coding CLIs on your machine and installs their global ShipFlow integrations: plugin, skills, extension, rules, guards, and instructions.
-
-### What gets installed automatically
-
-| Platform | What the installer does |
-|---|---|
-| Claude Code | Installs the ShipFlow plugin globally |
-| Codex CLI | Installs skills + exec policy rules + global instructions |
-| Gemini CLI | Installs extension + write/shell guard hooks |
-| Kiro CLI | Installs skills + steering + project guard hooks |
+That is it. The installer detects Claude Code, Codex CLI, Gemini CLI, and Kiro CLI on your machine and installs the native ShipFlow integration for each one it finds.
 
 ### Uninstall
 
@@ -75,7 +68,7 @@ That is it for the global install. The installer auto-detects the supported AI c
 curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/uninstall.sh | bash
 ```
 
-Removes the global ShipFlow integrations, symlinks, steering context, and global package. Project files created by `shipflow init` stay in your repo until you remove them yourself.
+Removes the global integrations and the global `shipflow` install.
 
 ## TRY ME!
 
@@ -96,13 +89,13 @@ It is the fastest way to prove the core claim: delete the implementation, keep t
 
 ## 🚀 Agent Flow
 
-In your project:
+In your project, scaffold ShipFlow:
 
 ```bash
 shipflow init [--claude|--codex|--gemini|--kiro|--all]
 ```
 
-Then use the normal flow:
+Then use the normal flow in your AI CLI:
 
 1. Start the draft flow in your AI CLI.
 2. Finalize the verification pack.
@@ -114,141 +107,19 @@ For the exact Claude / Codex / Gemini / Kiro commands, plus debug commands like 
 
 ## 🔬 How It Works
 
-### Phase 1 — ✏️ Verification
+1. You describe the app.
+2. You and/or the AI draft the verification pack.
+3. ShipFlow turns that pack into real tests and runners.
+4. The AI implements until verification passes.
 
-You describe what you want. You and the AI draft a verification pack under `vp/`. That pack is the contract: executable checks across UI, behavior, API, database, performance, security, technical constraints, and policy.
+That is the core idea: define what must be true first, then let the agent code against that locked boundary.
 
-The README stays high-level on purpose. For the YAML shapes, per-type examples, and verification-writing rules, use the [User Guide](./docs/USER-GUIDE.md#writing-verifications).
+Why believe it? Because ShipFlow locks the verification pack and generated artifacts before implementation, and the loop ends on verification, not on a claim that the work is “done”.
 
-### Phase 2 — 🤖 Implementation
-
-AI-led, pack-controlled. Once the verification pack is finalized, the AI reads it, generates runnable tests and backends, writes application code, runs the checks, reads failures, fixes the code, and repeats until every required check passes or the retry budget is exhausted.
-
-```text
-Read VP  →  Generate tests  →  Implement  →  Verify  →  ✅ Pass? Done.
-                                    ↑                       ↓
-                                    └──── 🔁 Fix & retry ──┘
-```
-
-### 🔒 The Anti-Cheat System
-
-ShipFlow makes it structurally difficult for the AI to game the loop:
-
-| Mechanism | What it does |
-|---|---|
-| 🛡️ Path protection | Hooks block writes to `vp/`, `.gen/`, and `evidence/` during implementation |
-| 🔐 Cryptographic lock | SHA-256 hashes of the verification pack and generated artifacts are checked before execution |
-| 🚫 Stop gate | Native integrations should not report success until `shipflow verify` is green |
-| 🧪 Mutation guards | Generated tests include false-positive checks so a trivial passthrough implementation does not satisfy the pack by accident |
-
-The only way the AI can succeed is by writing code that actually works.
-
-## 🌐 Native Integration — Not a Wrapper
-
-ShipFlow does not just "support" AI agents. It installs native integrations that speak each platform's language:
-
-| Platform | Integration type | Anti-cheat mechanism |
-|---|---|---|
-| Claude Code | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
-| Codex CLI | Skills (`$skill`) | Sandbox + exec policy rules |
-| Gemini CLI | Extension (slash commands + context) | Write + shell guard hooks |
-| Kiro CLI | Skills + steering | Write + shell guard hooks |
-
-Every integration includes the verification schema, the draft workflow, the implementation loop instructions, and platform-specific pack protection.
-
-## 📋 Seven Verification Types + Policy Gates
-
-| Type | Path | What it tests |
-|---|---|---|
-| UI Checks | `vp/ui/*.yml` | Browser interactions and visual assertions |
-| Behavior Checks | `vp/behavior/*.yml` | Given/When/Then scenarios across web, API, or TUI surfaces |
-| API Checks | `vp/api/*.yml` | HTTP request/response contracts |
-| Database Checks | `vp/db/*.yml` | Database state and data lifecycle |
-| Performance Checks | `vp/nfr/*.yml` | Performance under load |
-| Security Checks | `vp/security/*.yml` | Auth, authz, headers, exposure |
-| Technical Checks | `vp/technical/*.yml` | Frameworks, architecture, CI, infra, tooling, protocol constraints |
-| Policy Gates | `vp/policy/*.rego` | Organizational rules via OPA |
-
-Plus fixtures under `vp/ui/_fixtures/*.yml` for reusable setup flows.
-
-For the concrete file formats, assertion keys, runners, and examples, use the [User Guide](./docs/USER-GUIDE.md#writing-verifications).
-
-## 🧪 Canonical Greenfield Example
-
-[`examples/todo-app`](./examples/todo-app) is the single canonical example:
-
-- browser UI at `/`
-- REST API under `/api/todos`
-- SQLite persistence at `./test.db`
-- committed pack under `vp/`
-- committed generated runners under `.gen/`
-- committed draft session under `.shipflow/`
-- real no-fake live harness for Claude Code in [`run-claude-live.mjs`](./examples/todo-app/run-claude-live.mjs)
-
-The example is there to prove the disposable-code claim: you can keep `src/` empty or delete it entirely, then rerun `shipflow implement` and rebuild the app from the locked pack. The live harness creates a temporary project, runs `init -> draft -> finalize -> write -> implement`, and uses the real Claude CLI. It does not fake the provider loop.
-
-Technical checks cover more than architecture boundaries. They can enforce framework choice, GraphQL vs REST, CI and infrastructure files, required SaaS/testing tooling, and repository-level delivery constraints.
-
-## 📁 Project Structure
-
-```text
-your-app/
-├── vp/                         # Verification pack you define
-│   ├── ui/*.yml
-│   ├── behavior/*.yml
-│   ├── api/*.yml
-│   ├── db/*.yml
-│   ├── nfr/*.yml
-│   ├── security/*.yml
-│   ├── technical/*.yml
-│   ├── policy/*.rego
-│   └── ui/_fixtures/*.yml
-├── .gen/                       # Generated tests and runners
-│   ├── playwright/*.test.ts
-│   ├── cucumber/
-│   ├── k6/*.js
-│   ├── technical/*.runner.mjs
-│   ├── playwright.config.mjs
-│   └── manifest.json
-├── evidence/                   # Verification results
-│   ├── run.json
-│   ├── implement.json
-│   ├── implement-history.json
-│   ├── policy.json
-│   ├── ui.json / api.json / security.json ...
-│   └── load.json
-├── src/                        # App code written during the implementation loop
-└── shipflow.json               # Config
-```
-
-Need the exact semantics of those directories, generated outputs, and locks? See [Verification Pack](./docs/VERIFICATION-PACK.md).
-
-## 🛠️ CLI
-
-```bash
-shipflow init [--claude|--codex|--gemini|--kiro|--all]  # Set up ShipFlow for the detected or selected CLI
-shipflow draft [description] [--write] [--ai]           # Standard flow: co-draft the verification pack
-shipflow implement                                      # Standard flow: bootstrap, validate, generate, implement, verify
-
-# Advanced / debug
-shipflow map [description]                              # Review repo surfaces and coverage gaps
-shipflow doctor                                         # Check local tools, runners, and adapters
-shipflow lint                                           # Lint verification quality
-shipflow gen                                            # Generate runnable tests from the pack
-shipflow verify                                         # Run generated tests and write evidence
-shipflow status                                         # Show pack, generated tests, evidence, and draft readiness
-shipflow implement-once                                 # Single implementation pass, no retry loop
-```
-
-## ⚙️ Configuration
-
-`shipflow.json` configures draft and implementation providers, runtime bootstrap, source roots, and allowed write targets.
-
-Use the [User Guide configuration section](./docs/USER-GUIDE.md#configuration) for the full shape and examples.
-
-## 🔬 Scientific Foundations
-
-ShipFlow is built around the idea that the durable artifact is not the source code and not a prose spec, but the executable contract fixed before implementation. The deeper rationale is documented in [docs/SCIENTIFIC-FOUNDATIONS.md](./docs/SCIENTIFIC-FOUNDATIONS.md).
+If you want the exact file formats, generated outputs, lock semantics, or command reference, use the docs:
+- [User Guide](./docs/USER-GUIDE.md)
+- [Verification Pack](./docs/VERIFICATION-PACK.md)
+- [Scientific Foundations](./docs/SCIENTIFIC-FOUNDATIONS.md)
 
 ## 📋 Requirements
 
