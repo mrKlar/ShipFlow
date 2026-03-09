@@ -17,6 +17,7 @@ shipflow implement
 ```
 
 Only continue when `shipflow status --json` shows `implementation_gate.ready === true`.
+Run the installed `shipflow` CLI directly. If it is not on `PATH`, retry `~/.local/bin/shipflow` directly. Do not inspect the wrapper or the installed ShipFlow package to infer the workflow.
 Inspect the JSON output directly. Do not pipe it through `python`, `jq`, or shell glue unless ShipFlow returned malformed JSON.
 Run `shipflow implement` directly. Do not unset CLI session variables manually; ShipFlow handles nested provider subprocesses itself.
 

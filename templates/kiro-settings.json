@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "write_file|replace",
+        "command": "shipflow-kiro-guard"
+      },
+      {
+        "matcher": "execute_bash|shell",
+        "command": "shipflow-kiro-guard"
+      }
+    ]
+  }
+}

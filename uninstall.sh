@@ -113,12 +113,31 @@ else
   skip "No Kiro steering found"
 fi
 
+KIRO_SETTINGS="$HOME/.kiro/settings.json"
+if [ -f "$KIRO_SETTINGS" ] && grep -q "shipflow-kiro-guard" "$KIRO_SETTINGS" 2>/dev/null; then
+  node -e "
+    const fs = require('fs');
+    const settings = JSON.parse(fs.readFileSync('$KIRO_SETTINGS', 'utf-8'));
+    if (settings.hooks && Array.isArray(settings.hooks.PreToolUse)) {
+      settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter(
+        entry => !JSON.stringify(entry).includes('shipflow-kiro-guard')
+      );
+      if (settings.hooks.PreToolUse.length === 0) delete settings.hooks.PreToolUse;
+      if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+    }
+    fs.writeFileSync('$KIRO_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
+  "
+  info "Hooks removed from ~/.kiro/settings.json"
+else
+  skip "No Kiro hooks found"
+fi
+
 # --- 5. Global CLI & source ---
 step "5/5" "ShipFlow CLI"
 
 # Remove symlinks
 LOCAL_BIN="$HOME/.local/bin"
-for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
+for cmd in shipflow shipflow-guard shipflow-bash-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
   if [ -L "$LOCAL_BIN/$cmd" ]; then
     rm -f "$LOCAL_BIN/$cmd"
   fi

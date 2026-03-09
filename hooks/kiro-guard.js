@@ -1,17 +1,33 @@
 #!/usr/bin/env node
-// ShipFlow preToolUse hook for Kiro CLI — blocks writes to protected paths.
+// ShipFlow preToolUse hook for Kiro CLI — blocks writes to protected paths
+// and shell detours that inspect installed ShipFlow internals.
 // Kiro sends JSON via stdin with { tool_name, tool_input, ... }
 // Exit 2 = block, stderr returned to LLM.
 
 import { readFileSync } from "node:fs";
 import { resolve, relative } from "node:path";
+import {
+  extractCommandFromHook,
+  INTROSPECTION_BLOCK_MESSAGE,
+  isShellTool,
+  shouldBlockShipflowIntrospection,
+} from "./introspection-common.js";
 
 const PROTECTED = ["vp", ".gen", "evidence"];
 
 let input;
 try {
-  input = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+  input = JSON.parse(readFileSync(0, "utf-8"));
 } catch {
+  process.exit(0);
+}
+
+if (isShellTool(input.tool_name || input.toolName)) {
+  const command = extractCommandFromHook(input);
+  if (shouldBlockShipflowIntrospection(command)) {
+    process.stderr.write(INTROSPECTION_BLOCK_MESSAGE);
+    process.exit(2);
+  }
   process.exit(0);
 }
 

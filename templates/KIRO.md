@@ -8,7 +8,7 @@ This project uses ShipFlow for verification-first shipping with Kiro.
 
 Draft verifications in `vp/`. Use natural-language discussion when helpful, or finalize proposals directly when the user wants an autonomous draft.
 Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
-During drafting, first summarize what ShipFlow understood. On an empty or low-signal greenfield repo, ask only the single highest-leverage next question from `shipflow draft --json`, rerun `shipflow draft --json` after each answer, then narrow into UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts and best practices as a checklist. Surface at most one or two best-practice prompts for the current type, ask clarifications when the draft marks a decision unresolved, do not present a long list of open questions spanning several verification types in one turn, and do not inspect ShipFlow examples/templates/source files to reverse-engineer the YAML format during a normal draft flow.
+During drafting, first summarize what ShipFlow understood. On an empty or low-signal greenfield repo, ask only the single highest-leverage next question from `shipflow draft --json`, rerun `shipflow draft --json` after each answer, then narrow into UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts and best practices as a checklist. Surface at most one or two best-practice prompts for the current type, ask clarifications when the draft marks a decision unresolved, do not present a long list of open questions spanning several verification types in one turn, and do not inspect the installed ShipFlow wrapper/package, examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -45,7 +45,7 @@ Typical handoff:
 Do NOT report completion until `shipflow verify` exits 0.
 
 Before `shipflow implement`, run `shipflow status --json`. Only continue when `implementation_gate.ready === true`.
-Inspect ShipFlow JSON directly; do not wrap it in `python`, `jq`, or shell pipelines unless ShipFlow itself returned malformed output.
+Inspect ShipFlow JSON directly; do not wrap it in `python`, `jq`, or shell pipelines unless ShipFlow itself returned malformed output. Run `shipflow` directly; if it is not on PATH, retry `~/.local/bin/shipflow` directly and do not inspect the wrapper.
 Run `shipflow implement` directly; do not manually unset CLI session variables as a workaround.
 
 ## Protected Paths

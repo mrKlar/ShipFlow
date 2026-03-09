@@ -31,8 +31,8 @@ The installer:
 3. Installs native integrations for each detected platform:
    - **Claude Code** — plugin
    - **Codex CLI** — skills + exec policy rules + global instructions
-   - **Gemini CLI** — extension + BeforeTool guard hooks
-   - **Kiro CLI** — skills + steering context
+   - **Gemini CLI** — extension + BeforeTool write/shell guard hooks
+   - **Kiro CLI** — skills + steering context + project PreToolUse write/shell guards
 
 Restart Claude Code after installing.
 
@@ -636,5 +636,5 @@ ShipFlow enforces separation between verification and implementation:
 Hooks enforce this automatically per platform:
 - **Claude Code** — PreToolUse blocks Write/Edit to protected paths, blocks ShipFlow self-introspection Bash detours during draft, and Stop runs verify before completion
 - **Codex CLI** — Sandbox exec policy rules restrict protected paths
-- **Gemini CLI** — BeforeTool hooks block writes to protected paths
-- **Kiro CLI** — PreToolUse hooks block writes (exit code 2) to protected paths
+- **Gemini CLI** — BeforeTool hooks block writes to protected paths and shell detours that inspect installed ShipFlow internals
+- **Kiro CLI** — PreToolUse hooks block writes (exit code 2) to protected paths and shell detours that inspect installed ShipFlow internals

@@ -16,7 +16,7 @@ $ARGUMENTS
 
 ## Setup
 
-Use the installed `shipflow` CLI directly. If it is not on `PATH`, try `~/.local/bin/shipflow`.
+Use the installed `shipflow` CLI directly. If it is not on `PATH`, retry the command as `~/.local/bin/shipflow`. Do not inspect the wrapper, resolve the install path, or read installed ShipFlow examples/templates/docs/schema files.
 
 If the project has no `shipflow.json`, initialize it first:
 
@@ -28,6 +28,8 @@ shipflow init
 
 ### 1. Build context before writing
 
+- When the repo has meaningful code or an existing pack, use the `vp-analyst` agent to inspect repo context and summarize what matters before you call `shipflow draft --json`
+- Do not split deterministic `shipflow` CLI steps into separate agents
 - Read the user request and the current repo context
 - Review existing `vp/` files when they exist
 - Read relevant app files when they clarify behavior or architecture

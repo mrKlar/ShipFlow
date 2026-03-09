@@ -14,7 +14,7 @@ $ARGUMENTS
 
 ## Setup
 
-Use the installed `shipflow` CLI directly. If it is not on `PATH`, try `~/.local/bin/shipflow`.
+Use the installed `shipflow` CLI directly. If it is not on `PATH`, retry the command as `~/.local/bin/shipflow`. Do not inspect the wrapper or mine the installed ShipFlow package to infer the workflow.
 
 If the project has no `shipflow.json`, initialize it first:
 
@@ -34,6 +34,7 @@ shipflow implement
 Only continue to implementation when `shipflow status --json` shows `implementation_gate.ready === true`.
 Inspect the JSON output directly. Do not wrap `shipflow status --json` in `python`, `jq`, or shell pipelines unless ShipFlow itself returned malformed output.
 Run `shipflow implement` directly. Do not unset CLI session variables manually; ShipFlow handles nested provider subprocesses itself.
+Use the `impl-verifier` agent only when you need help understanding failures or local code context. Do not split `doctor`, `lint`, `gen`, `verify`, or `shipflow implement` itself into sub-agents.
 
 If `implementation_gate.ready !== true`, stop and send the user back to `/shipflow:draft`. Typical blocking reasons are:
 - pending draft items

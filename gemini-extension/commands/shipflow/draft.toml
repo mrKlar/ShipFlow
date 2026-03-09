@@ -24,6 +24,7 @@ shipflow init
 - on an empty or low-signal greenfield repo, start with `shipflow draft --json "{{args}}"`
 - run `shipflow map --json "{{args}}"` only when repo context matters, especially for brownfield work
 - run `shipflow draft --json "{{args}}"` when starter proposals would help
+- run the installed `shipflow` CLI directly; if it is not on `PATH`, retry `~/.local/bin/shipflow` directly and do not inspect the wrapper or installed ShipFlow package
 
 If the user is continuing an existing draft session, you may omit `{{args}}` and let ShipFlow reuse the saved draft request.
 If the user wants to restart the draft from scratch, use `shipflow draft --clear-session`.

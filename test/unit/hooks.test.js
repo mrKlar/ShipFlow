@@ -7,10 +7,12 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..");
 const bashGuard = path.join(repoRoot, "hooks", "claude-bash-guard.js");
+const geminiGuard = path.join(repoRoot, "hooks", "gemini-guard.js");
+const kiroGuard = path.join(repoRoot, "hooks", "kiro-guard.js");
 
-function runHook(payload) {
+function runHook(file, payload) {
   try {
-    execFileSync("node", [bashGuard], {
+    execFileSync("node", [file], {
       input: JSON.stringify(payload),
       cwd: repoRoot,
       encoding: "utf-8",
@@ -27,7 +29,7 @@ function runHook(payload) {
 
 describe("claude bash guard", () => {
   it("allows direct shipflow commands", () => {
-    const result = runHook({
+    const result = runHook(bashGuard, {
       tool_input: {
         command: "shipflow draft --json \"todo app\"",
       },
@@ -36,7 +38,7 @@ describe("claude bash guard", () => {
   });
 
   it("blocks introspection of the installed shipflow binary", () => {
-    const result = runHook({
+    const result = runHook(bashGuard, {
       tool_input: {
         command: "cat ~/.local/bin/shipflow | head -5",
       },
@@ -46,12 +48,38 @@ describe("claude bash guard", () => {
   });
 
   it("blocks shell substitution used to locate ShipFlow examples", () => {
-    const result = runHook({
+    const result = runHook(bashGuard, {
       tool_input: {
         command: "SHIPFLOW_PKG=$(dirname $(realpath ~/.local/bin/shipflow))/..; ls $SHIPFLOW_PKG/examples/",
       },
     });
     assert.equal(result.code, 2);
     assert.match(result.stderr, /use `shipflow draft --json` as the source of truth/i);
+  });
+});
+
+describe("gemini guard", () => {
+  it("blocks shell introspection of installed ShipFlow files", () => {
+    const result = runHook(geminiGuard, {
+      tool_name: "run_shell_command",
+      tool_input: {
+        command: "SHIPFLOW_PKG=$(dirname $(realpath ~/.local/bin/shipflow))/..; ls $SHIPFLOW_PKG/examples/",
+      },
+    });
+    assert.equal(result.code, 2);
+    assert.match(result.stderr, /do not inspect the installed ShipFlow package/i);
+  });
+});
+
+describe("kiro guard", () => {
+  it("blocks shell introspection of installed ShipFlow files", () => {
+    const result = runHook(kiroGuard, {
+      tool_name: "execute_bash",
+      tool_input: {
+        command: "cat ~/.local/bin/shipflow | head -5",
+      },
+    });
+    assert.equal(result.code, 2);
+    assert.match(result.stderr, /do not inspect the installed ShipFlow package/i);
   });
 });

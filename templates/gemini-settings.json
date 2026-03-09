@@ -11,6 +11,17 @@
             "timeout": 5000
           }
         ]
+      },
+      {
+        "matcher": "run_shell_command|shell",
+        "hooks": [
+          {
+            "name": "shipflow-shell-guard",
+            "type": "command",
+            "command": "shipflow-gemini-guard",
+            "timeout": 5000
+          }
+        ]
       }
     ]
   }

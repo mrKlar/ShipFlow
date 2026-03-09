@@ -177,28 +177,34 @@ if command -v gemini &>/dev/null; then
   GEMINI_SETTINGS="$HOME/.gemini/settings.json"
   GUARD_CMD="shipflow-gemini-guard"
   if [ -f "$GEMINI_SETTINGS" ]; then
-    if ! grep -q "shipflow" "$GEMINI_SETTINGS" 2>/dev/null; then
-      # Merge ShipFlow hooks into existing settings using node
-      node -e "
-        const fs = require('fs');
-        const settings = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf-8'));
-        if (!settings.hooks) settings.hooks = {};
-        if (!settings.hooks.BeforeTool) settings.hooks.BeforeTool = [];
-        settings.hooks.BeforeTool.push({
-          matcher: 'write_file|replace',
-          hooks: [{
-            name: 'shipflow-guard',
+    node -e "
+      const fs = require('fs');
+      const settings = JSON.parse(fs.readFileSync('$GEMINI_SETTINGS', 'utf-8'));
+      if (!settings.hooks) settings.hooks = {};
+      if (!Array.isArray(settings.hooks.BeforeTool)) settings.hooks.BeforeTool = [];
+      const required = [
+        { matcher: 'write_file|replace', name: 'shipflow-guard', command: '$GUARD_CMD' },
+        { matcher: 'run_shell_command|shell', name: 'shipflow-shell-guard', command: '$GUARD_CMD' }
+      ];
+      for (const spec of required) {
+        let existing = settings.hooks.BeforeTool.find(h => h && h.matcher === spec.matcher);
+        if (!existing) {
+          existing = { matcher: spec.matcher, hooks: [] };
+          settings.hooks.BeforeTool.push(existing);
+        }
+        if (!Array.isArray(existing.hooks)) existing.hooks = [];
+        if (!existing.hooks.some(h => h && h.command === spec.command)) {
+          existing.hooks.push({
+            name: spec.name,
             type: 'command',
-            command: '$GUARD_CMD',
+            command: spec.command,
             timeout: 5000
-          }]
-        });
-        fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
-      "
-      info "Hooks merged into ~/.gemini/settings.json"
-    else
-      info "Hooks already in ~/.gemini/settings.json"
-    fi
+          });
+        }
+      }
+      fs.writeFileSync('$GEMINI_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
+    "
+    info "Hooks merged into ~/.gemini/settings.json"
   else
     mkdir -p "$HOME/.gemini"
     cat > "$GEMINI_SETTINGS" << EOJSON
@@ -210,6 +216,17 @@ if command -v gemini &>/dev/null; then
         "hooks": [
           {
             "name": "shipflow-guard",
+            "type": "command",
+            "command": "$GUARD_CMD",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "run_shell_command|shell",
+        "hooks": [
+          {
+            "name": "shipflow-shell-guard",
             "type": "command",
             "command": "$GUARD_CMD",
             "timeout": 5000
@@ -246,6 +263,46 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   mkdir -p "$KIRO_STEERING"
   cp "$INSTALL_DIR/templates/KIRO.md" "$KIRO_STEERING/shipflow.md"
   info "Steering: ~/.kiro/steering/shipflow.md"
+
+  KIRO_SETTINGS="$HOME/.kiro/settings.json"
+  KIRO_GUARD_CMD="shipflow-kiro-guard"
+  if [ -f "$KIRO_SETTINGS" ]; then
+    node -e "
+      const fs = require('fs');
+      const settings = JSON.parse(fs.readFileSync('$KIRO_SETTINGS', 'utf-8'));
+      if (!settings.hooks) settings.hooks = {};
+      if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
+      const required = [
+        { matcher: 'write_file|replace', command: '$KIRO_GUARD_CMD' },
+        { matcher: 'execute_bash|shell', command: '$KIRO_GUARD_CMD' }
+      ];
+      for (const spec of required) {
+        if (!settings.hooks.PreToolUse.some(h => h && h.matcher === spec.matcher && h.command === spec.command)) {
+          settings.hooks.PreToolUse.push(spec);
+        }
+      }
+      fs.writeFileSync('$KIRO_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
+    "
+    info "Hooks merged into ~/.kiro/settings.json"
+  else
+    cat > "$KIRO_SETTINGS" << EOJSON
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "write_file|replace",
+        "command": "$KIRO_GUARD_CMD"
+      },
+      {
+        "matcher": "execute_bash|shell",
+        "command": "$KIRO_GUARD_CMD"
+      }
+    ]
+  }
+}
+EOJSON
+    info "Settings created: ~/.kiro/settings.json"
+  fi
 else
   skip "Kiro CLI not found"
 fi

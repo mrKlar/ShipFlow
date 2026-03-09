@@ -60,8 +60,8 @@ That is it for the global install. The installer auto-detects the supported AI c
 |---|---|
 | Claude Code | Installs the ShipFlow plugin globally |
 | Codex CLI | Installs skills + exec policy rules + global instructions |
-| Gemini CLI | Installs extension + guard hooks |
-| Kiro CLI | Installs skills + steering context |
+| Gemini CLI | Installs extension + write/shell guard hooks |
+| Kiro CLI | Installs skills + steering + project guard hooks |
 
 ### Uninstall
 
@@ -174,8 +174,8 @@ ShipFlow does not just "support" AI agents. It installs native integrations that
 |---|---|---|
 | Claude Code | Plugin (slash commands + agents) | PreToolUse + Stop hooks |
 | Codex CLI | Skills (`$skill`) | Sandbox + exec policy rules |
-| Gemini CLI | Extension (slash commands + context) | Guard hooks |
-| Kiro CLI | Skills + steering | Guard hooks |
+| Gemini CLI | Extension (slash commands + context) | Write + shell guard hooks |
+| Kiro CLI | Skills + steering | Write + shell guard hooks |
 
 Every integration includes the verification schema, the draft workflow, the implementation loop instructions, and platform-specific pack protection.
 

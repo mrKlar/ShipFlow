@@ -176,8 +176,31 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, ".gemini", "settings.json")));
       const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".gemini", "settings.json"), "utf-8"));
       assert.ok(settings.hooks.BeforeTool);
+      assert.ok(settings.hooks.BeforeTool.some(hook => hook.matcher === "write_file|replace"));
+      assert.ok(settings.hooks.BeforeTool.some(hook => hook.matcher === "run_shell_command|shell"));
       // Claude files NOT created
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
+    });
+  });
+
+  it("merges Gemini shell and write guards into an existing settings.json", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".gemini", "settings.json"), JSON.stringify({
+        hooks: {
+          BeforeTool: [{
+            matcher: "custom",
+            hooks: [{ name: "custom-hook", type: "command", command: "custom-cmd", timeout: 1000 }],
+          }],
+        },
+      }, null, 2));
+
+      init({ cwd: tmpDir, platforms: ["gemini"] });
+
+      const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".gemini", "settings.json"), "utf-8"));
+      assert.ok(settings.hooks.BeforeTool.some(hook => hook.matcher === "custom"));
+      assert.ok(settings.hooks.BeforeTool.some(hook => hook.matcher === "write_file|replace"));
+      assert.ok(settings.hooks.BeforeTool.some(hook => hook.matcher === "run_shell_command|shell"));
     });
   });
 
@@ -244,6 +267,9 @@ describe("init", () => {
       init({ cwd: tmpDir, platforms: ["kiro"] });
       const kiro = fs.readFileSync(path.join(tmpDir, "KIRO.md"), "utf-8");
       assert.ok(kiro.includes("with Kiro"));
+      const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".kiro", "settings.json"), "utf-8"));
+      assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "write_file|replace"));
+      assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "execute_bash|shell"));
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
     });
   });
