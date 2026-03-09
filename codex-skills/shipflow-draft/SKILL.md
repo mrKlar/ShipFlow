@@ -1,6 +1,6 @@
 ---
-name: shipflow-verifications
-description: Collaboratively draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl.
+name: shipflow-draft
+description: Draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl.
 ---
 
 # ShipFlow — Verification Collaboration

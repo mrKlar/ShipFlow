@@ -37,7 +37,7 @@ Use the low-friction flow first:
 ```
 
 Typical handoff:
-- `/shipflow:verifications` to draft or refine the pack
+- `/shipflow:draft` to draft or refine the pack
 - finalize the pack with the user when needed
 - `/shipflow:implement` once the pack is finalized
 
@@ -86,6 +86,6 @@ Only use `--update-existing` with explicit approval before replacing an existing
 
 ## Gemini Commands
 
-- `/shipflow:verifications [description]` — Collaboratively draft or refine the verification pack
+- `/shipflow:draft [description]` — Draft or refine the verification pack
 - `/shipflow:implement` — Run the standard implementation loop
 - `/shipflow:impl` — Legacy alias

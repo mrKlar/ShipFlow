@@ -67,10 +67,10 @@ shipflow init --all                # All platforms
 Open your project and run:
 
 ```
-/shipflow-verifications a todo app with login
+/shipflow-draft a todo app with login
 ```
 
-Use that first pass to finalize the pack. Tighten it, add missing checks, remove weak ones, then:
+Use that first pass as the draft flow. Tighten it, add missing checks, remove weak ones, then:
 
 ```
 /shipflow-implement
@@ -81,7 +81,7 @@ Use that first pass to finalize the pack. Tighten it, add missing checks, remove
 Open your project and invoke the skills:
 
 ```
-$shipflow-verifications a todo app with login
+$shipflow-draft a todo app with login
 ```
 
 Review and iterate with the AI. Then:
@@ -95,7 +95,7 @@ $shipflow-implement
 Open your project and use the slash commands:
 
 ```
-/shipflow:verifications a todo app with login
+/shipflow:draft a todo app with login
 ```
 
 Review and iterate with the AI. Then:

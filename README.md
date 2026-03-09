@@ -96,20 +96,20 @@ In your project directory, scaffold the local ShipFlow files first:
 shipflow init [--claude|--codex|--gemini|--kiro|--all]
 ```
 
-Then open that project in your AI coding agent, finalize the verification pack, then run the standard implementation loop:
+Then open that project in your AI coding agent, start with the draft flow, then run the standard implementation loop:
 
-| Platform | Draft the verification pack together | Run the standard loop |
+| Platform | Start the draft flow | Run the standard loop |
 |---|---|---|
-| Claude Code | `/shipflow-verifications a todo app` | `/shipflow-implement` |
-| Codex CLI | `$shipflow-verifications a todo app` | `$shipflow-implement` |
-| Gemini CLI | `/shipflow:verifications a todo app` | `/shipflow:implement` |
+| Claude Code | `/shipflow-draft a todo app` | `/shipflow-implement` |
+| Codex CLI | `$shipflow-draft a todo app` | `$shipflow-implement` |
+| Gemini CLI | `/shipflow:draft a todo app` | `/shipflow:implement` |
 | Kiro CLI | `draft ShipFlow verifications for a todo app` | `run shipflow implement once the draft is ready` |
 
-Step 1. Use `shipflow draft` to finalize the verification pack. You can do that collaboratively with the AI, or let the AI materialize proposals when you explicitly want that.
+Step 1. Start with `shipflow draft`. Use it to shape the verification pack before implementation.
 
 Step 2. Run `shipflow implement`. It validates the pack, bootstraps the verification runtime it needs, generates tests and runners, implements, verifies, and retries within the configured budget.
 
-Between those two steps, finalize the proposals. `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `draft_session.ready_for_implement === true`.
+Between those two steps, `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `draft_session.ready_for_implement === true`.
 
 ## 🔬 How It Works
 

@@ -1,5 +1,5 @@
 ---
-description: Collaboratively draft or refine a ShipFlow verification pack
+description: Draft or refine a ShipFlow verification pack
 argument-hint: [what to build or verify]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---

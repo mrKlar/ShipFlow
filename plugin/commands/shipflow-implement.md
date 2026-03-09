@@ -40,7 +40,7 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" implement
 
 Only continue to implementation when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
 
-If `draft_session.ready_for_implement !== true`, stop and send the user back to `/shipflow-verifications`. Typical blocking reasons are:
+If `draft_session.ready_for_implement !== true`, stop and send the user back to `/shipflow-draft`. Typical blocking reasons are:
 - pending draft items
 - accepted proposals not yet written into `vp/**`
 - the verification pack changed after the last saved draft session
@@ -76,4 +76,4 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" status
 - Treat the verification pack as ground truth
 - Match generated expectations exactly: UI locators, routes, HTTP status/headers/body, database state, security behavior, technical constraints, and performance budgets
 - Never edit protected paths: `vp/`, `.gen/`, `evidence/`, `.shipflow/`, `shipflow.json`
-- If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow-verifications`
+- If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow-draft`

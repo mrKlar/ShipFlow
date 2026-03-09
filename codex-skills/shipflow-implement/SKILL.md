@@ -18,7 +18,7 @@ shipflow implement
 
 Only continue when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
 
-If `draft_session.ready_for_implement !== true`, stop and send the user back to `$shipflow-verifications`.
+If `draft_session.ready_for_implement !== true`, stop and send the user back to `$shipflow-draft`.
 
 That command already runs the useful pipeline:
 - doctor
@@ -64,4 +64,4 @@ shipflow status
 
 - Never edit `vp/`, `.gen/`, `evidence/`, `.shipflow/`, or `shipflow.json`
 - Treat the verification pack as ground truth
-- If the verification pack itself is wrong or ambiguous, stop and send the user back to `$shipflow-verifications`
+- If the verification pack itself is wrong or ambiguous, stop and send the user back to `$shipflow-draft`

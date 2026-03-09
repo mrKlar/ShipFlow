@@ -1,4 +1,4 @@
-description = "Collaboratively draft or refine a ShipFlow verification pack"
+description = "Draft or refine a ShipFlow verification pack"
 
 prompt = """
 # ShipFlow — Verification Collaboration

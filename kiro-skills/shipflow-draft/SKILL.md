@@ -1,6 +1,6 @@
 ---
-name: shipflow-verifications
-description: Collaboratively draft or refine a ShipFlow verification pack. Preferred follow-up skill: shipflow-implement.
+name: shipflow-draft
+description: Draft or refine a ShipFlow verification pack. Preferred follow-up skill: shipflow-implement.
 ---
 
 # ShipFlow — Verification Collaboration
