@@ -102,22 +102,15 @@ In your project:
 shipflow init [--claude|--codex|--gemini|--kiro|--all]
 ```
 
-Then use only two commands in your AI CLI:
+Then use the normal flow:
 
-| Platform | Start the draft flow | Run the standard loop |
-|---|---|---|
-| Claude Code | `/shipflow:draft a todo app` | `/shipflow:implement` |
-| Codex CLI | `$shipflow-draft a todo app` | `$shipflow-implement` |
-| Gemini CLI | `/shipflow:draft a todo app` | `/shipflow:implement` |
-| Kiro CLI | `draft ShipFlow verifications for a todo app` | `run shipflow implement once the draft is ready` |
+1. Start the draft flow in your AI CLI.
+2. Finalize the verification pack.
+3. Run the implement flow.
 
-Step 1. `draft` defines the verification pack.
+That is it: define the pack, then implement against it.
 
-Step 2. `implement` runs the loop against that pack.
-
-That is the normal product flow: define the pack, then implement against it.
-
-If you need debugging or granular commands such as `map`, `doctor`, `lint`, `gen`, `verify`, or `status`, use the [User Guide](./docs/USER-GUIDE.md).
+For the exact Claude / Codex / Gemini / Kiro commands, plus debug commands like `map`, `doctor`, `lint`, `gen`, `verify`, and `status`, use the [User Guide](./docs/USER-GUIDE.md#agent-workflow).
 
 ## 🔬 How It Works
 
