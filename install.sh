@@ -21,7 +21,7 @@ skip()  { printf "  ${D}– %s${R}\n" "$1"; }
 warn()  { printf "  ${Y}! %s${R}\n" "$1"; }
 step()  { printf "\n${B}[%s]${R} %s\n" "$1" "$2"; }
 
-printf "\n${B}ShipFlow${R} — verification-first development for AI coding agents\n"
+printf "\n${B}ShipFlow${R} — verification-first shipping for AI coding agents\n"
 
 # --- 1. Prerequisites ---
 step "1/4" "Checking prerequisites"
@@ -261,7 +261,7 @@ if [ ${#FOUND[@]} -gt 0 ]; then
   printf "${B}Configured platforms:${R}\n"
   for p in "${FOUND[@]}"; do
     case "$p" in
-      claude) printf "  ${C}Claude Code${R}  — plugin + hooks (restart Claude Code)\n" ;;
+      claude) printf "  ${C}Claude Code${R}  — plugin (restart Claude Code)\n" ;;
       codex)  printf "  ${C}Codex CLI${R}    — skills + rules + instructions\n" ;;
       gemini) printf "  ${C}Gemini CLI${R}   — extension + hooks\n" ;;
       kiro)   printf "  ${C}Kiro CLI${R}     — skills + steering\n" ;;
@@ -299,6 +299,6 @@ fi
 if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
   printf "  ${D}# Kiro CLI (skills auto-activate):${R}\n"
   echo "  \"let's draft ShipFlow verifications for a todo app\""
-  echo "  \"run shipflow implement against the reviewed verification pack\""
+  echo "  \"run shipflow implement once the draft is ready\""
   echo ""
 fi

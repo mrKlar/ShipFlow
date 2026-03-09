@@ -3,9 +3,9 @@ description = "Collaboratively draft or refine a ShipFlow verification pack"
 prompt = """
 # ShipFlow — Verification Collaboration
 
-Use this command when the user wants to define, review, add, remove, or tighten ShipFlow verifications.
+Use this command when the user wants to define, add, remove, tighten, or finalize ShipFlow verifications.
 
-This phase is human + AI collaboration, not an autonomous one-shot.
+This phase finalizes the verification pack before implementation. It can be collaborative, or AI-led when the user explicitly wants automatic materialization.
 
 ## Context
 
@@ -24,10 +24,10 @@ shipflow init
 - run `shipflow map --json "{{args}}"` when repo context matters
 - run `shipflow draft --json "{{args}}"` when starter proposals would help
 
-If the user is continuing an existing review session, you may omit `{{args}}` and let ShipFlow reuse the saved draft request.
-If the user wants to restart the review from scratch, use `shipflow draft --clear-session`.
+If the user is continuing an existing draft session, you may omit `{{args}}` and let ShipFlow reuse the saved draft request.
+If the user wants to restart the draft from scratch, use `shipflow draft --clear-session`.
 
-3. Review proposals with the user before writing:
+3. Finalize proposals before writing:
 - use `shipflow draft --accept=vp/path.yml` and `shipflow draft --reject=vp/path.yml` to record decisions
 - use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
 - use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
@@ -35,7 +35,7 @@ If the user wants to restart the review from scratch, use `shipflow draft --clea
 - prefer one observable behavior per file
 - cover the relevant types: UI, behavior, API, database, performance, security, technical
 - surface ambiguities instead of hiding them
-- do not jump straight to `--write` before the user has reviewed the proposal set
+- do not jump straight to `--write` before the draft is finalized unless the user explicitly wants automatic materialization
 
 4. Validate every pass:
 

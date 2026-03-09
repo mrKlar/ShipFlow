@@ -139,6 +139,8 @@ describe("genDbTest", () => {
     const check = { ...base, assert: [{ row_count: 1 }] };
     const code = genDbTest(check);
     assert.ok(code.includes('import { execFileSync }'));
+    assert.ok(code.includes('await import("node:sqlite")'));
+    assert.ok(code.includes("DatabaseSync"));
     assert.ok(code.includes("sqlite3"));
     assert.ok(code.includes("-json"));
     assert.ok(code.includes("function query(sql)"));

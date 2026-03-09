@@ -48,7 +48,8 @@ describe("buildMap", () => {
       assert.ok(result.recommendations.some(r => r.type === "security"));
       assert.ok(result.recommendations.some(r => r.type === "technical"));
       assert.ok(result.detected.technical_files.includes(".github/workflows"));
-      assert.deepEqual(result.framework_recommendations.behavior, ["cucumber", "playwright-web", "playwright-request", "node-pty"]);
+      assert.deepEqual(result.framework_recommendations.behavior, ["cucumber", "playwright-browser", "playwright-api", "pty-harness"]);
+      assert.deepEqual(result.framework_recommendations.api, ["playwright-api", "pactum"]);
       assert.ok(result.framework_recommendations.technical.includes("tsarch"));
     });
   });
@@ -62,6 +63,16 @@ describe("buildMap", () => {
       const result = buildMap(tmpDir);
       assert.deepEqual(result.project.source_roots, ["frontend"]);
       assert.ok(result.detected.ui_routes.includes("/home"));
+    });
+  });
+
+  it("detects UI routes from Next-style page files", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "app", "dashboard"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "app", "dashboard", "page.tsx"), "export default function Dashboard() { return null; }\n");
+
+      const result = buildMap(tmpDir);
+      assert.ok(result.detected.ui_routes.includes("/dashboard"));
     });
   });
 
@@ -93,6 +104,43 @@ describe("buildMap", () => {
       assert.ok(result.detected.tui_signals > 0);
       assert.ok(result.coverage.gaps.some(gap => gap.includes("behavior verification")));
       assert.equal(result.ambiguities.some(item => item.includes("terminal entrypoint")), false);
+    });
+  });
+
+  it("detects an exclusive GraphQL protocol from brownfield code", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "app", "api", "graphql"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.ts"), `
+        import { createYoga } from "graphql-yoga";
+        export const yoga = createYoga({ graphqlEndpoint: "/graphql" });
+      `);
+      fs.writeFileSync(path.join(tmpDir, "app", "api", "graphql", "route.ts"), `
+        export async function POST() { return Response.json({ ok: true }); }
+      `);
+
+      const result = buildMap(tmpDir);
+      assert.ok(result.detected.api_endpoints.includes("POST /api/graphql"));
+      assert.equal(result.detected.protocols.graphql.detected, true);
+      assert.equal(result.detected.protocols.rest.detected, false);
+      assert.ok(result.detected.protocols.graphql.endpoints.includes("/graphql"));
+      assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("GraphQL surface")));
+    });
+  });
+
+  it("detects an exclusive REST protocol from Next API route files", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "app", "api", "users"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "app", "api", "users", "route.ts"), `
+        export async function GET() { return Response.json([{ id: 1 }]); }
+      `);
+
+      const result = buildMap(tmpDir);
+      assert.ok(result.detected.api_endpoints.includes("GET /api/users"));
+      assert.equal(result.detected.protocols.rest.detected, true);
+      assert.equal(result.detected.protocols.graphql.detected, false);
+      assert.ok(result.detected.protocols.rest.endpoints.includes("/api/users"));
+      assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("REST surface")));
     });
   });
 });

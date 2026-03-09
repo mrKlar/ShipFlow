@@ -4,10 +4,10 @@ This project uses ShipFlow for verification-first shipping.
 
 ## Two Phases
 
-### Phase 1: Verification (human + AI)
+### Phase 1: Verification Pack Definition
 
 Draft verifications in `vp/` — YAML files describing what the app must do.
-Use `shipflow draft` as a proposal review workflow: inspect candidate checks, accept or reject them, then write accepted proposals into `vp/`.
+Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -23,12 +23,12 @@ You MAY modify `vp/` files during this phase only.
 
 ### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes all generated checks. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
+Implement app code that passes all generated checks. Treat the verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
 ## Normal Flow
 
 ```
-1. Draft verifications collaboratively in `vp/`
+1. Finalize verifications in `vp/`
 2. Prefer `shipflow implement` for the normal implementation loop
 3. Use granular commands only when debugging or inspecting the pipeline
 ```
@@ -45,7 +45,7 @@ Before `shipflow implement`, run `shipflow status --json`. Only continue when th
 - `.shipflow/**` — Draft session state
 - `shipflow.json` — Framework config
 
-If a verification seems wrong, STOP. Go back to Phase 1 with the human.
+If a verification seems wrong, STOP. Go back to Phase 1 and update the pack.
 
 ## What to Match in Your Implementation
 
@@ -85,7 +85,7 @@ shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
-Only use `--update-existing` when the human explicitly approved replacing an existing verification file.
+Only use `--update-existing` with explicit approval before replacing an existing verification file.
 
 ## On Verify Failure
 

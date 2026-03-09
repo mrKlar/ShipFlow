@@ -8,16 +8,16 @@ ShipFlow installs as a Claude Code plugin providing two commands:
 
 | Command | Model | Role |
 |---|---|---|
-| `/shipflow-verifications` | Opus 4.6 | Human + AI draft verifications |
+| `/shipflow-verifications` | Opus 4.6 | Finalize the verification pack |
 | `/shipflow-implement` | Sonnet 4.6 | AI runs the standard implementation loop |
 | `/shipflow-impl` | Sonnet 4.6 | Legacy alias |
 
-Install with `./install.sh`. This registers a marketplace and installs the plugin.
+Install the global plugin with `./install.sh`. Then run `shipflow init --claude` inside each project that should use ShipFlow.
 
 ## How the Loop Works
 
 ```
-/shipflow-verifications → Human + AI draft and refine the verification pack
+/shipflow-verifications → Finalize the verification pack
                             ↓
 /shipflow-implement     → AI runs the standard implementation loop
                             ↓
@@ -35,7 +35,7 @@ Install with `./install.sh`. This registers a marketplace and installs the plugi
 
 ## Hooks
 
-When `./install.sh /path/to/project` is run, it creates `.claude/hooks.json`:
+When `shipflow init --claude` is run inside a project, it creates `.claude/hooks.json`:
 
 **PreToolUse**: Blocks Write/Edit to `vp/`, `.gen/`, `evidence/` during implementation.
 
@@ -50,7 +50,7 @@ When `./install.sh /path/to/project` is run, it creates `.claude/hooks.json`:
 
 ## Project Setup
 
-`./install.sh /path/to/project` creates:
+`shipflow init --claude` creates:
 
 | File | Purpose |
 |---|---|

@@ -21,7 +21,7 @@ For each behavior or constraint to verify, return:
 1. the right verification type and target path
 2. a focused YAML starter or concrete edit
 3. the specific reason it belongs in the pack
-4. any ambiguity that still needs human review
+4. any ambiguity that still needs an explicit decision before implementation
 
 ## Guidelines
 

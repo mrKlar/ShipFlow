@@ -124,19 +124,19 @@
     },
     "technical": {
       "label": "Technical",
-      "output_kind": "playwright",
-      "output_dir": "playwright",
+      "output_kind": "technical",
+      "output_dir": "technical",
       "evidence_file": "technical.json",
       "count": 1,
       "files": [
-        ".gen/playwright/vp_technical_ci-stack.test.ts"
+        ".gen/technical/vp_technical_ci-stack.runner.mjs"
       ],
       "checks": [
         {
           "id": "technical-ci-stack",
           "title": "Repository uses GitHub Actions and Playwright",
           "severity": "blocker",
-          "file": ".gen/playwright/vp_technical_ci-stack.test.ts",
+          "file": ".gen/technical/vp_technical_ci-stack.runner.mjs",
           "companion_files": []
         }
       ]
@@ -200,12 +200,17 @@
       },
       {
         "type": "technical",
-        "file": ".gen/playwright/vp_technical_ci-stack.test.ts",
+        "file": ".gen/technical/vp_technical_ci-stack.runner.mjs",
         "ok": true
       },
       {
         "type": "nfr",
         "file": ".gen/k6/vp_nfr_load-test.js",
+        "ok": true
+      },
+      {
+        "type": "playwright-runtime",
+        "file": ".gen/playwright.config.mjs",
         "ok": true
       }
     ],

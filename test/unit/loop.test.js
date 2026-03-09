@@ -142,7 +142,96 @@ describe("implementation history", () => {
 });
 
 describe("run", () => {
-  it("blocks implementation when the draft review still has pending proposals", async () => {
+  it("stops at bootstrap when verification runtime bootstrap fails", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-bootstrap-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          bootstrapVerificationRuntime: () => ({
+            ok: false,
+            actions: [],
+            issues: ["npm is missing"],
+          }),
+          buildDoctor: () => {
+            throw new Error("doctor should not run after bootstrap failure");
+          },
+        },
+      });
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "bootstrap");
+      assert.equal(evidence.bootstrap_ok, false);
+      assert.equal(evidence.iterations, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("stops at install when project dependency sync fails after implementation", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-install-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.0.0" },
+      }));
+
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          runLint: () => ({ ok: true, issues: [] }),
+          gen: async () => {
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async () => {},
+          syncProjectDependencies: () => ({ ok: false, actions: [], issues: ["npm install failed"] }),
+        },
+      });
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "install");
+      assert.equal(evidence.install_ok, false);
+      assert.equal(evidence.iterations, 1);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks implementation when the draft session still has pending proposals", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-draft-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
@@ -237,7 +326,13 @@ describe("run", () => {
         written: ["vp/ui/home.yml"],
       }, null, 2));
 
-      const exitCode = await run({ cwd: tmpDir });
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: false, issues: ["doctor failed"] }),
+        },
+      });
       const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
       assert.equal(exitCode, 1);
       assert.equal(evidence.stage, "doctor");
@@ -248,7 +343,7 @@ describe("run", () => {
     }
   });
 
-  it("blocks implementation when the verification pack changed after the last draft review", async () => {
+  it("blocks implementation when the verification pack changed after the last saved draft session", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-stale-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });

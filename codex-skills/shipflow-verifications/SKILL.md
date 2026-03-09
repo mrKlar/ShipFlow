@@ -5,12 +5,12 @@ description: Collaboratively draft or refine a ShipFlow verification pack. Prefe
 
 # ShipFlow — Verification Collaboration
 
-Use this skill when the user wants to define, review, add, remove, or tighten ShipFlow verifications.
+Use this skill when the user wants to define, add, remove, tighten, or finalize ShipFlow verifications.
 
 ## Intent
 
-This is a human + AI collaboration phase, not an autonomous one-shot.
-Your job is to help the user shape a precise verification pack under `vp/`, then validate it with ShipFlow.
+This phase finalizes the verification pack before implementation.
+Your job is to help the user shape a precise verification pack under `vp/`, or finalize it autonomously when the user explicitly wants that, then validate it with ShipFlow.
 
 ## Workflow
 
@@ -26,19 +26,20 @@ shipflow init
 - Run `shipflow map --json "<user request>"` when repo context matters
 - Run `shipflow draft --json "<user request>"` when starter proposals would help
 
-If the user is continuing an existing review session, you may omit the request and let ShipFlow reuse the saved draft request.
-If the user wants to restart the review from scratch, use `shipflow draft --clear-session`.
+If the user is continuing an existing draft session, you may omit the request and let ShipFlow reuse the saved draft request.
+If the user wants to restart the draft from scratch, use `shipflow draft --clear-session`.
 
-3. Review proposals in collaboration with the user before writing:
-- Treat `shipflow draft` as a proposal review workflow
+3. Finalize proposals before writing:
+- Treat `shipflow draft` as the pack-definition workflow
 - Use `shipflow draft --accept=vp/path.yml` and `shipflow draft --reject=vp/path.yml` to record decisions
 - Use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
 - Use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
 - For precise changes that do not fit a proposal cleanly, edit focused checks under `vp/` manually
 - Prefer one observable behavior per file
 - Cover the relevant types: UI, behavior, API, database, performance, security, technical
+- For `technical`, choose `runner.kind` / `runner.framework` deliberately and prefer backend-native architecture rules over smoke commands
 - Call out ambiguities instead of hiding them
-- Do not jump straight to `--write` before the user has reviewed the proposal set
+- Do not jump straight to `--write` before the draft is finalized unless the user explicitly wants automatic materialization
 
 4. Validate every pass:
 

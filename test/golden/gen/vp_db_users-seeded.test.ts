@@ -1,11 +1,22 @@
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "child_process";
 
+let ShipFlowDatabaseSync = null;
+try { ({ DatabaseSync: ShipFlowDatabaseSync } = await import("node:sqlite")); } catch {}
+function withSqliteDb(run) {
+  if (!ShipFlowDatabaseSync) return null;
+  const db = new ShipFlowDatabaseSync("./test.db");
+  try { return run(db); } finally { db.close(); }
+}
 function query(sql) {
+  const nativeRows = withSqliteDb(db => db.prepare(sql).all());
+  if (nativeRows !== null) return nativeRows;
   const raw = execFileSync("sqlite3", ["./test.db", "-json"], { input: sql, encoding: "utf-8" });
   return JSON.parse(raw.trim() || "[]");
 }
 function exec(sql) {
+  const nativeResult = withSqliteDb(db => { db.exec(sql); return true; });
+  if (nativeResult !== null) return;
   execFileSync("sqlite3", ["./test.db"], { input: sql, encoding: "utf-8" });
 }
 

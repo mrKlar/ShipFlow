@@ -1,13 +1,13 @@
 # ShipFlow
 
-This project uses ShipFlow for verification-first development with Gemini CLI.
+This project uses ShipFlow for verification-first shipping with Gemini CLI.
 
 ## Two Phases
 
-### Phase 1: Verification (human + AI)
+### Phase 1: Verification Pack Definition
 
-Draft verifications in `vp/` together with the user. Use natural-language collaboration to tighten coverage before writing or updating files.
-Use `shipflow draft` as a proposal review workflow: inspect candidate checks, accept or reject them, then write accepted proposals into `vp/`.
+Draft verifications in `vp/`. Use natural-language collaboration when helpful, or finalize proposals directly when the user wants automatic materialization.
+Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks
@@ -23,7 +23,7 @@ You MAY modify `vp/` files during this phase only.
 
 ### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes the generated verification checks. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
+Implement app code that passes the generated checks. Treat the verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
 ## Gemini Flow
 
@@ -38,8 +38,8 @@ Use the low-friction flow first:
 
 Typical handoff:
 - `/shipflow:verifications` to draft or refine the pack
-- review and tighten the pack with the user
-- `/shipflow:implement` once the pack is reviewed
+- finalize the pack with the user when needed
+- `/shipflow:implement` once the pack is finalized
 
 Do NOT report completion until `shipflow verify` exits 0.
 
@@ -51,8 +51,8 @@ Never modify these during implementation:
 - `vp/**`
 - `.gen/**`
 - `evidence/**`
+- `.shipflow/**`
 - `shipflow.json`
-- `playwright.config.ts`
 
 ## What to Match
 
@@ -82,7 +82,7 @@ shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
-Only use `--update-existing` when the human explicitly approved replacing an existing verification file.
+Only use `--update-existing` with explicit approval before replacing an existing verification file.
 
 ## Gemini Commands
 

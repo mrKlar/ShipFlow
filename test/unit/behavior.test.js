@@ -157,6 +157,24 @@ describe("genBehaviorTest", () => {
     assert.ok(code.includes("res.status()"));
     assert.ok(code.includes("jsonType("));
     assert.ok(code.includes("[mutation guard]"));
+    assert.ok(code.includes("mutatedVariants"));
+    assert.ok(code.includes("toBeGreaterThan(0)"));
+    assert.ok(!code.includes("const mutatedVariants = undefined;"));
+  });
+
+  it("includes schema helpers for API behavior json_schema assertions", () => {
+    const code = genBehaviorTest({
+      id: "api-list",
+      feature: "Todo API",
+      scenario: "Listing todos returns an array",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{ request: { method: "GET", path: "/api/todos" } }],
+      then: [{ json_schema: { path: "$", schema: { type: "array" } } }],
+    });
+    assert.ok(code.includes("function assertJsonSchema"));
+    assert.ok(code.includes("assertJsonSchema(jsonPath(body,"));
   });
 
   it("generates TUI behavior tests with a PTY-like harness", () => {

@@ -1,11 +1,11 @@
 ---
 name: shipflow-implement
-description: Run the standard ShipFlow implementation loop against the reviewed verification pack.
+description: Run the standard ShipFlow implementation loop once the draft is ready.
 ---
 
 # ShipFlow — Implementation Loop
 
-Use this skill when the user wants to implement or fix the project against an already reviewed verification pack.
+Use this skill when the user wants to implement or fix the project once the draft is ready.
 
 ## Intent
 
@@ -62,6 +62,6 @@ shipflow status
 
 ## Rules
 
-- Never edit `vp/`, `.gen/`, `evidence/`, `shipflow.json`, or `playwright.config.ts`
-- Treat the reviewed verification pack as ground truth
+- Never edit `vp/`, `.gen/`, `evidence/`, `.shipflow/`, or `shipflow.json`
+- Treat the verification pack as ground truth
 - If the verification pack itself is wrong or ambiguous, stop and send the user back to `$shipflow-verifications`

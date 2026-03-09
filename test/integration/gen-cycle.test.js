@@ -24,10 +24,20 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(fs.existsSync(path.join(genDir, "playwright")));
   });
 
-  it("generates one test per check YAML (UI + behavior + API + DB + security + technical)", () => {
+  it("generates a Playwright runtime config under .gen", () => {
+    const configPath = path.join(genDir, "playwright.config.mjs");
+    assert.ok(fs.existsSync(configPath));
+    const content = fs.readFileSync(configPath, "utf-8");
+    assert.ok(content.includes('import { defineConfig } from "@playwright/test"'));
+    assert.ok(content.includes('const webServerCommand = process.env.SHIPFLOW_WEB_SERVER_COMMAND || "npm run dev";'));
+    assert.ok(content.includes('url: baseURL'));
+    assert.ok(!content.includes("port:"), "should not mix url and port in webServer config");
+  });
+
+  it("generates one test per Playwright-backed check YAML", () => {
     const tests = fs.readdirSync(path.join(genDir, "playwright")).filter(f => f.endsWith(".test.ts"));
-    // 3 UI + 1 behavior + 1 API + 1 DB + 1 security + 1 technical = 8
-    assert.equal(tests.length, 8);
+    // 3 UI + 1 behavior + 1 API + 1 DB + 1 security = 7
+    assert.equal(tests.length, 7);
   });
 
   it("generates vp.lock.json with correct structure", () => {
@@ -141,15 +151,15 @@ describe("gen integration — full cycle on test fixtures", () => {
     assert.ok(content.includes("toBe(false)"), "should assert missing header");
   });
 
-  it("technical test inspects repository constraints", () => {
-    const dir = path.join(genDir, "playwright");
-    const file = fs.readdirSync(dir).find(f => f.includes("technical"));
-    assert.ok(file, "technical test file should exist");
+  it("technical runner inspects repository constraints", () => {
+    const dir = path.join(genDir, "technical");
+    const file = fs.readdirSync(dir).find(f => f.includes("technical") && f.endsWith(".runner.mjs"));
+    assert.ok(file, "technical runner file should exist");
     const content = fs.readFileSync(path.join(dir, file), "utf-8");
-    assert.ok(content.includes('Technical: ci'), "should group technical tests");
+    assert.ok(content.includes("ShipFlow technical backend"), "should declare the technical backend");
     assert.ok(content.includes('import fs from "node:fs"'), "should inspect repository files");
     assert.ok(content.includes('actions/checkout@v4'), "should assert workflow actions");
-    assert.ok(content.includes('hasDependency') || content.includes('file_contains'), "should contain repo-level helpers");
+    assert.ok(content.includes("runGenericAssertions"), "should contain repo-level helper execution");
   });
 
   it("generates k6 script for NFR check", () => {

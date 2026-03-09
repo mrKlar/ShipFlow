@@ -27,7 +27,7 @@ async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Standard flow:
-  shipflow draft [description] Human + AI draft and refine the verification pack
+  shipflow draft [description] Draft and finalize the verification pack
   shipflow implement           Standard loop: validate pack, generate tests, implement, verify
 
 Advanced / debug:
@@ -53,7 +53,7 @@ Flags:
   --accept=<path>      Mark a draft proposal as accepted
   --reject=<path>      Mark a draft proposal as rejected
   --pending=<path>     Reset a draft proposal back to pending
-  --clear-session      Remove the saved draft review session before continuing
+  --clear-session      Remove the saved draft session before continuing
   --update-existing    Allow accepted draft proposals to replace existing vp files
   --provider=<name>    Override provider for shipflow draft/implement
   --model=<id>         Override model for shipflow draft/implement

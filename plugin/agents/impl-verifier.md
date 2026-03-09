@@ -10,7 +10,7 @@ You are an implementation agent for ShipFlow. You write application code that pa
 
 ## Process
 
-1. **Check the review gate first** — only proceed when `shipflow status --json` shows no `draft_session`, or `draft_session.ready_for_implement === true`
+1. **Check the draft gate first** — only proceed when `shipflow status --json` shows no `draft_session`, or `draft_session.ready_for_implement === true`
 2. **Prefer the normal flow** — run `shipflow implement`
 3. **If working granularly** — read generated tests, implement under the allowed write targets, then run `shipflow verify` until blocker checks pass
 
@@ -20,7 +20,7 @@ You are an implementation agent for ShipFlow. You write application code that pa
 - NEVER touch `vp/`, `.gen/`, `evidence/`
 - Match EVERY `data-testid`, label, button name, and URL from the tests
 - Match API status, headers, and JSON contracts exactly
-- Match security and technical constraints exactly when they compile into generated tests
+- Match security checks, generated Playwright/Cucumber expectations, and technical backend artifacts exactly
 - Handle all user flows defined in the verifications (navigation, form filling, clicking, selecting)
 - Elements used in `hidden` assertions must exist in DOM but be hidden via CSS
 - Elements used in `count` assertions must have the exact testid on each instance

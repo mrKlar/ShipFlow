@@ -364,4 +364,41 @@ describe("verify", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it("runs generated technical runners", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "technical"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "technical"), { recursive: true });
+
+      fs.writeFileSync(path.join(tmpDir, "vp", "technical", "ci.yml"), "id: technical-ci\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "technical", "vp_technical_ci.runner.mjs"), "console.log('technical ok');\n");
+
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
+      fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
+        version: 1,
+        outputs: {
+          technical: {
+            files: [".gen/technical/vp_technical_ci.runner.mjs"],
+            checks: [{
+              id: "technical-ci",
+              severity: "blocker",
+              file: ".gen/technical/vp_technical_ci.runner.mjs",
+            }],
+          },
+        },
+      }, null, 2));
+
+      const result = await verify({ cwd: tmpDir, capture: true });
+
+      assert.equal(result.exitCode, 0);
+      const technical = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "technical.json"), "utf-8"));
+      assert.equal(technical.ok, true);
+      assert.equal(technical.passed, 1);
+      assert.ok(technical.runners[0].file.endsWith(".runner.mjs"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

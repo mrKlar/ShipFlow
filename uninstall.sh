@@ -35,8 +35,8 @@ fi
 # --- 2. Codex CLI ---
 step "2/5" "Codex CLI"
 
-if [ -d "$HOME/.agents/skills/shipflow-verifications" ] || [ -d "$HOME/.agents/skills/shipflow-impl" ]; then
-  rm -rf "$HOME/.agents/skills/shipflow-verifications" "$HOME/.agents/skills/shipflow-impl"
+if [ -d "$HOME/.agents/skills/shipflow-verifications" ] || [ -d "$HOME/.agents/skills/shipflow-impl" ] || [ -d "$HOME/.agents/skills/shipflow-implement" ]; then
+  rm -rf "$HOME/.agents/skills/shipflow-verifications" "$HOME/.agents/skills/shipflow-impl" "$HOME/.agents/skills/shipflow-implement"
   info "Skills removed"
 else
   skip "No Codex skills found"
@@ -99,8 +99,8 @@ fi
 # --- 4. Kiro CLI ---
 step "4/5" "Kiro CLI"
 
-if [ -d "$HOME/.kiro/skills/shipflow-verifications" ] || [ -d "$HOME/.kiro/skills/shipflow-impl" ]; then
-  rm -rf "$HOME/.kiro/skills/shipflow-verifications" "$HOME/.kiro/skills/shipflow-impl"
+if [ -d "$HOME/.kiro/skills/shipflow-verifications" ] || [ -d "$HOME/.kiro/skills/shipflow-impl" ] || [ -d "$HOME/.kiro/skills/shipflow-implement" ]; then
+  rm -rf "$HOME/.kiro/skills/shipflow-verifications" "$HOME/.kiro/skills/shipflow-impl" "$HOME/.kiro/skills/shipflow-implement"
   info "Skills removed"
 else
   skip "No Kiro skills found"

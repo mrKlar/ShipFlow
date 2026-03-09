@@ -6,9 +6,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 
 # ShipFlow — Verification Collaboration
 
-Use this command when the user wants to define, review, add, remove, or tighten ShipFlow verifications.
+Use this command when the user wants to define, add, remove, tighten, or finalize ShipFlow verifications.
 
-This phase is human + AI collaboration, not an autonomous one-shot.
+This phase finalizes the verification pack before implementation. It can be collaborative, or AI-led when the user explicitly wants automatic materialization.
 
 ## Context
 
@@ -45,22 +45,22 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" map --json "$ARGUMENTS"
 node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
 ```
 
-If the user is continuing an existing review session, you may omit `$ARGUMENTS` and let ShipFlow reuse the saved draft request.
-If the user wants to restart the review from scratch, use `node "$SHIPFLOW_DIR/bin/shipflow.js" draft --clear-session`.
+If the user is continuing an existing draft session, you may omit `$ARGUMENTS` and let ShipFlow reuse the saved draft request.
+If the user wants to restart the draft from scratch, use `node "$SHIPFLOW_DIR/bin/shipflow.js" draft --clear-session`.
 
 ### 2. Before writing, surface what the system understood
 
-Give the user a short review:
+Give the user a short summary:
 - what the repo map suggests is already present
 - what coverage gaps look important
-- what remains ambiguous and needs a human decision
+- what remains ambiguous and needs an explicit decision
 
-### 3. Review proposals with the user before writing
+### 3. Finalize proposals before writing
 
-Treat `shipflow draft` as a review workflow:
-- review the candidate proposals with the user
+Treat `shipflow draft` as the pack-definition workflow:
+- examine the candidate proposals with the user when collaboration is desired
 - accept or reject them explicitly
-- only then write accepted proposals into `vp/`
+- or, if the user asked for an autonomous draft, choose reasonable defaults and write the selected proposals into `vp/`
 
 Use:
 
@@ -98,6 +98,7 @@ Quality bar:
 - stable selectors and concrete assertions
 - explicit auth, error, and edge-case checks when relevant
 - clean names and paths
+- for `technical`, choose `runner.kind` / `runner.framework` deliberately and prefer backend-native rules over smoke commands like `--help` / `--version`
 - `warn` only for genuinely non-blocking checks
 
 Do not optimize for check count. Optimize for precision and coverage quality.
@@ -116,7 +117,7 @@ Tell the user:
 - what is still ambiguous
 - what is intentionally not covered yet
 
-### 6. When the pack is reviewed
+### 6. When the pack is finalized
 
 Move to the standard implementation loop with:
 
@@ -128,7 +129,7 @@ Move to the standard implementation loop with:
 
 - Do not present the first draft as complete by default
 - Do not hide ambiguity; surface it
-- Do not write proposal files before the user has reviewed them unless the user explicitly asks for automatic materialization
+- Do not write proposal files before the draft is finalized unless the user explicitly asks for automatic materialization
 - Do not replace an existing `vp/` file unless the user explicitly approved that update
 - Do not present the pack as ready if `lint` or `gen` fails
 - If the user wants code implementation, switch to `/shipflow-implement`

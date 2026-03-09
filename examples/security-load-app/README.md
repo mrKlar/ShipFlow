@@ -2,7 +2,7 @@
 
 Canonical example focused on access control, response hardening, and smoke performance budgets.
 
-It includes a reviewed pack plus current generated artifacts under `.gen/`:
+It includes a committed pack plus current generated artifacts under `.gen/`:
 - `vp/security/*.yml` for auth/authz checks
 - `vp/nfr/*.yml` for smoke performance budgets
 - `vp/technical/*.yml` for supporting technical constraints

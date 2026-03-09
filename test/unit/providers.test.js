@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { normalizeProviderText, providerReady, resolveAutoProvider } from "../../lib/providers/index.js";
+import {
+  buildClaudeCliArgs,
+  claudeAllowedToolsForResponseFormat,
+  claudeEffortForResponseFormat,
+  claudePermissionModeForResponseFormat,
+  normalizeProviderText,
+  providerReady,
+  resolveAutoProvider,
+} from "../../lib/providers/index.js";
 
 function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-providers-"));
@@ -58,6 +66,65 @@ describe("providerReady", () => {
       providerReady("command", { command: { bin: "missing" } }, {}, () => false),
       false,
     );
+  });
+});
+
+describe("claudePermissionModeForResponseFormat", () => {
+  it("uses planning mode for structured review outputs", () => {
+    assert.equal(claudePermissionModeForResponseFormat("json"), "plan");
+    assert.equal(claudePermissionModeForResponseFormat("text"), "plan");
+  });
+
+  it("uses a non-planning mode for file generation", () => {
+    assert.equal(claudePermissionModeForResponseFormat("files"), "dontAsk");
+  });
+});
+
+describe("claudeEffortForResponseFormat", () => {
+  it("uses lower effort for file generation", () => {
+    assert.equal(claudeEffortForResponseFormat("files"), "low");
+  });
+
+  it("uses medium effort for review and text outputs", () => {
+    assert.equal(claudeEffortForResponseFormat("json"), "medium");
+    assert.equal(claudeEffortForResponseFormat("text"), "medium");
+  });
+});
+
+describe("claudeAllowedToolsForResponseFormat", () => {
+  it("keeps Claude in read-only repo inspection mode for structured outputs", () => {
+    assert.deepEqual(
+      claudeAllowedToolsForResponseFormat("files"),
+      ["Read", "Glob", "Grep", "LS"],
+    );
+    assert.deepEqual(
+      claudeAllowedToolsForResponseFormat("json"),
+      ["Read", "Glob", "Grep", "LS"],
+    );
+  });
+
+  it("does not constrain generic text mode with a read-only tool list", () => {
+    assert.deepEqual(claudeAllowedToolsForResponseFormat("text"), []);
+  });
+});
+
+describe("buildClaudeCliArgs", () => {
+  it("adds a read-only tool set for file generation", () => {
+    const args = buildClaudeCliArgs({ model: "sonnet", responseFormat: "files" });
+    assert.deepEqual(args, [
+      "-p",
+      "--no-session-persistence",
+      "--permission-mode",
+      "dontAsk",
+      "--effort",
+      "low",
+      "--output-format",
+      "text",
+      "--tools",
+      "Read,Glob,Grep,LS",
+      "--model",
+      "sonnet",
+    ]);
   });
 });
 

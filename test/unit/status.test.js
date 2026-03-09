@@ -231,7 +231,7 @@ describe("status", () => {
     }
   });
 
-  it("marks draft status as stale when vp files diverge from the reviewed pack snapshot", () => {
+  it("marks draft status as stale when vp files diverge from the saved pack snapshot", () => {
     const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
     fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
@@ -289,7 +289,7 @@ describe("status", () => {
       assert.equal(parsed.draft_session.stale, true);
       assert.equal(parsed.draft_session.ready_for_implement, false);
       assert.equal(parsed.draft_session.stale_paths[0], "vp/ui/home.yml");
-      assert.ok(parsed.draft_session.blocking_reasons.some(reason => /changed after the last draft review/i.test(reason)));
+      assert.ok(parsed.draft_session.blocking_reasons.some(reason => /changed after the last saved draft session/i.test(reason)));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -44,6 +44,31 @@ describe("init", () => {
     });
   });
 
+  it("seeds a brownfield draft session with discovered verification types", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".github", "workflows"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), `
+        app.get("/dashboard", handler);
+        app.get("/api/users", handler);
+        const sql = "SELECT * FROM users";
+        const auth = req.headers.authorization;
+      `);
+      fs.writeFileSync(path.join(tmpDir, ".github", "workflows", "ci.yml"), "uses: actions/checkout@v4\n");
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
+
+      const session = JSON.parse(fs.readFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), "utf-8"));
+      const types = new Set(session.proposals.map(proposal => proposal.type));
+      assert.ok(types.has("ui"));
+      assert.ok(types.has("behavior"));
+      assert.ok(types.has("api"));
+      assert.ok(types.has("database"));
+      assert.ok(types.has("performance"));
+      assert.ok(types.has("security"));
+      assert.ok(types.has("technical"));
+    });
+  });
+
   it("creates CLAUDE.md from template (default platform)", () => {
     withTmpDir(tmpDir => {
       init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });

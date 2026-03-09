@@ -1,13 +1,13 @@
 # ShipFlow
 
-This project uses ShipFlow for verification-first development with Kiro.
+This project uses ShipFlow for verification-first shipping with Kiro.
 
 ## Two Phases
 
-### Phase 1: Verification (human + AI)
+### Phase 1: Verification Pack Definition
 
-Draft verifications in `vp/` together with the user. Use natural language collaboration to refine coverage before writing or updating files.
-Use `shipflow draft` as a proposal review workflow: inspect candidate checks, accept or reject them, then write accepted proposals into `vp/`.
+Draft verifications in `vp/`. Use natural-language discussion when helpful, or finalize proposals directly when the user wants an autonomous draft.
+Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -23,7 +23,7 @@ You MAY modify `vp/` files during this phase only.
 
 ### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes all generated tests. Treat the reviewed verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
+Implement app code that passes all generated checks. Treat the verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
 
 ## Kiro Flow
 
@@ -38,8 +38,8 @@ Use the low-friction flow first:
 
 Typical handoff:
 - user asks to draft or refine ShipFlow verifications
-- you help review and tighten the pack
-- once the pack is reviewed, run `shipflow implement`
+- you help finalize the pack when needed
+- once the pack is finalized, run `shipflow implement`
 
 Do NOT report completion until `shipflow verify` exits 0.
 
@@ -51,8 +51,8 @@ Never modify these during implementation:
 - `vp/**`
 - `.gen/**`
 - `evidence/**`
+- `.shipflow/**`
 - `shipflow.json`
-- `playwright.config.ts`
 
 If a verification seems wrong, stop and go back to the verification phase with the user.
 
@@ -74,7 +74,7 @@ For API checks: implement endpoints matching the `method`, `path`, response `sta
 
 For DB checks: ensure the database schema and data match the `query` and assertions.
 
-For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions.
+For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions. Choose `runner.kind` / `runner.framework` deliberately and prefer backend-native technical rules over smoke commands.
 
 ## Commands
 
@@ -94,4 +94,4 @@ shipflow verify         # Advanced: run generated tests and write evidence
 shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
-Only use `--update-existing` when the human explicitly approved replacing an existing verification file.
+Only use `--update-existing` with explicit approval before replacing an existing verification file.

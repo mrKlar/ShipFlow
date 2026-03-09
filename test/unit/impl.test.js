@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseFiles, buildPrompt, resolveImplOptions, resolveWritePolicy, isAllowedImplPath } from "../../lib/impl.js";
+import {
+  buildFileFormatRepairPrompt,
+  buildPrompt,
+  impl,
+  isAllowedImplPath,
+  parseFiles,
+  resolveImplOptions,
+  resolveWritePolicy,
+} from "../../lib/impl.js";
 
 describe("parseFiles", () => {
   it("parses single file", () => {
@@ -67,7 +75,7 @@ line3
 
 describe("buildPrompt", () => {
   const vpFiles = [{ path: "vp/ui/test.yml", content: "id: test\n" }];
-  const genFiles = [{ path: ".gen/playwright/test.test.ts", content: "test('x', ...)" }];
+  const genFiles = [{ path: ".gen/playwright/test.test.ts", content: "test('x', ...)", label: "UI" }];
   const config = { impl: { srcDir: "src", context: "Node.js app" } };
   const writePolicy = { roots: ["src"], files: ["package.json"] };
 
@@ -77,10 +85,52 @@ describe("buildPrompt", () => {
     assert.ok(p.includes("id: test"));
   });
 
-  it("includes generated tests", () => {
+  it("includes generated artifacts", () => {
     const p = buildPrompt(vpFiles, genFiles, [], config, null, writePolicy);
+    assert.ok(p.includes("Generated Verification Artifacts"));
+    assert.ok(p.includes("[UI] .gen/playwright/test.test.ts"));
     assert.ok(p.includes(".gen/playwright/test.test.ts"));
-    assert.ok(p.includes("test('x', ...)"));
+    assert.ok(p.includes("generated executable omitted"));
+    assert.ok(!p.includes("test('x', ...)"));
+  });
+
+  it("renders non-Playwright generated artifacts with the right labels and fences", () => {
+    const p = buildPrompt(vpFiles, [
+      { path: ".gen/cucumber/features/checkout.feature", content: "Feature: Checkout", label: "Behavior (Gherkin)" },
+      {
+        path: ".gen/technical/vp_technical.runner.mjs",
+        content: "console.log('technical');",
+        label: "Technical",
+        output_kind: "technical",
+      },
+      { path: ".gen/k6/load.js", content: "import http from \"k6/http\";", label: "Performance" },
+    ], [], config, null, writePolicy);
+    assert.ok(p.includes("[Behavior (Gherkin)] .gen/cucumber/features/checkout.feature"));
+    assert.ok(p.includes("generated executable omitted"));
+    assert.ok(p.includes("[Technical] .gen/technical/vp_technical.runner.mjs"));
+    assert.ok(p.includes("repo-level technical runner omitted"));
+    assert.ok(!p.includes("console.log('technical');"));
+    assert.ok(p.includes("[Performance] .gen/k6/load.js"));
+  });
+
+  it("builds a repo-aware prompt for native CLI providers", () => {
+    const p = buildPrompt(
+      vpFiles,
+      genFiles,
+      [{ path: "src/server.js", content: "const x = 1;" }],
+      config,
+      "Error: boom",
+      writePolicy,
+      { provider: "claude" },
+    );
+    assert.ok(p.includes("Read These Verification Files First"));
+    assert.ok(p.includes("vp/ui/test.yml"));
+    assert.ok(p.includes(".gen/manifest.json"));
+    assert.ok(p.includes("Current Editable Files To Inspect"));
+    assert.ok(p.includes("src/server.js"));
+    assert.ok(p.includes("Latest Verification Failures"));
+    assert.ok(!p.includes("id: test"));
+    assert.ok(!p.includes("const x = 1;"));
   });
 
   it("includes project context", () => {
@@ -126,6 +176,17 @@ describe("buildPrompt", () => {
   });
 });
 
+describe("buildFileFormatRepairPrompt", () => {
+  it("preserves the original prompt and adds strict correction instructions", () => {
+    const prompt = "Original implementation prompt";
+    const repair = buildFileFormatRepairPrompt(prompt, "Here is the plan.");
+    assert.ok(repair.includes(prompt));
+    assert.ok(repair.includes("did not include any valid ShipFlow file blocks"));
+    assert.ok(repair.includes("--- FILE: path/to/file ---"));
+    assert.ok(repair.includes("Here is the plan."));
+  });
+});
+
 describe("resolveImplOptions", () => {
   it("prefers env and explicit config provider/model", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
@@ -167,7 +228,25 @@ describe("resolveImplOptions", () => {
       assert.equal(options.provider, "codex");
       assert.equal(options.model, "gpt-5-codex");
       assert.equal(options.srcDir, "src");
+      assert.equal(options.timeoutMs, 600000);
       assert.ok(options.writePolicy.roots.includes("src"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("respects impl timeoutMs from config", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          timeoutMs: 12345,
+        },
+      }));
+      const options = resolveImplOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "claude",
+      });
+      assert.equal(options.timeoutMs, 12345);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -248,6 +327,59 @@ assert:
       assert.equal(policy.files.includes("evidence/run.json"), false);
       assert.equal(isAllowedImplPath("vp/ui/example.yml", policy), false);
       assert.equal(isAllowedImplPath("docs/README.md", policy), true);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("impl", () => {
+  it("retries once when the provider returns a plan instead of file blocks", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const prompts = [];
+      let calls = 0;
+      const written = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt }) => {
+            prompts.push(prompt);
+            calls += 1;
+            if (calls === 1) return "Plan: create src/server.js and package.json";
+            return "--- FILE: src/server.js ---\nconsole.log('ok');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.equal(calls, 2);
+      assert.equal(written[0], "src/server.js");
+      assert.equal(fs.readFileSync(path.join(tmpDir, "src", "server.js"), "utf-8"), "console.log('ok');\n");
+      assert.ok(prompts[1].includes("Format Correction"));
+      assert.ok(prompts[1].includes("Previous invalid reply"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws after a correction retry still returns no file blocks", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      await assert.rejects(
+        () => impl({
+          cwd: tmpDir,
+          provider: "command",
+          deps: {
+            generateWithProvider: async () => "Still just a plan.",
+          },
+        }),
+        /AI returned no files/,
+      );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

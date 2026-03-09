@@ -2,13 +2,13 @@
 
 ## What is ShipFlow?
 
-ShipFlow is a verification-first framework. You describe what your app must do, you and the AI refine that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that reviewed pack.
+ShipFlow is a verification-first shipping framework. You describe what your app must do, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
 
 ```
-vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/k6/*.js  →  shipflow verify  →  evidence/*.json
+vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
 ```
 
-The only files you write and review are under `vp/`. Everything else is generated.
+The only files you define and edit are under `vp/`. Everything else is generated.
 
 ## Installation
 
@@ -29,7 +29,7 @@ The installer:
 1. Installs `shipflow` as a global CLI command
 2. Auto-detects Claude Code, Codex CLI, Gemini CLI, Kiro CLI
 3. Installs native integrations for each detected platform:
-   - **Claude Code** — plugin + anti-cheat hooks
+   - **Claude Code** — plugin
    - **Codex CLI** — skills + exec policy rules + global instructions
    - **Gemini CLI** — extension + BeforeTool guard hooks
    - **Kiro CLI** — skills + steering context
@@ -44,15 +44,11 @@ In any project directory:
 shipflow init
 ```
 
-This creates `vp/` directories, `shipflow.json`, `.gitignore`, and the files for the selected platform(s), such as `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `KIRO.md`, `.claude/hooks.json`, or `.gemini/settings.json`.
+This creates `vp/` directories, `shipflow.json`, `.gitignore`, and the project-local files for the selected platform(s), such as `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `KIRO.md`, `.claude/hooks.json`, or `.gemini/settings.json`.
 By default, `shipflow init` scaffolds the files for the currently detected CLI. Use explicit flags when you want another surface or multiple surfaces.
 
-Your project needs Playwright:
-
-```bash
-npm install -D @playwright/test
-npx playwright install
-```
+For the normal greenfield flow, `shipflow implement` now bootstraps the JS verification runtime it needs when possible, including packages such as `@playwright/test` or `@cucumber/cucumber`, and generates its own Playwright runtime config under `.gen/`.
+Native binaries such as `psql`, `k6`, or `opa` still need to exist when your verification pack requires them. SQLite checks can use `sqlite3` when it is installed, or fall back to Node's `node:sqlite` runtime on newer Node versions.
 
 ### Multi-platform
 
@@ -74,7 +70,7 @@ Open your project and run:
 /shipflow-verifications a todo app with login
 ```
 
-Use that first pass as a collaboration point. Review it, add missing checks, remove weak ones, then:
+Use that first pass to finalize the pack. Tighten it, add missing checks, remove weak ones, then:
 
 ```
 /shipflow-implement
@@ -119,7 +115,7 @@ Open your project. Skills auto-activate when your request matches:
 Review and iterate with the AI. Then:
 
 ```
-"run shipflow implement against the reviewed verification pack"
+"run shipflow implement once the draft is ready"
 ```
 
 ### All platforms
@@ -455,18 +451,6 @@ assert:
 
 Typical `runner.framework` values: `dependency-cruiser`, `tsarch`, `madge`, `eslint-plugin-boundaries`.
 
-#### Recommended Frameworks By Type
-
-| Type | Default | Strong alternates |
-|---|---|---|
-| UI | Playwright | |
-| Behavior | Cucumber + surface executors | Playwright web, Playwright request, node PTY |
-| API | Playwright request | Pactum |
-| Database | Built-in SQL harness | pgTAP (PostgreSQL) |
-| Performance | k6 | |
-| Security | Playwright request | OWASP ZAP |
-| Technical | Built-in repo inspection + command checks | dependency-cruiser, `tsarch`, `madge`, `eslint-plugin-boundaries` |
-
 Example architecture rule with `tsarch`:
 
 ```yaml
@@ -481,13 +465,15 @@ app:
   kind: technical
   root: .
 assert:
-  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
-  - command_succeeds: { command: "npx tsarch --help" }
+  - imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/**", "react"] }
+  - no_circular_dependencies: { files: "src/**/*.ts", tsconfig: "tsconfig.json" }
 ```
 
 Canonical example:
 
-`examples/api-db-service/vp/technical/architecture-boundaries.yml` shows a more realistic layered service rule set using `layer_dependencies` plus a `tsarch` command check.
+`examples/todo-app/vp/technical/framework-stack.yml` and `examples/todo-app/vp/technical/api-protocol.yml` show the committed technical verification style used by the public example.
+
+Technical checks compile to `.gen/technical/*.runner.mjs`. `runner.framework: custom` uses ShipFlow's built-in repo assertion engine. `dependency-cruiser`, `tsarch`, `madge`, and `eslint-plugin-boundaries` generate specialized technical backend execution inside the normal implementation loop.
 
 #### Technical Assertions
 
@@ -498,19 +484,30 @@ Canonical example:
 - file_not_contains: { path: "package.json", text: "\"express\"" }
 - json_has: { path: "package.json", query: "$.scripts.test" }
 - json_equals: { path: "package.json", query: "$.type", equals: "module" }
+- json_matches: { path: "package.json", query: "$.packageManager", matches: "^pnpm@" }
 - dependency_present: { name: "next", section: dependencies }
 - dependency_absent: { name: "express", section: all }
+- dependency_version_matches: { name: "next", section: dependencies, matches: "^14\\." }
+- script_present: { name: "build" }
+- script_contains: { name: "test:e2e", text: "playwright" }
 - github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/setup-node@v4" }
 - glob_count: { glob: ".github/workflows/*.yml", equals: 2 }
-- imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/", "react"] }
+- glob_count_gte: { glob: ".github/workflows/*.yml", gte: 1 }
+- graphql_surface_present: { files: "**/*", endpoint: "/graphql" }
+- graphql_surface_absent: { files: "**/*", endpoint: "/graphql" }
+- rest_api_present: { files: "**/*", path_prefix: "/api/" }
+- rest_api_absent: { files: "**/*", path_prefix: "/api/", allow_paths: ["/graphql", "/api/graphql"] }
+- imports_forbidden: { files: "src/domain/**/*.ts", patterns: ["src/ui/**", "react"] }
 - imports_allowed_only_from: { files: "src/domain/**/*.ts", patterns: ["@/domain", "@/shared"] }
+- no_circular_dependencies: { files: "src/**/*.ts", tsconfig: "tsconfig.json" }
 - layer_dependencies:
     layers:
       - { name: ui, files: "src/ui/**/*.ts", may_import: ["application", "shared"] }
       - { name: application, files: "src/application/**/*.ts", may_import: ["domain", "shared"] }
-- command_succeeds: { command: "npx dependency-cruiser --version" }
-- command_stdout_contains: { command: "npx tsarch --help", text: "tsarch" }
+- command_succeeds: { command: "terraform validate", cwd: "infra" }
 ```
+
+Protocol-oriented technical checks let you enforce stack direction, not just package presence. For example, a GraphQL-first service can require a declared GraphQL surface and forbid parallel REST routes, while a REST-only service can require `/api/*` routes and forbid GraphQL server surfaces.
 
 ### Local Draft Workflow
 
@@ -565,7 +562,7 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, k6 scripts into `.gen/k6/`, and creates `.gen/vp.lock.json` plus `.gen/manifest.json`.
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, Cucumber artifacts into `.gen/cucumber/`, k6 scripts into `.gen/k6/`, technical runners into `.gen/technical/`, and creates `.gen/vp.lock.json` plus `.gen/manifest.json`.
 
 ### Run verification
 
@@ -576,9 +573,10 @@ shipflow verify
 1. Validates the lock (VP unchanged since `gen`)
 2. Evaluates OPA policies (if present)
 3. Runs generated Playwright tests and writes per-type evidence files
-4. Runs k6 NFR scripts when present. Missing `k6` is treated as a verification failure and writes `evidence/load.json`
-5. Writes aggregate `evidence/run.json`
-6. Exits 0 if all tests pass
+4. Runs generated technical backend runners when present and writes `evidence/technical.json`
+5. Runs k6 NFR scripts when present. Missing `k6` is treated as a verification failure and writes `evidence/load.json`
+6. Writes aggregate `evidence/run.json`
+7. Exits 0 if all tests pass
 
 `shipflow implement` also writes `evidence/implement.json` with the latest loop result so you can inspect the last implementation pass.
 If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.
@@ -598,7 +596,7 @@ ShipFlow enforces separation between verification and implementation:
 
 | Protected | Contents | Who writes |
 |---|---|---|
-| `vp/` | Verifications (YAML) | Human + AI (verification phase only) |
+| `vp/` | Verifications (YAML) | Definition phase only |
 | `.gen/` | Generated tests, manifest, lock | `shipflow gen` |
 | `evidence/` | Test results | `shipflow verify` |
 

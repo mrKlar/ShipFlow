@@ -63,12 +63,13 @@ describe("golden snapshots", () => {
       await gen({ cwd: tmpDir });
 
       assertGolden("gen/manifest.json", readNormalizedJson(path.join(genDir, "manifest.json")));
+      assertGolden("gen/playwright.config.mjs", read(path.join(genDir, "playwright.config.mjs")));
       assertGolden("gen/vp_ui_login.test.ts", read(path.join(genDir, "playwright", "vp_ui_login.test.ts")));
       assertGolden("gen/vp_behavior_checkout.test.ts", read(path.join(genDir, "playwright", "vp_behavior_checkout.test.ts")));
       assertGolden("gen/vp_api_list-users.test.ts", read(path.join(genDir, "playwright", "vp_api_list-users.test.ts")));
       assertGolden("gen/vp_db_users-seeded.test.ts", read(path.join(genDir, "playwright", "vp_db_users-seeded.test.ts")));
       assertGolden("gen/vp_security_unauthenticated-admin.test.ts", read(path.join(genDir, "playwright", "vp_security_unauthenticated-admin.test.ts")));
-      assertGolden("gen/vp_technical_ci-stack.test.ts", read(path.join(genDir, "playwright", "vp_technical_ci-stack.test.ts")));
+      assertGolden("gen/vp_technical_ci-stack.runner.mjs", read(path.join(genDir, "technical", "vp_technical_ci-stack.runner.mjs")));
       assertGolden("gen/vp_nfr_load-test.js", read(path.join(genDir, "k6", "vp_nfr_load-test.js")));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });

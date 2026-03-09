@@ -159,11 +159,12 @@ describe("buildDoctor", () => {
       const result = buildDoctor(tmpDir, {
         commandExists: cmd => available.has(cmd),
         env: {},
+        nodeSqliteSupported: false,
       });
       assert.equal(result.ok, false);
       assert.ok(result.issues.some(issue => issue.includes("`k6`")));
       assert.ok(result.issues.some(issue => issue.includes("`opa`")));
-      assert.ok(result.issues.some(issue => issue.includes("`sqlite3`")));
+      assert.ok(result.issues.some(issue => issue.includes("node:sqlite")));
       assert.ok(result.issues.some(issue => issue.includes("tsarch")));
     });
   });
@@ -213,10 +214,46 @@ describe("buildDoctor", () => {
       const result = buildDoctor(tmpDir, {
         commandExists: cmd => available.has(cmd),
         env: {},
+        nodeSqliteSupported: false,
       });
       assert.equal(result.ok, true);
       assert.deepEqual(result.checks.requirements.db_engines, ["postgresql"]);
       assert.deepEqual(result.checks.requirements.technical_frameworks, ["tsarch"]);
+    });
+  });
+
+  it("accepts sqlite checks when node:sqlite support is available without sqlite3", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "db"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "auto" } }));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        devDependencies: {
+          "@playwright/test": "^1.0.0",
+        },
+      }));
+      fs.writeFileSync(path.join(tmpDir, "vp", "db", "sqlite.yml"), [
+        "id: db-sqlite",
+        "title: SQLite check",
+        "severity: blocker",
+        "app:",
+        "  kind: db",
+        "  engine: sqlite",
+        "  connection: ./test.db",
+        "query: SELECT 1 AS value;",
+        "assert:",
+        "  - row_count: 1",
+        "",
+      ].join("\n"));
+
+      const available = new Set(["node", "npm", "npx", "codex"]);
+      const result = buildDoctor(tmpDir, {
+        commandExists: cmd => available.has(cmd),
+        env: {},
+        nodeSqliteSupported: true,
+      });
+      assert.equal(result.ok, true);
+      assert.equal(result.checks.sqlite3, false);
+      assert.equal(result.checks.node_sqlite, true);
     });
   });
 

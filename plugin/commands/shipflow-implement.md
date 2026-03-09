@@ -1,12 +1,12 @@
 ---
-description: Run the standard ShipFlow implementation loop against the reviewed verification pack
+description: Run the standard ShipFlow implementation loop once the draft is ready
 argument-hint: [optional focus area]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ---
 
 # ShipFlow — Implementation Loop
 
-Use this command when the verification pack is already reviewed and the user wants working code.
+Use this command when the draft session is ready and the user wants working code.
 
 ## Context
 
@@ -41,9 +41,9 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" implement
 Only continue to implementation when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
 
 If `draft_session.ready_for_implement !== true`, stop and send the user back to `/shipflow-verifications`. Typical blocking reasons are:
-- pending review items
+- pending draft items
 - accepted proposals not yet written into `vp/**`
-- the verification pack changed after the last reviewed draft session
+- the verification pack changed after the last saved draft session
 
 That command already runs:
 - doctor
@@ -73,7 +73,7 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" status
 
 ## Rules
 
-- Treat the reviewed verification pack as ground truth
+- Treat the verification pack as ground truth
 - Match generated expectations exactly: UI locators, routes, HTTP status/headers/body, database state, security behavior, technical constraints, and performance budgets
-- Never edit protected paths: `vp/`, `.gen/`, `evidence/`, `shipflow.json`, `playwright.config.ts`
+- Never edit protected paths: `vp/`, `.gen/`, `evidence/`, `.shipflow/`, `shipflow.json`
 - If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow-verifications`

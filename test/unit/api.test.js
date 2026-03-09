@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { ApiCheck } from "../../lib/schema/api-check.zod.js";
-import { apiAssertConditionExpr, apiAssertExpr, genApiTest } from "../../lib/gen-api.js";
+import { apiAssertConditionExpr, apiAssertExpr, buildMutantApiRequests, genApiTest } from "../../lib/gen-api.js";
 
 const base = {
   id: "get-users",
@@ -180,14 +180,23 @@ describe("apiAssertConditionExpr", () => {
 });
 
 describe("genApiTest", () => {
+  it("builds multiple mutation variants for broad contracts", () => {
+    const variants = buildMutantApiRequests({ method: "GET", path: "/api/users" });
+    assert.ok(variants.length >= 2);
+    assert.ok(variants.some(variant => variant.strategy === "mutated-path-segment"));
+    assert.ok(variants.some(variant => variant.strategy === "mutated-method"));
+  });
+
   it("generates GET request", () => {
     const code = genApiTest({ ...base, assert: [{ status: 200 }] });
     assert.ok(code.includes("REQUEST_SPEC"));
-    assert.ok(code.includes("MUTATION_REQUEST_SPEC"));
+    assert.ok(code.includes("MUTATION_REQUEST_SPECS"));
+    assert.ok(code.includes("MUTATION_STRATEGIES"));
     assert.ok(code.includes("sendShipFlowRequest"));
     assert.ok(code.includes('"path":"/api/users"'));
     assert.ok(code.includes("toBe(200)"));
     assert.ok(code.includes("[mutation guard]"));
+    assert.ok(code.includes("toBeGreaterThan(0)"));
   });
 
   it("generates POST with body_json", () => {
@@ -199,7 +208,9 @@ describe("genApiTest", () => {
     const code = genApiTest(check);
     assert.ok(code.includes('"method":"POST"'));
     assert.ok(code.includes('"body_json":{"name":"Bob"}'));
-    assert.ok(code.includes("Mutation strategy should invalidate the original API contract"));
+    assert.ok(code.includes("Expected at least one mutation to invalidate the original API contract"));
+    assert.ok(code.includes("mutated-body-json"));
+    assert.ok(code.includes("mutated-path-segment"));
   });
 
   it("generates headers", () => {

@@ -2,7 +2,7 @@
 
 This is the single canonical example in the repo.
 
-Its job is simple: prove that a reviewed verification pack can recreate a normal app after the implementation code is deleted.
+Its job is simple: prove that a locked verification pack can recreate a normal app after the implementation code is deleted.
 
 The example shape is intentionally practical:
 
@@ -12,7 +12,7 @@ The example shape is intentionally practical:
 - implementation context prefers `node:sqlite` over native SQLite addons
 - ShipFlow is installed globally first, then used inside this example directory
 
-The committed reviewed pack under `vp/` covers:
+The committed pack under `vp/` covers:
 
 - UI add / complete / filter flows
 - behavior-level API round-trip flow compiled through Cucumber
@@ -39,13 +39,13 @@ todo-app/
 
 ## What is committed here
 
-This directory is committed as a reviewed ShipFlow project:
+This directory is committed as a ShipFlow project with a finalized pack:
 
-- `vp/` is the reviewed source of truth
+- `vp/` is the source of truth
 - `.gen/` shows the current generated runnable artifacts
 - `src/` stays empty on purpose
 
-The point is to let someone delete or keep `src/` empty and prove that `shipflow implement` can rebuild the app from the reviewed pack.
+The point is to let someone delete or keep `src/` empty and prove that `shipflow implement` can rebuild the app from the locked pack.
 
 ## Normal rebuild loop
 
@@ -56,7 +56,7 @@ npm install
 shipflow implement
 ```
 
-That runs the normal loop against the reviewed pack already committed in `vp/`.
+That runs the normal loop against the pack already committed in `vp/`.
 
 To test the disposable-code claim explicitly:
 

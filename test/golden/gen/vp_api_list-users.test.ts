@@ -19,7 +19,8 @@ function jsonType(value) {
 }
 
 const REQUEST_SPEC = {"method":"GET","path":"/api/users","headers":{"Authorization":"Bearer test-token"}};
-const MUTATION_REQUEST_SPEC = {"method":"GET","path":"/api/users","headers":{"Authorization":"Bearer test-token","x-shipflow-mutant":"1"}};
+const MUTATION_REQUEST_SPECS = [{"method":"GET","path":"/api/users","headers":{"Authorization":"Bearer test-token","x-shipflow-mutant":"1"}},{"method":"GET","path":"/api/users/__shipflow_mutant__","headers":{"Authorization":"Bearer test-token"}},{"method":"POST","path":"/api/users","headers":{"Authorization":"Bearer test-token"}},{"method":"GET","path":"/api/users?__shipflow_mutant__=1","headers":{"Authorization":"Bearer test-token"}}];
+const MUTATION_STRATEGIES = ["mutated-headers","mutated-path-segment","mutated-method","path-query"];
 
 async function sendShipFlowRequest(client, spec) {
   const headers = { ...(spec.headers || {}) };
@@ -71,8 +72,13 @@ test("list-users: GET /api/users returns user list", async ({ request }) => {
 });
 
 test("list-users: GET /api/users returns user list [mutation guard]", async ({ request }) => {
-  const res = await sendShipFlowRequest(request, MUTATION_REQUEST_SPEC);
-  const payload = await readShipFlowPayload(res);
-  const mutationGuardPasses = payload.jsonError ? false : responseMatchesOriginalAssertions(res, payload.rawBody, payload.body);
-  expect(mutationGuardPasses, "Mutation strategy should invalidate the original API contract: mutated-headers").toBe(false);
+  let mutationGuardKilled = 0;
+  const survivors = [];
+  for (let index = 0; index < MUTATION_REQUEST_SPECS.length; index += 1) {
+    const res = await sendShipFlowRequest(request, MUTATION_REQUEST_SPECS[index]);
+    const payload = await readShipFlowPayload(res);
+    const mutationGuardPasses = payload.jsonError ? false : responseMatchesOriginalAssertions(res, payload.rawBody, payload.body);
+    if (mutationGuardPasses) survivors.push(MUTATION_STRATEGIES[index]); else mutationGuardKilled += 1;
+  }
+  expect(mutationGuardKilled, "Expected at least one mutation to invalidate the original API contract. Survivors: " + survivors.join(", ")).toBeGreaterThan(0);
 });

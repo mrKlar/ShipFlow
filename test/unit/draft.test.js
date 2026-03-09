@@ -19,6 +19,8 @@ describe("buildDraft", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, ".github", "workflows"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src", "domain"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src", "ui"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, "vp", "behavior"), { recursive: true });
       fs.mkdirSync(path.join(tmpDir, "vp", "api"), { recursive: true });
@@ -34,7 +36,13 @@ describe("buildDraft", () => {
         const token = req.headers.authorization;
       `);
       fs.writeFileSync(path.join(tmpDir, ".github", "workflows", "ci.yml"), "uses: actions/checkout@v4\n");
+      fs.writeFileSync(path.join(tmpDir, "tsconfig.json"), JSON.stringify({ compilerOptions: { module: "esnext" } }));
       fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        packageManager: "pnpm@9.0.0",
+        scripts: {
+          build: "next build",
+          "test:e2e": "playwright test",
+        },
         devDependencies: { "@playwright/test": "^1.0.0", "tsarch": "^0.1.0" },
       }));
 
@@ -45,6 +53,15 @@ describe("buildDraft", () => {
       assert.ok(result.proposals.some(p => p.type === "database"));
       assert.ok(result.proposals.some(p => p.type === "security"));
       assert.ok(result.proposals.some(p => p.type === "technical"));
+      const architecture = result.proposals.find(p => p.path === "vp/technical/architecture-boundaries.yml");
+      assert.ok(architecture);
+      assert.equal(architecture.data.runner.framework, "tsarch");
+      assert.ok(architecture.data.assert.some(item => item.no_circular_dependencies));
+      const framework = result.proposals.find(p => p.path === "vp/technical/framework-stack.yml");
+      assert.ok(framework);
+      assert.ok(framework.data.assert.some(item => item.json_matches?.query === "$.packageManager"));
+      assert.ok(framework.data.assert.some(item => item.script_present?.name === "build"));
+      assert.equal(framework.data.assert.some(item => item.path_exists?.path === "playwright.config.ts"), false);
       assert.ok(result.proposals.some(p => p.path.startsWith("vp/nfr/")));
       assert.ok(result.ambiguities.length > 0);
     });
@@ -71,16 +88,18 @@ describe("buildDraft", () => {
 
       const result = buildDraft(tmpDir, "todo app with login, REST API, sqlite, GitHub Actions, Docker, and stress testing");
       assert.ok(result.proposals.some(proposal => proposal.type === "ui" && proposal.path.startsWith("vp/ui/")));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/route-login.yml"));
       assert.ok(result.proposals.some(proposal => proposal.type === "behavior" && proposal.path.startsWith("vp/behavior/")));
       const apiProposals = result.proposals.filter(proposal => proposal.type === "api" && proposal.path.startsWith("vp/api/"));
-      const database = result.proposals.find(proposal => proposal.type === "database" && proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      const database = result.proposals.find(proposal => proposal.type === "database" && proposal.path === "vp/db/todos-state.yml");
+      const apiProtocol = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
       const performanceProposals = result.proposals.filter(proposal => proposal.type === "performance" && proposal.path.startsWith("vp/nfr/"));
       assert.equal(apiProposals.length, 3);
-      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/requested-post-api-login.yml"));
-      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/requested-get-api-todos.yml"));
-      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/requested-post-api-todos.yml"));
-      const loginApi = apiProposals.find(proposal => proposal.path === "vp/api/requested-post-api-login.yml");
-      const todosReadApi = apiProposals.find(proposal => proposal.path === "vp/api/requested-get-api-todos.yml");
+      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/post-api-login.yml"));
+      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/get-api-todos.yml"));
+      assert.ok(apiProposals.some(proposal => proposal.path === "vp/api/post-api-todos.yml"));
+      const loginApi = apiProposals.find(proposal => proposal.path === "vp/api/post-api-login.yml");
+      const todosReadApi = apiProposals.find(proposal => proposal.path === "vp/api/get-api-todos.yml");
       assert.ok(loginApi);
       assert.deepEqual(loginApi.data.request.body_json, { email: "user@example.com", password: "secret123" });
       assert.ok(loginApi.data.assert.some(item => item.json_type?.type === "object"));
@@ -88,16 +107,72 @@ describe("buildDraft", () => {
       assert.ok(todosReadApi.data.assert.some(item => item.json_type?.type === "array"));
       assert.ok(database);
       assert.match(database.data.setup_sql, /CREATE TABLE IF NOT EXISTS todos/);
-      assert.match(database.data.cleanup_sql, /DROP TABLE IF EXISTS todos/);
+      assert.match(database.data.cleanup_sql, /DELETE FROM todos;|DROP TABLE IF EXISTS todos/);
+      assert.ok(apiProtocol);
+      assert.ok(apiProtocol.data.assert.some(item => item.rest_api_present));
       assert.equal(performanceProposals.length, 2);
-      assert.ok(performanceProposals.some(proposal => proposal.path === "vp/nfr/requested-baseline-api-todos.yml"));
-      const stressProfile = performanceProposals.find(proposal => proposal.path === "vp/nfr/requested-stress-api-todos.yml");
+      assert.ok(performanceProposals.some(proposal => proposal.path === "vp/nfr/baseline-api-todos.yml"));
+      const stressProfile = performanceProposals.find(proposal => proposal.path === "vp/nfr/stress-api-todos.yml");
       assert.ok(stressProfile);
       assert.equal(stressProfile.data.scenario.profile, "stress");
       assert.equal(stressProfile.data.scenario.method, "GET");
       assert.equal(stressProfile.data.scenario.stages.length, 3);
-      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-delivery-stack.yml"));
-      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-framework-stack.yml") === false);
+      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/delivery-stack.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/framework-stack.yml") === false);
+    });
+  });
+
+  it("does not infer a UI route from sqlite file paths mentioned in the request", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "A todo app with a browser UI, a REST API, and SQLite storage in ./test.db");
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/route-home.yml"));
+      assert.equal(result.proposals.some(proposal => proposal.path === "vp/ui/route-test.yml"), false);
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/technical/api-protocol.yml"));
+    });
+  });
+
+  it("drafts richer todo verification starters when the request names add, complete, and filter flows", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(
+        tmpDir,
+        [
+          "A todo app with a browser UI, a REST API, and SQLite storage.",
+          "Required capabilities:",
+          "- users can add todos",
+          "- users can mark todos complete",
+          "- users can filter todos by status",
+          "- the app exposes REST endpoints under /api/todos",
+          "- todos persist in SQLite at ./test.db",
+        ].join("\n"),
+      );
+
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/add-todo.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/complete-todo.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/filter-todos.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/get-todos.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/post-todos.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/db/todos-state.yml"));
+
+      const addTodo = result.proposals.find(proposal => proposal.path === "vp/ui/add-todo.yml");
+      const behavior = result.proposals.find(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml");
+      const createTodo = result.proposals.find(proposal => proposal.path === "vp/api/post-todos.yml");
+      const database = result.proposals.find(proposal => proposal.path === "vp/db/todos-state.yml");
+
+      assert.equal(addTodo.data.severity, "blocker");
+      assert.equal(behavior.data.severity, "blocker");
+      assert.equal(createTodo.data.severity, "blocker");
+      assert.equal(createTodo.data.assert.some(item => item.status === 201), true);
+      assert.ok(createTodo.data.assert.some(item => item.json_equals?.path === "$.title"));
+      assert.match(database.data.before_query, /PRAGMA table_info\(todos\)/);
+      assert.match(database.data.setup_sql, /completed INTEGER NOT NULL DEFAULT 0/);
+      assert.equal(database.data.cleanup_sql, "DELETE FROM todos;");
     });
   });
 
@@ -107,7 +182,7 @@ describe("buildDraft", () => {
       fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
 
       const result = buildDraft(tmpDir, "REST API with postgres and GitHub Actions");
-      const database = result.proposals.find(proposal => proposal.path === "vp/db/requested-postgresql-data-lifecycle.yml");
+      const database = result.proposals.find(proposal => proposal.path === "vp/db/postgresql-state.yml");
       assert.ok(database);
       assert.equal(database.data.app.engine, "postgresql");
       assert.match(database.data.setup_sql, /DROP TABLE IF EXISTS/);
@@ -154,16 +229,194 @@ describe("buildDraft", () => {
     });
   });
 
+  it("proposes UI and behavior starters from Next-style page files", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "app", "dashboard"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "app", "dashboard", "page.tsx"), "export default function Dashboard() { return null; }\n");
+
+      const result = buildDraft(tmpDir);
+      assert.ok(result.proposals.some(proposal => proposal.type === "ui" && proposal.path === "vp/ui/route-dashboard.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.type === "behavior" && proposal.path === "vp/behavior/main-flow-dashboard.yml"));
+    });
+  });
+
   it("proposes technical stack assertions for GraphQL requests", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
 
-      const result = buildDraft(tmpDir, "Next.js app with GraphQL and GitHub Actions");
-      const technical = result.proposals.find(proposal => proposal.type === "technical" && proposal.path === "vp/technical/requested-framework-stack.yml");
+      const result = buildDraft(tmpDir, "Next.js app with GraphQL, pnpm, and GitHub Actions");
+      const technical = result.proposals.find(proposal => proposal.type === "technical" && proposal.path === "vp/technical/framework-stack.yml");
       assert.ok(technical);
       assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "next"));
       assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "graphql"));
+      assert.ok(technical.data.assert.some(item => item.json_matches?.query === "$.packageManager"));
+    });
+  });
+
+  it("keeps request-driven technical protocol proposals even when package.json already yields technical checks", () => {
+    return withTmpDir(tmpDir => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        name: "tmp",
+        private: true,
+        scripts: { dev: "node src/server.js" },
+        devDependencies: { "@playwright/test": "^1.0.0" },
+      }));
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "A todo app with a browser UI, a REST API, and SQLite storage in ./test.db");
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/technical/framework-stack.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/technical/api-protocol.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/technical/sqlite-runtime.yml"));
+    });
+  });
+
+  it("proposes GraphQL protocol assertions when the request forbids REST", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "GraphQL API instead of REST");
+      assert.ok(result.request.inferred_types.includes("technical"));
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.graphql_surface_present));
+      assert.ok(technical.data.assert.some(item => item.rest_api_absent));
+    });
+  });
+
+  it("proposes REST protocol assertions when the request forbids GraphQL", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(tmpDir, "REST API instead of GraphQL");
+      assert.ok(result.request.inferred_types.includes("technical"));
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.rest_api_present));
+      assert.ok(technical.data.assert.some(item => item.graphql_surface_absent));
+    });
+  });
+
+  it("proposes a repo-driven GraphQL protocol check from detected server code", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "app", "api", "graphql"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.ts"), `
+        import { createYoga } from "graphql-yoga";
+        export const yoga = createYoga({ graphqlEndpoint: "/graphql" });
+      `);
+      fs.writeFileSync(path.join(tmpDir, "app", "api", "graphql", "route.ts"), `
+        export async function POST() { return Response.json({ ok: true }); }
+      `);
+
+      const result = buildDraft(tmpDir);
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.graphql_surface_present));
+      assert.ok(technical.data.assert.some(item => item.rest_api_absent));
+    });
+  });
+
+  it("proposes a repo-driven REST protocol check from detected route files", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "app", "api", "users"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "app", "api", "users", "route.ts"), `
+        export async function GET() { return Response.json([{ id: 1 }]); }
+      `);
+
+      const result = buildDraft(tmpDir);
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.rest_api_present));
+      assert.ok(technical.data.assert.some(item => item.graphql_surface_absent));
+    });
+  });
+
+  it("captures declared app frameworks in the repo-driven technical stack", () => {
+    return withTmpDir(tmpDir => {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        packageManager: "pnpm@9.0.0",
+        dependencies: {
+          next: "^15.0.0",
+          react: "^19.0.0",
+          graphql: "^16.0.0",
+        },
+      }));
+
+      const result = buildDraft(tmpDir);
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/framework-stack.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "next"));
+      assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "react"));
+      assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "graphql"));
+    });
+  });
+
+  it("proposes testing tooling constraints from detected SaaS configs", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        scripts: { "test:e2e": "browserstack-node-sdk playwright test" },
+        devDependencies: {
+          "@playwright/test": "^1.0.0",
+          "browserstack-node-sdk": "^1.0.0",
+          "@percy/cli": "^1.0.0",
+        },
+      }));
+      fs.writeFileSync(path.join(tmpDir, ".browserstack.yml"), "userName: demo\n");
+      fs.writeFileSync(path.join(tmpDir, ".percy.yml"), "version: 2\n");
+
+      const result = buildDraft(tmpDir);
+      const technical = result.proposals.find(proposal => proposal.path === "vp/technical/testing-tooling.yml");
+      assert.ok(technical);
+      assert.ok(technical.data.assert.some(item => item.path_exists?.path === ".browserstack.yml"));
+      assert.ok(technical.data.assert.some(item => item.path_exists?.path === ".percy.yml"));
+      assert.ok(technical.data.assert.some(item => item.script_present?.name === "test:e2e"));
+    });
+  });
+
+  it("proposes backend-native technical architecture checks when the request names tsarch", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src", "domain"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "domain", "model.ts"), "export const domain = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "src", "ui", "screen.ts"), "export const screen = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "tsconfig.json"), JSON.stringify({ compilerOptions: { module: "esnext" } }));
+
+      const result = buildDraft(tmpDir, "TypeScript app with tsarch and architecture boundaries");
+      const technical = result.proposals.find(proposal => proposal.type === "technical" && proposal.path === "vp/technical/architecture-boundaries.yml");
+      assert.ok(technical);
+      assert.equal(technical.data.runner.framework, "tsarch");
+      assert.ok(technical.data.assert.some(item => item.no_circular_dependencies));
+      assert.equal(technical.data.assert.some(item => item.command_succeeds), false);
+    });
+  });
+
+  it("asks for a brownfield delivery clarification when the platform choice is ambiguous", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ name: "tmp", private: true }));
+
+      const result = buildDraft(tmpDir, "add cross-browser testing on real devices to the existing app");
+      const clarification = result.clarifications.find(item => item.id === "technical-delivery-choice");
+      assert.ok(clarification);
+      assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.clarification_ids?.includes("technical-delivery-choice")));
+    });
+  });
+
+  it("does not require a brownfield clarification when the human explicitly leaves the choice to AI", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ name: "tmp", private: true }));
+
+      const result = buildDraft(tmpDir, "add cross-browser testing on real devices to the existing app, you choose the platform");
+      assert.equal(result.clarifications.some(item => item.id === "technical-delivery-choice"), false);
     });
   });
 
@@ -205,6 +458,39 @@ describe("draft", () => {
       assert.equal(options.provider, "local");
       assert.equal(options.aiProvider, "gemini");
       assert.equal(options.model, "gemini-2.5-pro");
+      assert.equal(options.timeoutMs, 600000);
+    });
+  });
+
+  it("prefers draft timeoutMs and falls back to impl timeoutMs", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "local",
+          timeoutMs: 12345,
+        },
+        impl: {
+          timeoutMs: 54321,
+        },
+      }));
+
+      const direct = resolveDraftOptions(tmpDir, {}, {
+        commandExists: () => false,
+      });
+      assert.equal(direct.timeoutMs, 12345);
+
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "local",
+        },
+        impl: {
+          timeoutMs: 54321,
+        },
+      }));
+      const fallback = resolveDraftOptions(tmpDir, {}, {
+        commandExists: () => false,
+      });
+      assert.equal(fallback.timeoutMs, 54321);
     });
   });
 
@@ -357,12 +643,33 @@ describe("draft", () => {
       });
 
       const behavior = result.proposals.find(proposal => proposal.path.startsWith("vp/behavior/"));
-      const database = result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      const database = result.proposals.find(proposal => proposal.path === "vp/db/todos-state.yml");
       assert.equal(behavior.validation.auto_write, false);
       assert.equal(database.validation.auto_write, true);
       assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
-      assert.ok(result.written.includes("vp/db/requested-sqlite-data-lifecycle.yml"));
+      assert.ok(result.written.includes("vp/db/todos-state.yml"));
       assert.ok(result.proposal_validation.needs_review >= 1);
+    });
+  });
+
+  it("keeps brownfield technical starters out of auto-write until clarifications are resolved", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({ name: "tmp", private: true }));
+
+      const { result } = await draft({
+        cwd: tmpDir,
+        input: "add cross-browser testing on real devices to the existing app",
+        write: true,
+        json: false,
+      });
+
+      const technical = result.proposals.find(proposal => proposal.type === "technical");
+      assert.ok(technical);
+      assert.equal(technical.validation.auto_write, false);
+      assert.ok(result.clarifications.some(item => item.id === "technical-delivery-choice"));
+      assert.equal(result.written.some(file => file.startsWith("vp/technical/")), false);
     });
   });
 
@@ -384,8 +691,8 @@ describe("draft", () => {
       assert.ok(Array.isArray(initialSession.vp_snapshot.files));
       assert.equal(typeof initialSession.vp_snapshot.vp_sha256, "string");
 
-      const acceptedPath = "vp/db/requested-sqlite-data-lifecycle.yml";
-      const rejectedPath = "vp/security/requested-protection-api-me.yml";
+      const acceptedPath = "vp/db/todos-state.yml";
+      const rejectedPath = "vp/security/api-me-auth.yml";
       const reviewed = await draft({
         cwd: tmpDir,
         input: "todo app with login and sqlite",
@@ -438,7 +745,7 @@ describe("draft", () => {
         json: false,
       });
 
-      const acceptedPath = "vp/db/requested-sqlite-data-lifecycle.yml";
+      const acceptedPath = "vp/db/todos-state.yml";
       const followUp = await draft({
         cwd: tmpDir,
         json: false,
@@ -460,7 +767,7 @@ describe("draft", () => {
         cwd: tmpDir,
         input: "todo app with login and sqlite",
         json: false,
-        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        accept: ["vp/db/todos-state.yml"],
       });
 
       const fresh = await draft({
@@ -469,7 +776,7 @@ describe("draft", () => {
         json: false,
       });
 
-      const database = fresh.result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      const database = fresh.result.proposals.find(proposal => proposal.path === "vp/db/todos-state.yml");
       assert.ok(database);
       assert.equal(database.review.decision, "pending");
     });
@@ -496,7 +803,7 @@ describe("draft", () => {
       const result = await draft({
         cwd: tmpDir,
         json: false,
-        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        accept: ["vp/db/todos-state.yml"],
         generateText: async () => {
           called = true;
           return JSON.stringify({ summary: "should not run", proposals: [] });
@@ -505,7 +812,7 @@ describe("draft", () => {
 
       assert.equal(result.exitCode, 0);
       assert.equal(called, false);
-      const database = result.result.proposals.find(proposal => proposal.path === "vp/db/requested-sqlite-data-lifecycle.yml");
+      const database = result.result.proposals.find(proposal => proposal.path === "vp/db/todos-state.yml");
       assert.equal(database.review.decision, "accept");
     });
   });
@@ -518,7 +825,7 @@ describe("draft", () => {
       const result = await draft({
         cwd: tmpDir,
         json: false,
-        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        accept: ["vp/db/todos-state.yml"],
       });
 
       assert.equal(result.exitCode, 2);
@@ -536,8 +843,8 @@ describe("draft", () => {
         cwd: tmpDir,
         input: "todo app with login and sqlite",
         json: false,
-        accept: ["vp/db/requested-sqlite-data-lifecycle.yml"],
-        reject: ["vp/db/requested-sqlite-data-lifecycle.yml"],
+        accept: ["vp/db/todos-state.yml"],
+        reject: ["vp/db/todos-state.yml"],
       });
 
       assert.equal(result.exitCode, 2);
