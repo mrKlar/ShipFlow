@@ -1,0 +1,54 @@
+id: behavior-get-api-todos
+feature: API behavior
+scenario: POST then GET /api/todos exposes the created todo
+severity: blocker
+runner:
+  kind: gherkin
+  framework: cucumber
+executor:
+  kind: api
+  framework: playwright-request
+app:
+  kind: api
+  base_url: http://localhost:3000
+given: []
+when:
+  - request:
+      method: POST
+      path: /api/todos
+      body_json:
+        title: Persisted behavior todo
+        completed: false
+  - request:
+      method: GET
+      path: /api/todos
+then:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_type:
+      path: $
+      type: array
+  - json_array_includes:
+      path: $
+      equals:
+        title: Persisted behavior todo
+        completed: false
+  - json_schema:
+      path: $
+      schema:
+        type: array
+        items:
+          type: object
+          required:
+            - id
+            - title
+            - completed
+          properties:
+            id:
+              type: number
+            title:
+              type: string
+            completed:
+              type: boolean

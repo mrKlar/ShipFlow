@@ -29,6 +29,6 @@ assert:
       allow_external: true
       allow_unmatched_relative: false
       allow_same_layer: true
-  - command_stdout_contains:
-      command: "npx tsarch --help"
-      text: "tsarch"
+  - no_circular_dependencies:
+      files: "src/**/*.ts"
+      tsconfig: "tsconfig.json"

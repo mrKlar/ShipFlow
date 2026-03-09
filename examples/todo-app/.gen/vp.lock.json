@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "created_at": "2026-03-09T00:02:59.849Z",
+  "vp_sha256": "0f818db09a247472e82a599a12578af9f38e80b54984a513fe63822e76f1068c",
+  "files": [
+    {
+      "path": "vp/api/get-todos.yml",
+      "sha256": "b34a796a74e66b4267d6951996006dba91ba6c13ffb89e1890d7ed79bd32c7c3"
+    },
+    {
+      "path": "vp/api/post-todos.yml",
+      "sha256": "f9562f0b84a635e086ee9c9b3f5865767f0c3c334c1613c3dbd8973bf22ad36a"
+    },
+    {
+      "path": "vp/behavior/get-api-todos-flow.yml",
+      "sha256": "3a060348ac86e78408f7a7bd9e8bd04d2f55589448f900e9ff0371a3fa35254f"
+    },
+    {
+      "path": "vp/db/todos-state.yml",
+      "sha256": "a2934f034d486ccce6fe8ab3b85df2ac89b94e3e1e1124c9cda54e5c1703201e"
+    },
+    {
+      "path": "vp/technical/api-protocol.yml",
+      "sha256": "2d73e1cf1d445c0c53e00016b1ec4304a85d0cb23132dd34682035ce4d96ac56"
+    },
+    {
+      "path": "vp/technical/framework-stack.yml",
+      "sha256": "7758712d9f7271c448acfdbe086b178171d2b4824d3f48826067193958e48a55"
+    },
+    {
+      "path": "vp/technical/sqlite-runtime.yml",
+      "sha256": "e05acbb5bf38a5e6850dcbdc1faa12bfe7879823c7ef6a46f212c73d1e88709e"
+    },
+    {
+      "path": "vp/ui/add-todo.yml",
+      "sha256": "e10e2cf81f84e42258c5ce05ab24ba20b7c4f3057d8474800d38101a87ecff80"
+    },
+    {
+      "path": "vp/ui/complete-todo.yml",
+      "sha256": "59dcdf60e19f3dfadd8234cc138f9f1c5ed550b146808a266e0586e7566c0b8b"
+    },
+    {
+      "path": "vp/ui/filter-todos.yml",
+      "sha256": "9ad9cf34abacc16f957eb1ce166231ed1d1f07888e75a0ccf44a387dd86fb05d"
+    }
+  ]
+}

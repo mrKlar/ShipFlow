@@ -1,65 +1,105 @@
-# Todo App — ShipFlow Example
+# Todo App — Canonical ShipFlow Example
 
-This example demonstrates the normal ShipFlow loop: **define verifications → `shipflow implement` → green**.
+This is the single canonical example in the repo.
 
-No human writes app code. The `src/` directory starts empty and is generated entirely by the AI.
+Its job is simple: prove that a reviewed verification pack can recreate a normal app after the implementation code is deleted.
 
-## Structure
+The example shape is intentionally practical:
 
-```
+- browser UI at `/`
+- REST API under `/api/todos`
+- SQLite persistence in `./test.db`
+- implementation context prefers `node:sqlite` over native SQLite addons
+- ShipFlow is installed globally first, then used inside this example directory
+
+The committed reviewed pack under `vp/` covers:
+
+- UI add / complete / filter flows
+- behavior-level API round-trip flow compiled through Cucumber
+- REST API GET and POST contracts with todo shape assertions
+- SQLite schema and data lifecycle
+- technical stack consistency, REST protocol, and portable SQLite runtime constraints
+- generated runners under `.gen/`
+
+## Layout
+
+```text
 todo-app/
-  shipflow.json              # ShipFlow config
-  playwright.config.ts       # Playwright config
-  package.json               # Dependencies
-  vp/                        # Verification Pack (human-written)
-    ui/
-      add-todo.yml           # Verification: add a todo item
-      complete-todo.yml      # Verification: mark a todo as complete
-      filter-todos.yml       # Verification: filter todos by status
-    technical/
-      ci-stack.yml           # Verification: local technical stack stays in place
-      _fixtures/
-        login.yml            # Reusable login flow
-  src/                       # App code (AI-generated, starts empty)
-  .gen/                      # Generated Playwright tests
-  evidence/                  # Verification results
+├── request.txt                  # Example greenfield request
+├── shipflow.json                # ShipFlow config/context
+├── package.json                 # Minimal runtime/test scripts
+├── src/.gitkeep                 # Implementation starts empty
+└── vp/
+    ├── ui/*.yml
+    ├── behavior/*.yml
+    ├── api/*.yml
+    ├── db/*.yml
+    └── technical/*.yml
 ```
 
-## Quick start
+## What is committed here
+
+This directory is committed as a reviewed ShipFlow project:
+
+- `vp/` is the reviewed source of truth
+- `.gen/` shows the current generated runnable artifacts
+- `src/` stays empty on purpose
+
+The point is to let someone delete or keep `src/` empty and prove that `shipflow implement` can rebuild the app from the reviewed pack.
+
+## Normal rebuild loop
+
+From this directory:
 
 ```bash
-# Install dependencies
 npm install
-npx playwright install
-
-# Initialize ShipFlow
-shipflow init
+shipflow implement
 ```
 
-Then open the project in Claude Code and run:
+That runs the normal loop against the reviewed pack already committed in `vp/`.
 
-```
-/shipflow-implement
-```
-
-## Manual steps
+To test the disposable-code claim explicitly:
 
 ```bash
-shipflow draft     # Co-draft the verification pack
-shipflow implement # Standard loop: validate, generate, implement, verify
-shipflow gen       # Advanced: generate .gen/playwright/*.test.ts
-shipflow verify    # Advanced: run generated tests and write evidence
+rm -rf src
+mkdir -p src
+touch src/.gitkeep
+shipflow implement
 ```
 
-## Configuration
+`shipflow` itself is installed globally first via the main project install flow. If you want native Claude/Codex/Gemini/Kiro integration in your own copy of this example, run `shipflow init` there instead of relying on machine-specific files from this repository.
 
-`shipflow.json`:
+From the repo root, the fastest path is:
 
-```json
-{
-  "impl": {
-    "srcDir": "src",
-    "context": "Node.js HTTP server, built-in modules only"
-  }
-}
+```bash
+./scripts/try-todo-example.sh
 ```
+
+System requirements for the committed pack:
+
+- `sqlite3`, or Node with `node:sqlite` support
+
+## Real live Claude cycle
+
+This example also includes a no-fake live harness that starts from a fresh temp project, installs ShipFlow into that project, runs `init -> draft -> review -> write -> implement`, and uses the real Claude CLI for implementation. The committed example directory stays clean; the live run happens in a temporary working copy:
+
+```bash
+npm run shipflow:claude-live
+```
+
+Useful flags:
+
+```bash
+npm run shipflow:claude-live -- --keep
+npm run shipflow:claude-live -- --ai-draft
+npm run shipflow:claude-live -- --model=<model-id>
+```
+
+Requirements for the live harness:
+
+- `claude`
+- `sqlite3`, or Node with `node:sqlite` support
+- `npm`
+- `npx`
+
+`--ai-draft` is optional. Without it, the draft phase uses ShipFlow's local proposal engine and the real Claude CLI handles implementation.

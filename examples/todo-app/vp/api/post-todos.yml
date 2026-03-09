@@ -1,0 +1,43 @@
+id: api-post-todos
+title: POST /api/todos creates a todo
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: POST
+  path: /api/todos
+  body_json:
+    title: Draft task
+    completed: false
+assert:
+  - status: 201
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_type:
+      path: $
+      type: object
+  - json_has:
+      path: $.id
+  - json_equals:
+      path: $.title
+      equals: Draft task
+  - json_equals:
+      path: $.completed
+      equals: false
+  - json_schema:
+      path: $
+      schema:
+        type: object
+        required:
+          - id
+          - title
+          - completed
+        properties:
+          id:
+            type: number
+          title:
+            type: string
+          completed:
+            type: boolean

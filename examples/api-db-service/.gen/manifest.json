@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "created_at": "2026-03-09T00:02:59.858Z",
+  "outputs": {
+    "ui": {
+      "label": "UI",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "ui.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "behavior": {
+      "label": "Behavior",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "behavior.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "behavior_gherkin": {
+      "label": "Behavior (Gherkin)",
+      "output_kind": "cucumber",
+      "output_dir": "cucumber",
+      "evidence_file": "behavior-gherkin.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "api": {
+      "label": "API",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "api.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_api_list-users.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "api-list-users",
+          "title": "GET /api/users returns JSON users",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_api_list-users.test.ts",
+          "companion_files": []
+        }
+      ]
+    },
+    "db": {
+      "label": "Database",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "database.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_db_users-state.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "db-users-state",
+          "title": "Users persist after creation",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_db_users-state.test.ts",
+          "companion_files": []
+        }
+      ]
+    },
+    "security": {
+      "label": "Security",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "security.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "technical": {
+      "label": "Technical",
+      "output_kind": "technical",
+      "output_dir": "technical",
+      "evidence_file": "technical.json",
+      "count": 2,
+      "files": [
+        ".gen/technical/vp_technical_architecture-boundaries.runner.mjs",
+        ".gen/technical/vp_technical_ci.runner.mjs"
+      ],
+      "checks": [
+        {
+          "id": "technical-architecture-boundaries",
+          "title": "API service keeps clean domain and application boundaries",
+          "severity": "blocker",
+          "file": ".gen/technical/vp_technical_architecture-boundaries.runner.mjs",
+          "companion_files": []
+        },
+        {
+          "id": "technical-api-db-ci",
+          "title": "API service keeps expected CI stack",
+          "severity": "blocker",
+          "file": ".gen/technical/vp_technical_ci.runner.mjs",
+          "companion_files": []
+        }
+      ]
+    },
+    "nfr": {
+      "label": "Performance",
+      "output_kind": "k6",
+      "output_dir": "k6",
+      "evidence_file": "load.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    }
+  },
+  "validations": {
+    "structural": [
+      {
+        "type": "api",
+        "file": ".gen/playwright/vp_api_list-users.test.ts",
+        "ok": true
+      },
+      {
+        "type": "db",
+        "file": ".gen/playwright/vp_db_users-state.test.ts",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/technical/vp_technical_architecture-boundaries.runner.mjs",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/technical/vp_technical_ci.runner.mjs",
+        "ok": true
+      },
+      {
+        "type": "playwright-runtime",
+        "file": ".gen/playwright.config.mjs",
+        "ok": true
+      }
+    ],
+    "smoke_compile": [
+      {
+        "target": "playwright",
+        "status": "skipped",
+        "reason": "@playwright/test not installed"
+      }
+    ]
+  }
+}

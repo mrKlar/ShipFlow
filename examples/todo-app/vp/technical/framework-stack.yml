@@ -1,0 +1,18 @@
+id: technical-framework-stack
+title: Declared technical stack stays consistent
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists:
+      path: package.json
+  - dependency_present:
+      name: '@playwright/test'
+      section: devDependencies
+  - script_present:
+      name: dev

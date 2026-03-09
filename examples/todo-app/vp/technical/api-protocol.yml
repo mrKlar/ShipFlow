@@ -1,0 +1,14 @@
+id: technical-api-protocol
+title: Requested REST protocol stays enforced
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - rest_api_present:
+      files: '**/*'
+      path_prefix: /api/

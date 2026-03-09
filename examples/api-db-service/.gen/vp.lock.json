@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "created_at": "2026-03-09T00:02:59.858Z",
+  "vp_sha256": "6c1db208cd43d1b236d48d302996345f048ce532eefb3f9bf8518a9eacdc47bf",
+  "files": [
+    {
+      "path": "vp/api/list-users.yml",
+      "sha256": "7c9f12785b07e1cb16b4a8f13b56976496a26a93ae579f8624f6823b1126d911"
+    },
+    {
+      "path": "vp/db/users-state.yml",
+      "sha256": "77b3c9f2abc810f6b86ad27925e5741db286f56f96d6f9663e0ebb209a0b8889"
+    },
+    {
+      "path": "vp/technical/architecture-boundaries.yml",
+      "sha256": "36b9b4369ff6d61c23755ebee11ff34b0cefb049c83d1fdfd22df2b117923cba"
+    },
+    {
+      "path": "vp/technical/ci.yml",
+      "sha256": "7696e708b3dfe5f8778773bad97a8f5293bda25a425d2baaafb1f4ec84875593"
+    }
+  ]
+}

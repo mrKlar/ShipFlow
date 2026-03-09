@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "created_at": "2026-03-09T00:02:59.849Z",
+  "outputs": {
+    "ui": {
+      "label": "UI",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "ui.json",
+      "count": 3,
+      "files": [
+        ".gen/playwright/vp_ui_add-todo.test.ts",
+        ".gen/playwright/vp_ui_complete-todo.test.ts",
+        ".gen/playwright/vp_ui_filter-todos.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "add-todo",
+          "title": "User can add a new todo item",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_add-todo.test.ts",
+          "companion_files": []
+        },
+        {
+          "id": "complete-todo",
+          "title": "User can mark a todo as complete",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_complete-todo.test.ts",
+          "companion_files": []
+        },
+        {
+          "id": "filter-todos",
+          "title": "User can filter todos by status",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_ui_filter-todos.test.ts",
+          "companion_files": []
+        }
+      ]
+    },
+    "behavior": {
+      "label": "Behavior",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "behavior.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "behavior_gherkin": {
+      "label": "Behavior (Gherkin)",
+      "output_kind": "cucumber",
+      "output_dir": "cucumber",
+      "evidence_file": "behavior-gherkin.json",
+      "count": 1,
+      "files": [
+        ".gen/cucumber/features/get-api-todos-flow.feature",
+        ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs"
+      ],
+      "checks": [
+        {
+          "id": "behavior-get-api-todos",
+          "title": "POST then GET /api/todos exposes the created todo",
+          "severity": "blocker",
+          "file": ".gen/cucumber/features/get-api-todos-flow.feature",
+          "companion_files": [
+            ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs"
+          ]
+        }
+      ]
+    },
+    "api": {
+      "label": "API",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "api.json",
+      "count": 2,
+      "files": [
+        ".gen/playwright/vp_api_get-todos.test.ts",
+        ".gen/playwright/vp_api_post-todos.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "api-get-todos",
+          "title": "GET /api/todos returns the todo list",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_api_get-todos.test.ts",
+          "companion_files": []
+        },
+        {
+          "id": "api-post-todos",
+          "title": "POST /api/todos creates a todo",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_api_post-todos.test.ts",
+          "companion_files": []
+        }
+      ]
+    },
+    "db": {
+      "label": "Database",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "database.json",
+      "count": 1,
+      "files": [
+        ".gen/playwright/vp_db_todos-state.test.ts"
+      ],
+      "checks": [
+        {
+          "id": "db-todos-sqlite-lifecycle",
+          "title": "SQLite todos data lifecycle stays observable",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_db_todos-state.test.ts",
+          "companion_files": []
+        }
+      ]
+    },
+    "security": {
+      "label": "Security",
+      "output_kind": "playwright",
+      "output_dir": "playwright",
+      "evidence_file": "security.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
+    "technical": {
+      "label": "Technical",
+      "output_kind": "technical",
+      "output_dir": "technical",
+      "evidence_file": "technical.json",
+      "count": 3,
+      "files": [
+        ".gen/technical/vp_technical_api-protocol.runner.mjs",
+        ".gen/technical/vp_technical_framework-stack.runner.mjs",
+        ".gen/technical/vp_technical_sqlite-runtime.runner.mjs"
+      ],
+      "checks": [
+        {
+          "id": "technical-api-protocol",
+          "title": "Requested REST protocol stays enforced",
+          "severity": "blocker",
+          "file": ".gen/technical/vp_technical_api-protocol.runner.mjs",
+          "companion_files": []
+        },
+        {
+          "id": "technical-framework-stack",
+          "title": "Declared technical stack stays consistent",
+          "severity": "blocker",
+          "file": ".gen/technical/vp_technical_framework-stack.runner.mjs",
+          "companion_files": []
+        },
+        {
+          "id": "technical-sqlite-runtime",
+          "title": "Requested SQLite runtime stays portable",
+          "severity": "blocker",
+          "file": ".gen/technical/vp_technical_sqlite-runtime.runner.mjs",
+          "companion_files": []
+        }
+      ]
+    },
+    "nfr": {
+      "label": "Performance",
+      "output_kind": "k6",
+      "output_dir": "k6",
+      "evidence_file": "load.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    }
+  },
+  "validations": {
+    "structural": [
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_add-todo.test.ts",
+        "ok": true
+      },
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_complete-todo.test.ts",
+        "ok": true
+      },
+      {
+        "type": "ui",
+        "file": ".gen/playwright/vp_ui_filter-todos.test.ts",
+        "ok": true
+      },
+      {
+        "type": "behavior_gherkin",
+        "file": ".gen/cucumber/features/get-api-todos-flow.feature",
+        "ok": true
+      },
+      {
+        "type": "behavior_gherkin",
+        "file": ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs",
+        "ok": true
+      },
+      {
+        "type": "api",
+        "file": ".gen/playwright/vp_api_get-todos.test.ts",
+        "ok": true
+      },
+      {
+        "type": "api",
+        "file": ".gen/playwright/vp_api_post-todos.test.ts",
+        "ok": true
+      },
+      {
+        "type": "db",
+        "file": ".gen/playwright/vp_db_todos-state.test.ts",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/technical/vp_technical_api-protocol.runner.mjs",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/technical/vp_technical_framework-stack.runner.mjs",
+        "ok": true
+      },
+      {
+        "type": "technical",
+        "file": ".gen/technical/vp_technical_sqlite-runtime.runner.mjs",
+        "ok": true
+      },
+      {
+        "type": "playwright-runtime",
+        "file": ".gen/playwright.config.mjs",
+        "ok": true
+      }
+    ],
+    "smoke_compile": [
+      {
+        "target": "playwright",
+        "status": "skipped",
+        "reason": "@playwright/test not installed"
+      }
+    ]
+  }
+}

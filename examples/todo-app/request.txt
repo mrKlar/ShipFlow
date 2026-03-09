@@ -1,0 +1,8 @@
+A todo app with a browser UI, a REST API, and SQLite storage.
+
+Required capabilities:
+- users can add todos
+- users can mark todos complete
+- users can filter todos by status
+- the app exposes REST endpoints under /api/todos
+- todos persist in SQLite at ./test.db

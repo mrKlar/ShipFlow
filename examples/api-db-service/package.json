@@ -1,0 +1,8 @@
+{
+  "name": "api-db-service-example",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}

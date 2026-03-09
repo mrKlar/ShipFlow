@@ -1,0 +1,34 @@
+id: api-get-todos
+title: GET /api/todos returns the todo list
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/todos
+assert:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_type:
+      path: $
+      type: array
+  - json_schema:
+      path: $
+      schema:
+        type: array
+        items:
+          type: object
+          required:
+            - id
+            - title
+            - completed
+          properties:
+            id:
+              type: number
+            title:
+              type: string
+            completed:
+              type: boolean

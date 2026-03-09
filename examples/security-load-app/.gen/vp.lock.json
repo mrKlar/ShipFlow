@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "created_at": "2026-03-09T00:02:59.859Z",
+  "vp_sha256": "eed05f6c24cb6d1324b38b4e7394ef85c20429d603e621f1e75b17d964b38cd0",
+  "files": [
+    {
+      "path": "vp/nfr/home-smoke.yml",
+      "sha256": "57d88b63fd288129130cdfc779112b52213bb2f12424ba888e632a262c5f7ed5"
+    },
+    {
+      "path": "vp/security/admin-authz.yml",
+      "sha256": "b132c4841f7268a57f39b771e7e20bb01acf07e32a44b94aaba41b74e42e4fe4"
+    },
+    {
+      "path": "vp/technical/headers.yml",
+      "sha256": "a518408d6b9168ff12e658f804db0330d579f966b8d209ff01fb4fe91eac6b77"
+    }
+  ]
+}

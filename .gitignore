@@ -1,5 +1,34 @@
 node_modules/
 dist/
+.gen/
+evidence/
+vp/
+.shipflow/
+.claude/
+.codex/
+.gemini/
+.kiro/
+
+!examples/
+!examples/todo-app/
+!examples/todo-app/.gen/
+!examples/todo-app/.gen/**
+!examples/todo-app/.shipflow/
+!examples/todo-app/.shipflow/**
+!examples/todo-app/.claude/
+!examples/todo-app/.claude/**
+!examples/todo-app/vp/
+!examples/todo-app/vp/**
+!examples/api-db-service/
+!examples/api-db-service/.gen/
+!examples/api-db-service/.gen/**
+!examples/api-db-service/vp/
+!examples/api-db-service/vp/**
+!examples/security-load-app/
+!examples/security-load-app/.gen/
+!examples/security-load-app/.gen/**
+!examples/security-load-app/vp/
+!examples/security-load-app/vp/**
 
 # Ignore Windows NTFS alternate data stream metadata files
 *Zone.Identifier

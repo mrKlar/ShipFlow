@@ -1,0 +1,19 @@
+id: technical-sqlite-runtime
+title: Requested SQLite runtime stays portable
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists:
+      path: package.json
+  - dependency_absent:
+      name: better-sqlite3
+      section: all
+  - dependency_absent:
+      name: sqlite3
+      section: all
