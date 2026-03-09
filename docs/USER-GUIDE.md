@@ -562,7 +562,7 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, Cucumber artifacts into `.gen/cucumber/`, k6 scripts into `.gen/k6/`, technical runners into `.gen/technical/`, and creates `.gen/vp.lock.json` plus `.gen/manifest.json`.
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, Cucumber artifacts into `.gen/cucumber/`, k6 scripts into `.gen/k6/`, technical runners into `.gen/technical/`, writes `.gen/manifest.json`, and then creates `.gen/vp.lock.json` covering both `vp/` and `.gen/`.
 
 ### Run verification
 
@@ -570,7 +570,7 @@ Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests int
 shipflow verify
 ```
 
-1. Validates the lock (VP unchanged since `gen`)
+1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
 2. Evaluates OPA policies (if present)
 3. Runs generated Playwright tests and writes per-type evidence files
 4. Runs generated technical backend runners when present and writes `evidence/technical.json`

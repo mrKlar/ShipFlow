@@ -33,12 +33,12 @@ Behavior checks can compile either to Playwright-backed tests or to `.gen/cucumb
 Performance verifications compile to `.gen/k6/*.js`.
 Technical verifications compile to `.gen/technical/*.runner.mjs`, with optional framework-specific config companions when `runner.framework` selects a specialized backend such as `dependency-cruiser`, `tsarch`, `madge`, or `eslint-plugin-boundaries`.
 
-The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
+The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` and every generated artifact in `.gen/` except the lock file itself.
 
 ## Execution
 
 `shipflow verify`:
-1. Validates VP lock (VP unchanged since `gen`)
+1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
 2. Evaluates OPA policies (if `vp/policy/*.rego` exist) → `evidence/policy.json`
 3. Runs generated Playwright tests per verification type and writes `evidence/*.json`
 4. Runs k6 NFR scripts when `.gen/k6/*.js` exist. Missing `k6` is a verification failure, not a skip → `evidence/load.json`
@@ -60,6 +60,6 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/`.
 
 - Implementation phase MUST NOT modify `vp/`, `.gen/`, or `evidence/`
 - `.gen/` is regenerated only via `shipflow gen`
-- VP lock prevents tampering between gen and verify
+- The cryptographic lock prevents tampering between `gen` and `verify` for both the pack and generated artifacts
 - Claude Code hooks enforce these constraints automatically
 - Codex CLI and Gemini CLI guard scripts available in `hooks/`

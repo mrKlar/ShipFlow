@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const goldenRoot = path.resolve(__dirname, "..", "golden");
 
 const ISO_KEYS = new Set(["created_at", "started_at", "updated_at", "last_success_at", "last_failure_at"]);
-const HASH_KEYS = new Set(["vp_sha256", "lock_vp_sha256", "sha256"]);
+const HASH_KEYS = new Set(["vp_sha256", "generated_sha256", "lock_vp_sha256", "sha256"]);
 const NUMBER_KEYS = new Set(["duration_ms", "average_duration_ms"]);
 
 function normalizeValue(key, value) {

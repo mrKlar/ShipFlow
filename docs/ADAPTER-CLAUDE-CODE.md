@@ -45,7 +45,7 @@ When `shipflow init --claude` is run inside a project, it creates `.claude/hooks
 
 - **PreToolUse hook** prevents modification of VP, generated tests, and evidence
 - **Stop hook** prevents completion without green tests
-- **VP lock** (SHA-256) detects tampering between gen and verify
+- **Cryptographic lock** (SHA-256) detects tampering between `gen` and `verify` for both `vp/` and `.gen/`
 - **CLAUDE.md** teaches the AI the constraints and workflow
 
 ## Project Setup

@@ -154,7 +154,7 @@ ShipFlow makes it structurally difficult for the AI to game the loop:
 | Mechanism | What it does |
 |---|---|
 | 🛡️ Path protection | Hooks block writes to `vp/`, `.gen/`, and `evidence/` during implementation |
-| 🔐 Cryptographic lock | SHA-256 hashes of every verification file are checked before execution |
+| 🔐 Cryptographic lock | SHA-256 hashes of the verification pack and generated artifacts are checked before execution |
 | 🚫 Stop gate | Native integrations should not report success until `shipflow verify` is green |
 | 🧪 Mutation guards | Generated tests include false-positive checks so a trivial passthrough implementation does not satisfy the pack by accident |
 

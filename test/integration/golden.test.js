@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gen } from "../../lib/gen.js";
 import { verify } from "../../lib/verify.js";
-import { sha256 } from "../../lib/util/hash.js";
+import { buildVerificationLock } from "../../lib/util/verification-lock.js";
 import { assertGolden, normalizeGoldenJson } from "../support/golden.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,27 +20,7 @@ function copyFixtureProject() {
 }
 
 function buildLock(tmpDir) {
-  const vpDir = path.join(tmpDir, "vp");
-  const files = [];
-  const walk = (dir) => {
-    if (!fs.existsSync(dir)) return;
-    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, ent.name);
-      if (ent.isDirectory()) walk(full);
-      else files.push(full);
-    }
-  };
-  walk(vpDir);
-  const items = files.map(file => ({
-    path: path.relative(tmpDir, file).replaceAll("\\", "/"),
-    sha256: sha256(fs.readFileSync(file)),
-  })).sort((a, b) => a.path.localeCompare(b.path));
-  return {
-    version: 1,
-    created_at: new Date().toISOString(),
-    vp_sha256: sha256(Buffer.from(JSON.stringify(items))),
-    files: items,
-  };
+  return buildVerificationLock(tmpDir);
 }
 
 function writeExecutable(file, content) {
@@ -89,7 +69,6 @@ describe("golden snapshots", () => {
       fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "playwright", "vp_ui_home.test.ts"), "import { test, expect } from \"@playwright/test\";\ntest(\"x\", async () => {});\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "k6", "vp_nfr_smoke.js"), "export default function() {}\n");
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(buildLock(tmpDir), null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -113,6 +92,7 @@ describe("golden snapshots", () => {
           },
         },
       }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(buildLock(tmpDir), null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '1 passed'\n");
       writeExecutable(path.join(binDir, "k6"), "#!/usr/bin/env bash\nif [ \"$1\" = \"version\" ]; then exit 0; fi\nif [ \"$1\" = \"run\" ]; then echo 'k6 ok'; exit 0; fi\nexit 0\n");

@@ -44,11 +44,15 @@ describe("gen integration — full cycle on test fixtures", () => {
     const lockPath = path.join(genDir, "vp.lock.json");
     assert.ok(fs.existsSync(lockPath));
     const lock = JSON.parse(fs.readFileSync(lockPath, "utf-8"));
-    assert.equal(lock.version, 1);
+    assert.equal(lock.version, 2);
     assert.ok(typeof lock.vp_sha256 === "string");
     assert.ok(lock.vp_sha256.length === 64);
     assert.ok(Array.isArray(lock.files));
     assert.ok(lock.files.length > 0);
+    assert.ok(typeof lock.generated_sha256 === "string");
+    assert.ok(lock.generated_sha256.length === 64);
+    assert.ok(Array.isArray(lock.generated_files));
+    assert.ok(lock.generated_files.length > 0);
     assert.ok(lock.created_at);
   });
 
@@ -56,6 +60,13 @@ describe("gen integration — full cycle on test fixtures", () => {
     const lock = JSON.parse(fs.readFileSync(path.join(genDir, "vp.lock.json"), "utf-8"));
     const paths = lock.files.map(f => f.path);
     assert.ok(paths.some(p => p.includes("_fixtures")));
+  });
+
+  it("lock file includes generated artifacts in hash", () => {
+    const lock = JSON.parse(fs.readFileSync(path.join(genDir, "vp.lock.json"), "utf-8"));
+    const paths = lock.generated_files.map(file => file.path);
+    assert.ok(paths.includes(".gen/manifest.json"));
+    assert.ok(paths.some(file => file.startsWith(".gen/playwright/")));
   });
 
   it("all generated tests have Playwright import", () => {

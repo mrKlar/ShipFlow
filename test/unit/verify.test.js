@@ -5,27 +5,12 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { loadLock, verifyLock, parseSummary, verify, collectGeneratedFilesByType, collectGeneratedChecksByType } from "../../lib/verify.js";
-import { sha256 } from "../../lib/util/hash.js";
+import { buildVerificationLock } from "../../lib/util/verification-lock.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function buildLock(tmpDir) {
-  const vpDir = path.join(tmpDir, "vp");
-  const files = [];
-  const walk = (dir) => {
-    if (!fs.existsSync(dir)) return;
-    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, ent.name);
-      if (ent.isDirectory()) walk(full);
-      else files.push(full);
-    }
-  };
-  walk(vpDir);
-  const items = files.map(file => {
-    const rel = path.relative(tmpDir, file).replaceAll("\\", "/");
-    return { path: rel, sha256: sha256(fs.readFileSync(file)) };
-  }).sort((a, b) => a.path.localeCompare(b.path));
-  return { version: 1, vp_sha256: sha256(Buffer.from(JSON.stringify(items))), files: items };
+  return buildVerificationLock(tmpDir, { createdAt: "2026-03-08T00:00:00.000Z" });
 }
 
 function writeExecutable(file, content) {
@@ -62,14 +47,12 @@ describe("verifyLock", () => {
   it("passes when VP matches lock", () => {
     const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
     const vpDir = path.join(tmpDir, "vp", "ui");
+    const genDir = path.join(tmpDir, ".gen");
     fs.mkdirSync(vpDir, { recursive: true });
+    fs.mkdirSync(genDir, { recursive: true });
     fs.writeFileSync(path.join(vpDir, "check.yml"), "id: test\n");
-
-    const rel = path.relative(tmpDir, path.join(vpDir, "check.yml")).replaceAll("\\", "/");
-    const buf = fs.readFileSync(path.join(vpDir, "check.yml"));
-    const items = [{ path: rel, sha256: sha256(buf) }];
-    const vpSha = sha256(Buffer.from(JSON.stringify(items)));
-    const lock = { vp_sha256: vpSha };
+    fs.writeFileSync(path.join(genDir, "manifest.json"), JSON.stringify({ version: 1, outputs: {} }, null, 2));
+    const lock = buildLock(tmpDir);
 
     try {
       assert.doesNotThrow(() => verifyLock(tmpDir, lock));
@@ -81,12 +64,54 @@ describe("verifyLock", () => {
   it("throws when VP does not match lock", () => {
     const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
     const vpDir = path.join(tmpDir, "vp", "ui");
+    const genDir = path.join(tmpDir, ".gen");
     fs.mkdirSync(vpDir, { recursive: true });
+    fs.mkdirSync(genDir, { recursive: true });
     fs.writeFileSync(path.join(vpDir, "check.yml"), "id: test\n");
+    fs.writeFileSync(path.join(genDir, "manifest.json"), JSON.stringify({ version: 1, outputs: {} }, null, 2));
 
-    const lock = { vp_sha256: "wrong-hash" };
+    const lock = { ...buildLock(tmpDir), vp_sha256: "wrong-hash" };
     try {
       assert.throws(() => verifyLock(tmpDir, lock), /Verification pack changed/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when generated artifacts do not match lock", () => {
+    const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
+    const vpDir = path.join(tmpDir, "vp", "ui");
+    const genDir = path.join(tmpDir, ".gen");
+    fs.mkdirSync(vpDir, { recursive: true });
+    fs.mkdirSync(genDir, { recursive: true });
+    fs.writeFileSync(path.join(vpDir, "check.yml"), "id: test\n");
+    fs.writeFileSync(path.join(genDir, "manifest.json"), JSON.stringify({ version: 1, outputs: {} }, null, 2));
+
+    const lock = buildLock(tmpDir);
+    fs.writeFileSync(path.join(genDir, "manifest.json"), JSON.stringify({ version: 1, outputs: { ui: { count: 1 } } }, null, 2));
+
+    try {
+      assert.throws(() => verifyLock(tmpDir, lock), /Generated artifacts changed/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("throws when lock does not cover generated artifacts", () => {
+    const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
+    const vpDir = path.join(tmpDir, "vp", "ui");
+    const genDir = path.join(tmpDir, ".gen");
+    fs.mkdirSync(vpDir, { recursive: true });
+    fs.mkdirSync(genDir, { recursive: true });
+    fs.writeFileSync(path.join(vpDir, "check.yml"), "id: test\n");
+    fs.writeFileSync(path.join(genDir, "manifest.json"), JSON.stringify({ version: 1, outputs: {} }, null, 2));
+
+    const lock = buildLock(tmpDir);
+    delete lock.generated_sha256;
+    delete lock.generated_files;
+
+    try {
+      assert.throws(() => verifyLock(tmpDir, lock), /does not cover generated artifacts/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -169,8 +194,6 @@ describe("verify", () => {
       fs.writeFileSync(path.join(tmpDir, ".gen", "playwright", "vp_ui_home.test.ts"), "import { test, expect } from \"@playwright/test\";\ntest(\"x\", async () => {});\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "k6", "vp_nfr_smoke.js"), "export default function() {}\n");
 
-      const lock = buildLock(tmpDir);
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -178,6 +201,8 @@ describe("verify", () => {
           nfr: { files: [".gen/k6/vp_nfr_smoke.js"] },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '1 passed'\n");
       writeExecutable(path.join(binDir, "k6"), "#!/usr/bin/env bash\nif [ \"$1\" = \"version\" ]; then exit 0; fi\nif [ \"$1\" = \"run\" ]; then echo 'k6 ok'; exit 0; fi\nexit 0\n");
@@ -215,8 +240,6 @@ describe("verify", () => {
       fs.writeFileSync(path.join(tmpDir, ".gen", "playwright", "vp_ui_home.test.ts"), "import { test, expect } from \"@playwright/test\";\ntest(\"x\", async () => {});\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "k6", "vp_nfr_smoke.js"), "export default function() {}\n");
 
-      const lock = buildLock(tmpDir);
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -224,6 +247,8 @@ describe("verify", () => {
           nfr: { files: [".gen/k6/vp_nfr_smoke.js"] },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '1 passed'\n");
       writeExecutable(path.join(binDir, "k6"), "#!/usr/bin/env bash\nif [ \"$1\" = \"version\" ]; then exit 0; fi\nif [ \"$1\" = \"run\" ]; then echo 'k6 failed' >&2; exit 1; fi\nexit 0\n");
@@ -251,9 +276,7 @@ describe("verify", () => {
 
       fs.writeFileSync(path.join(tmpDir, ".gen", "k6", "vp_nfr_smoke.js"), "export default function() {}\n");
 
-      const lock = { version: 1, vp_sha256: sha256(Buffer.from("[]")), files: [] };
       fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -263,6 +286,8 @@ describe("verify", () => {
           },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '0 passed'\n");
       process.env.PATH = `${binDir}:${previousPath}`;
@@ -292,8 +317,6 @@ describe("verify", () => {
       fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "playwright", "vp_ui_home.test.ts"), "import { test, expect } from \"@playwright/test\";\ntest(\"x\", async () => {});\n");
 
-      const lock = buildLock(tmpDir);
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -303,6 +326,8 @@ describe("verify", () => {
           },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\necho '1 failed'\nexit 1\n");
       process.env.PATH = `${binDir}:${previousPath}`;
@@ -331,8 +356,6 @@ describe("verify", () => {
       fs.writeFileSync(path.join(tmpDir, ".gen", "cucumber", "features", "checkout.feature"), "Feature: Checkout\n  Scenario: checkout\n    Given ShipFlow noop\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "cucumber", "step_definitions", "checkout.steps.mjs"), "import { Given } from \"@cucumber/cucumber\";\nGiven(\"ShipFlow noop\", async function () {});\n");
 
-      const lock = buildLock(tmpDir);
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -350,6 +373,8 @@ describe("verify", () => {
           },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       writeExecutable(path.join(binDir, "npx"), "#!/usr/bin/env bash\nif [ \"$1\" = \"cucumber-js\" ]; then echo '1 passed'; exit 0; fi\necho '0 passed'\n");
       process.env.PATH = `${binDir}:${previousPath}`;
@@ -374,8 +399,6 @@ describe("verify", () => {
       fs.writeFileSync(path.join(tmpDir, "vp", "technical", "ci.yml"), "id: technical-ci\n");
       fs.writeFileSync(path.join(tmpDir, ".gen", "technical", "vp_technical_ci.runner.mjs"), "console.log('technical ok');\n");
 
-      const lock = buildLock(tmpDir);
-      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
       fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
         version: 1,
         outputs: {
@@ -389,6 +412,8 @@ describe("verify", () => {
           },
         },
       }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
 
       const result = await verify({ cwd: tmpDir, capture: true });
 
