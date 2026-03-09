@@ -84,7 +84,30 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, ".claude", "hooks.json")));
       const hooks = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude", "hooks.json"), "utf-8"));
       assert.ok(hooks.hooks.PreToolUse);
+      assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Bash" && hook.command === "shipflow-bash-guard"));
+      assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Edit|Write"));
       assert.ok(hooks.hooks.Stop);
+    });
+  });
+
+  it("merges new Claude hooks into an existing hooks.json", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, ".claude"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".claude", "hooks.json"), JSON.stringify({
+        hooks: {
+          PreToolUse: [{ matcher: "Read", command: "custom-read-hook" }],
+          Stop: [{ command: "custom-stop-hook" }],
+        },
+      }, null, 2));
+
+      init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
+
+      const hooks = JSON.parse(fs.readFileSync(path.join(tmpDir, ".claude", "hooks.json"), "utf-8"));
+      assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Read" && hook.command === "custom-read-hook"));
+      assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Bash" && hook.command === "shipflow-bash-guard"));
+      assert.ok(hooks.hooks.PreToolUse.some(hook => hook.matcher === "Edit|Write"));
+      assert.ok(hooks.hooks.Stop.some(hook => hook.command === "custom-stop-hook"));
+      assert.ok(hooks.hooks.Stop.some(hook => hook.command === "shipflow-stop"));
     });
   });
 
@@ -134,6 +157,9 @@ describe("init", () => {
       assert.ok(toml.includes("\"vp/\""));
       assert.ok(toml.includes("\".shipflow/\""));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules")));
+      const rules = fs.readFileSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules"), "utf-8");
+      assert.ok(rules.includes('pattern=["cat", ["~/.local/bin/shipflow"'));
+      assert.ok(rules.includes('pattern=["find", ["~/.claude/plugins"'));
       // Claude files NOT created
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
       assert.ok(!fs.existsSync(path.join(tmpDir, ".claude", "hooks.json")));

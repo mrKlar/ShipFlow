@@ -67,13 +67,24 @@ shipflow init --all                # All platforms
 Open your project and run:
 
 ```
-/shipflow-draft a todo app with login
+/shipflow:draft a todo app with login
 ```
 
 Use that first pass as the draft flow. Tighten it, add missing checks, remove weak ones, then:
 
 ```
-/shipflow-implement
+/shipflow:implement
+```
+
+Debug commands are also available:
+
+```
+/shipflow:map
+/shipflow:doctor
+/shipflow:lint
+/shipflow:gen
+/shipflow:verify
+/shipflow:status
 ```
 
 ### With Codex CLI
@@ -90,6 +101,17 @@ Review and iterate with the AI. Then:
 $shipflow-implement
 ```
 
+Debug skills are also available:
+
+```
+$shipflow-map
+$shipflow-doctor
+$shipflow-lint
+$shipflow-gen
+$shipflow-verify
+$shipflow-status
+```
+
 ### With Gemini CLI
 
 Open your project and use the slash commands:
@@ -102,6 +124,17 @@ Review and iterate with the AI. Then:
 
 ```
 /shipflow:implement
+```
+
+Debug commands are also available:
+
+```
+/shipflow:map
+/shipflow:doctor
+/shipflow:lint
+/shipflow:gen
+/shipflow:verify
+/shipflow:status
 ```
 
 ### With Kiro CLI
@@ -601,7 +634,7 @@ ShipFlow enforces separation between verification and implementation:
 | `evidence/` | Test results | `shipflow verify` |
 
 Hooks enforce this automatically per platform:
-- **Claude Code** — PreToolUse blocks Write/Edit to protected paths, Stop runs verify before completion
+- **Claude Code** — PreToolUse blocks Write/Edit to protected paths, blocks ShipFlow self-introspection Bash detours during draft, and Stop runs verify before completion
 - **Codex CLI** — Sandbox exec policy rules restrict protected paths
 - **Gemini CLI** — BeforeTool hooks block writes to protected paths
 - **Kiro CLI** — PreToolUse hooks block writes (exit code 2) to protected paths

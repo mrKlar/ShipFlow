@@ -8,6 +8,7 @@ import {
   claudeAllowedToolsForResponseFormat,
   claudeEffortForResponseFormat,
   claudePermissionModeForResponseFormat,
+  cliProviderChildEnv,
   normalizeProviderText,
   providerReady,
   resolveAutoProvider,
@@ -66,6 +67,30 @@ describe("providerReady", () => {
       providerReady("command", { command: { bin: "missing" } }, {}, () => false),
       false,
     );
+  });
+});
+
+describe("cliProviderChildEnv", () => {
+  it("clears active session markers before spawning a nested CLI provider", () => {
+    assert.deepEqual(cliProviderChildEnv("claude"), {
+      CLAUDECODE: undefined,
+      CLAUDE_CODE: undefined,
+      CLAUDE_SESSION_ID: undefined,
+    });
+    assert.deepEqual(cliProviderChildEnv("codex"), {
+      CODEX_THREAD_ID: undefined,
+      CODEX_CI: undefined,
+      CODEX_MANAGED_BY_NPM: undefined,
+    });
+    assert.deepEqual(cliProviderChildEnv("gemini"), {
+      GEMINI_CLI: undefined,
+      GEMINI_CLI_SESSION_ID: undefined,
+    });
+    assert.deepEqual(cliProviderChildEnv("kiro"), {
+      KIRO_CLI: undefined,
+      KIRO_SESSION_ID: undefined,
+    });
+    assert.deepEqual(cliProviderChildEnv("anthropic"), {});
   });
 });
 

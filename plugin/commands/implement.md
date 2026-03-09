@@ -14,19 +14,12 @@ $ARGUMENTS
 
 ## Setup
 
-Find the ShipFlow installation:
-
-```bash
-SHIPFLOW_DIR="$(find ~/.claude/plugins/cache/shipflow -name 'shipflow.js' -path '*/bin/*' 2>/dev/null | head -1 | xargs dirname | xargs dirname)"
-echo "ShipFlow: $SHIPFLOW_DIR"
-```
-
-Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all ShipFlow commands.
+Use the installed `shipflow` CLI directly. If it is not on `PATH`, try `~/.local/bin/shipflow`.
 
 If the project has no `shipflow.json`, initialize it first:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" init
+shipflow init
 ```
 
 ## Standard Path
@@ -34,13 +27,15 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" init
 Start with the normal low-friction command:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" status --json
-node "$SHIPFLOW_DIR/bin/shipflow.js" implement
+shipflow status --json
+shipflow implement
 ```
 
 Only continue to implementation when `shipflow status --json` shows `implementation_gate.ready === true`.
+Inspect the JSON output directly. Do not wrap `shipflow status --json` in `python`, `jq`, or shell pipelines unless ShipFlow itself returned malformed output.
+Run `shipflow implement` directly. Do not unset CLI session variables manually; ShipFlow handles nested provider subprocesses itself.
 
-If `implementation_gate.ready !== true`, stop and send the user back to `/shipflow-draft`. Typical blocking reasons are:
+If `implementation_gate.ready !== true`, stop and send the user back to `/shipflow:draft`. Typical blocking reasons are:
 - pending draft items
 - accepted proposals not yet written into `vp/**`
 - the verification pack changed after the last saved draft session
@@ -66,11 +61,11 @@ If the loop fails, inspect:
 Drop to granular commands only for debugging:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" doctor
-node "$SHIPFLOW_DIR/bin/shipflow.js" lint
-node "$SHIPFLOW_DIR/bin/shipflow.js" gen
-node "$SHIPFLOW_DIR/bin/shipflow.js" verify
-node "$SHIPFLOW_DIR/bin/shipflow.js" status
+shipflow doctor
+shipflow lint
+shipflow gen
+shipflow verify
+shipflow status
 ```
 
 ## Rules
@@ -78,4 +73,4 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" status
 - Treat the verification pack as ground truth
 - Match generated expectations exactly: UI locators, routes, HTTP status/headers/body, database state, security behavior, technical constraints, and performance budgets
 - Never edit protected paths: `vp/`, `.gen/`, `evidence/`, `.shipflow/`, `shipflow.json`
-- If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow-draft`
+- If the verification pack itself is wrong or ambiguous, stop and send the user back to `/shipflow:draft`

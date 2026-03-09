@@ -21,13 +21,15 @@ function readSkill(file) {
 
 describe("ShipFlow skill frontmatter", () => {
   const skillFiles = [
-    "codex-skills/shipflow-draft/SKILL.md",
-    "codex-skills/shipflow-implement/SKILL.md",
-    "codex-skills/shipflow-impl/SKILL.md",
-    "kiro-skills/shipflow-draft/SKILL.md",
-    "kiro-skills/shipflow-implement/SKILL.md",
-    "kiro-skills/shipflow-impl/SKILL.md",
-  ].map(rel => path.join(repoRoot, rel));
+    ...fs.readdirSync(path.join(repoRoot, "codex-skills"))
+      .filter(name => name.startsWith("shipflow-"))
+      .map(name => path.join(repoRoot, "codex-skills", name, "SKILL.md"))
+      .filter(file => fs.existsSync(file)),
+    ...fs.readdirSync(path.join(repoRoot, "kiro-skills"))
+      .filter(name => name.startsWith("shipflow-"))
+      .map(name => path.join(repoRoot, "kiro-skills", name, "SKILL.md"))
+      .filter(file => fs.existsSync(file)),
+  ];
 
   for (const file of skillFiles) {
     it(`parses ${path.relative(repoRoot, file)}`, () => {

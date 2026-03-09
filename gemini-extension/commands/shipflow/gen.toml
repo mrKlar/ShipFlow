@@ -1,0 +1,23 @@
+description = "Generate runnable verification artifacts from the current pack"
+
+prompt = """
+# ShipFlow — Generate
+
+Use this command when the user wants to compile the verification pack into runnable artifacts.
+
+Run:
+
+```bash
+shipflow gen
+shipflow status --json
+```
+
+Summarize:
+- which artifact groups were generated
+- whether the lock is fresh
+- whether the pack is ready to verify or implement
+
+Rules:
+- do not hand-edit `.gen/`
+- if generation fails, report the failing verification files clearly
+"""

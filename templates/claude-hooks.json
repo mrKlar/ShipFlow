@@ -2,6 +2,10 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Bash",
+        "command": "shipflow-bash-guard"
+      },
+      {
         "matcher": "Edit|Write",
         "command": "shipflow-guard"
       }

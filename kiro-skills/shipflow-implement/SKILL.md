@@ -23,6 +23,8 @@ shipflow implement
 ```
 
 Only continue when `shipflow status --json` shows `implementation_gate.ready === true`.
+Inspect the JSON output directly. Do not pipe it through `python`, `jq`, or shell glue unless ShipFlow returned malformed JSON.
+Run `shipflow implement` directly. Do not unset CLI session variables manually; ShipFlow handles nested provider subprocesses itself.
 
 If `implementation_gate.ready !== true`, stop and send the user back to `shipflow-draft`.
 

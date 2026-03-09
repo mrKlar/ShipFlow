@@ -76,14 +76,14 @@ npm install --prefix "$INSTALL_DIR" --omit=dev --silent 2>/dev/null
 info "Dependencies installed"
 
 npm install -g "$INSTALL_DIR" --silent 2>/dev/null
-info "Global commands: shipflow, shipflow-guard, shipflow-stop"
+info "Global commands: shipflow, shipflow-guard, shipflow-bash-guard, shipflow-stop"
 
 # Ensure commands are in a standard PATH location (for AI agents that skip shell init)
 NPM_BIN="$(npm prefix -g)/bin"
 LOCAL_BIN="$HOME/.local/bin"
 if [ -d "$NPM_BIN" ] && [ -f "$NPM_BIN/shipflow" ]; then
   mkdir -p "$LOCAL_BIN"
-  for cmd in shipflow shipflow-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
+  for cmd in shipflow shipflow-guard shipflow-bash-guard shipflow-stop shipflow-gemini-guard shipflow-kiro-guard; do
     if [ -f "$NPM_BIN/$cmd" ] && [ ! -f "$LOCAL_BIN/$cmd" ]; then
       ln -sf "$NPM_BIN/$cmd" "$LOCAL_BIN/$cmd"
     fi
@@ -108,11 +108,12 @@ FOUND=()
 if command -v claude &>/dev/null; then
   info "Claude Code found"
   FOUND+=("claude")
+  rm -rf "$HOME/.claude/plugins/cache/shipflow" 2>/dev/null || true
   claude plugin marketplace remove shipflow 2>/dev/null || true
   claude plugin marketplace add "$INSTALL_DIR" 2>/dev/null || true
   claude plugin uninstall shipflow@shipflow 2>/dev/null || true
   claude plugin install shipflow@shipflow 2>/dev/null || true
-  info "Plugin installed: /shipflow-draft, /shipflow-implement"
+  info "Plugin installed: /shipflow:draft, /shipflow:implement, plus native debug commands"
 else
   skip "Claude Code not found"
 fi
@@ -153,11 +154,12 @@ if command -v codex &>/dev/null; then
   # Install skills (global: ~/.agents/skills/)
   CODEX_SKILLS="$HOME/.agents/skills"
   mkdir -p "$CODEX_SKILLS"
-  rm -rf "$CODEX_SKILLS/shipflow-draft" "$CODEX_SKILLS/shipflow-impl" "$CODEX_SKILLS/shipflow-implement"
-  cp -r "$INSTALL_DIR/codex-skills/shipflow-draft" "$CODEX_SKILLS/"
-  cp -r "$INSTALL_DIR/codex-skills/shipflow-impl" "$CODEX_SKILLS/"
-  cp -r "$INSTALL_DIR/codex-skills/shipflow-implement" "$CODEX_SKILLS/"
-  info "Skills installed: \$shipflow-draft, \$shipflow-implement"
+  find "$CODEX_SKILLS" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} + 2>/dev/null || true
+  for skill_dir in "$INSTALL_DIR"/codex-skills/shipflow-*; do
+    [ -d "$skill_dir" ] || continue
+    cp -r "$skill_dir" "$CODEX_SKILLS/"
+  done
+  info "Skills installed: \$shipflow-draft, \$shipflow-implement, plus native debug skills"
 else
   skip "Codex CLI not found"
 fi
@@ -169,7 +171,7 @@ if command -v gemini &>/dev/null; then
 
   # Install extension
   gemini extensions install "$INSTALL_DIR/gemini-extension" --consent 2>/dev/null || true
-  info "Extension installed: /shipflow:draft, /shipflow:implement"
+  info "Extension installed: /shipflow:draft, /shipflow:implement, plus native debug commands"
 
   # Merge hooks into settings.json
   GEMINI_SETTINGS="$HOME/.gemini/settings.json"
@@ -232,11 +234,12 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   # Install skills (global: ~/.kiro/skills/)
   KIRO_SKILLS="$HOME/.kiro/skills"
   mkdir -p "$KIRO_SKILLS"
-  rm -rf "$KIRO_SKILLS/shipflow-draft" "$KIRO_SKILLS/shipflow-impl" "$KIRO_SKILLS/shipflow-implement"
-  cp -r "$INSTALL_DIR/kiro-skills/shipflow-draft" "$KIRO_SKILLS/"
-  cp -r "$INSTALL_DIR/kiro-skills/shipflow-impl" "$KIRO_SKILLS/"
-  cp -r "$INSTALL_DIR/kiro-skills/shipflow-implement" "$KIRO_SKILLS/"
-  info "Skills installed: shipflow-draft, shipflow-implement"
+  find "$KIRO_SKILLS" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} + 2>/dev/null || true
+  for skill_dir in "$INSTALL_DIR"/kiro-skills/shipflow-*; do
+    [ -d "$skill_dir" ] || continue
+    cp -r "$skill_dir" "$KIRO_SKILLS/"
+  done
+  info "Skills installed: shipflow-draft, shipflow-implement, plus native debug skills"
 
   # Global steering context
   KIRO_STEERING="$HOME/.kiro/steering"
@@ -277,8 +280,8 @@ echo ""
 
 if [[ " ${FOUND[*]:-} " == *" claude "* ]]; then
   printf "  ${D}# Claude Code:${R}\n"
-  echo "  /shipflow-draft a todo app"
-  echo "  /shipflow-implement"
+  echo "  /shipflow:draft a todo app"
+  echo "  /shipflow:implement"
   echo ""
 fi
 

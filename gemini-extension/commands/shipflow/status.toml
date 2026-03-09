@@ -1,0 +1,22 @@
+description = "Show verification-pack, generated-artifact, and evidence status"
+
+prompt = """
+# ShipFlow — Status
+
+Use this command when the user wants a compact state check without drafting, generating, or verifying anything.
+
+Run:
+
+```bash
+shipflow status --json
+```
+
+Summarize:
+- verification-pack presence and counts
+- implementation gate readiness
+- generated artifact state
+- recent evidence state
+
+Rules:
+- prefer the JSON output as the source of truth
+"""

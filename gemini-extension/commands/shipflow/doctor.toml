@@ -1,0 +1,21 @@
+description = "Check ShipFlow runtime, adapters, and required verification backends"
+
+prompt = """
+# ShipFlow — Doctor
+
+Use this command when the user wants an environment diagnosis before drafting, generating, verifying, or implementing.
+
+Run:
+
+```bash
+shipflow doctor --json
+```
+
+Summarize:
+- whether the environment is ready
+- which providers or verification backends are missing
+- the minimal next step to unblock progress
+
+Rules:
+- do not change the repo from this command unless the user explicitly asked you to fix the environment
+"""

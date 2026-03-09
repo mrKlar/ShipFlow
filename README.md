@@ -100,7 +100,7 @@ Then open that project in your AI coding agent, start with the draft flow, then 
 
 | Platform | Start the draft flow | Run the standard loop |
 |---|---|---|
-| Claude Code | `/shipflow-draft a todo app` | `/shipflow-implement` |
+| Claude Code | `/shipflow:draft a todo app` | `/shipflow:implement` |
 | Codex CLI | `$shipflow-draft a todo app` | `$shipflow-implement` |
 | Gemini CLI | `/shipflow:draft a todo app` | `/shipflow:implement` |
 | Kiro CLI | `draft ShipFlow verifications for a todo app` | `run shipflow implement once the draft is ready` |
@@ -110,6 +110,12 @@ Step 1. Start with `shipflow draft`. Use it to shape the verification pack befor
 Step 2. Run `shipflow implement`. It validates the pack, bootstraps the verification runtime it needs, generates tests and runners, implements, verifies, and retries within the configured budget.
 
 Between those two steps, `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `implementation_gate.ready === true`.
+
+Native debug commands are also exposed by each integration when you need them:
+- Claude Code: `/shipflow:map`, `/shipflow:doctor`, `/shipflow:lint`, `/shipflow:gen`, `/shipflow:verify`, `/shipflow:status`
+- Codex CLI: `$shipflow-map`, `$shipflow-doctor`, `$shipflow-lint`, `$shipflow-gen`, `$shipflow-verify`, `$shipflow-status`
+- Gemini CLI: `/shipflow:map`, `/shipflow:doctor`, `/shipflow:lint`, `/shipflow:gen`, `/shipflow:verify`, `/shipflow:status`
+- Kiro CLI: `shipflow-map`, `shipflow-doctor`, `shipflow-lint`, `shipflow-gen`, `shipflow-verify`, `shipflow-status`
 
 ## 🔬 How It Works
 

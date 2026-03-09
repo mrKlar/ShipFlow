@@ -43,9 +43,13 @@ Typical handoff:
 
 During drafting:
 - summarize what ShipFlow understood before writing
-- walk through UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts
+- on an empty or low-signal greenfield repo, ask only the single highest-leverage next question from `shipflow draft --json`, then rerun `shipflow draft --json` after each answer
+- then narrow into UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts
+- surface at most one or two best-practice prompts for the current type
+- do not present a long list of open questions spanning several verification types in one turn
 - ask clarifications when `shipflow draft` surfaces unresolved decisions
 - treat local ShipFlow proposals as first-class; do not abandon the workflow just because no extra AI refinement appeared
+- do not inspect ShipFlow examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow
 
 Do NOT report completion until `shipflow verify` exits 0.
 
@@ -94,4 +98,3 @@ Only use `--update-existing` with explicit approval before replacing an existing
 
 - `/shipflow:draft [description]` — Draft or refine the verification pack
 - `/shipflow:implement` — Run the standard implementation loop
-- `/shipflow:impl` — Legacy alias

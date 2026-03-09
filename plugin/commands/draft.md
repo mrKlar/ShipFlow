@@ -16,19 +16,12 @@ $ARGUMENTS
 
 ## Setup
 
-Find the ShipFlow installation:
-
-```bash
-SHIPFLOW_DIR="$(find ~/.claude/plugins/cache/shipflow -name 'shipflow.js' -path '*/bin/*' 2>/dev/null | head -1 | xargs dirname | xargs dirname)"
-echo "ShipFlow: $SHIPFLOW_DIR"
-```
-
-Use `node $SHIPFLOW_DIR/bin/shipflow.js` for all ShipFlow commands.
+Use the installed `shipflow` CLI directly. If it is not on `PATH`, try `~/.local/bin/shipflow`.
 
 If the project has no `shipflow.json`, initialize it first:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" init
+shipflow init
 ```
 
 ## Workflow
@@ -38,15 +31,21 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" init
 - Read the user request and the current repo context
 - Review existing `vp/` files when they exist
 - Read relevant app files when they clarify behavior or architecture
+- On an empty or low-signal greenfield repo, start with:
+
+```bash
+shipflow draft --json "$ARGUMENTS"
+```
+
+- Use `shipflow map --json "$ARGUMENTS"` only when the existing repo shape matters, especially in brownfield work.
 - Run:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" map --json "$ARGUMENTS"
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
+shipflow draft --json "$ARGUMENTS"
 ```
 
 If the user is continuing an existing draft session, you may omit `$ARGUMENTS` and let ShipFlow reuse the saved draft request.
-If the user wants to restart the draft from scratch, use `node "$SHIPFLOW_DIR/bin/shipflow.js" draft --clear-session`.
+If the user wants to restart the draft from scratch, use `shipflow draft --clear-session`.
 
 ### 2. Before writing, surface what the system understood
 
@@ -54,11 +53,19 @@ Give the user a short summary:
 - what the repo map suggests is already present
 - what coverage gaps look important
 - what remains ambiguous and needs an explicit decision
-- then walk through UI, behavior, API, database, performance, security, and technical using the per-type discussion prompts from `shipflow draft --json`
-- for each type, ask what should be verified and surface the best-practice prompts before you write anything
+
+Conversation style:
+- on an empty or low-signal greenfield repo, do not dump all seven verification types immediately
+- ask only the single highest-leverage next question from `shipflow draft --json` unless the user explicitly asks for a full review
+- after each user answer, rerun `shipflow draft --json` with the refined request or reuse the saved draft session
+- ask one focused question at a time, then narrow into the relevant verification types
+- use the per-type discussion prompts as your checklist, not as a rigid script
+- once the shape is clear, cover UI, behavior, API, database, performance, security, and technical progressively
+- for each relevant type, ask what should be verified and surface at most one or two best-practice prompts before you write anything
+- do not present a long list of open questions spanning several verification types in one turn
 
 If `shipflow draft --json` returned `clarifications`, ask concise clarification questions unless the user explicitly delegated the choice to you.
-If the user did explicitly allow autonomous choices, say which defaults you are choosing before you write.
+If the user did explicitly allow autonomous choices, say which defaults you are choosing, rerun `shipflow draft --json` with those choices folded into the scope, then materialize the selected proposals.
 
 ### 3. Finalize proposals before writing
 
@@ -68,19 +75,20 @@ Treat `shipflow draft` as the pack-definition workflow:
 - or, if the user asked for an autonomous draft, choose reasonable defaults and write the selected proposals into `vp/`
 - do not abandon this flow just because the proposals came from local drafting rather than AI refinement; ShipFlow proposals are first-class
 - do not pivot to “manual pack authoring” or example-hunting as the primary path when `shipflow draft` already returned valid proposals
+- do not inspect ShipFlow examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow; use `shipflow draft`, `shipflow lint`, and `shipflow gen`
 
 Use:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --reject=vp/path.yml
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml --write
+shipflow draft --accept=vp/path.yml
+shipflow draft --reject=vp/path.yml
+shipflow draft --accept=vp/path.yml --write
 ```
 
 Use `--update-existing` only with explicit user approval when replacing an existing verification file:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --accept=vp/path.yml --update-existing --write
+shipflow draft --accept=vp/path.yml --update-existing --write
 ```
 
 For precise refinements that do not fit a proposal cleanly, edit focused checks under `vp/` manually.
@@ -88,7 +96,7 @@ For precise refinements that do not fit a proposal cleanly, edit focused checks 
 When proposal files would help, prefer:
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" draft --json "$ARGUMENTS"
+shipflow draft --json "$ARGUMENTS"
 ```
 
 Use the right verification type:
@@ -113,8 +121,8 @@ Do not optimize for check count. Optimize for precision and coverage quality.
 ### 4. Validate every pass
 
 ```bash
-node "$SHIPFLOW_DIR/bin/shipflow.js" lint
-node "$SHIPFLOW_DIR/bin/shipflow.js" gen
+shipflow lint
+shipflow gen
 ```
 
 ### 5. Summarize clearly
@@ -129,7 +137,7 @@ Tell the user:
 Move to the standard implementation loop with:
 
 ```text
-/shipflow-implement
+/shipflow:implement
 ```
 
 ## Rules
@@ -139,4 +147,4 @@ Move to the standard implementation loop with:
 - Do not write proposal files before the draft is finalized unless the user explicitly asks for automatic materialization
 - Do not replace an existing `vp/` file unless the user explicitly approved that update
 - Do not present the pack as ready if `lint` or `gen` fails
-- If the user wants code implementation, switch to `/shipflow-implement`
+- If the user wants code implementation, switch to `/shipflow:implement`

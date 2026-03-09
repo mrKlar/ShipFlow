@@ -1,0 +1,22 @@
+description = "Lint the verification pack quality before generation"
+
+prompt = """
+# ShipFlow — Lint
+
+Use this command when the user wants to inspect verification-pack quality or before moving from draft to generation.
+
+Run:
+
+```bash
+shipflow lint --json
+```
+
+Summarize:
+- blocker problems
+- warnings
+- which files need tightening
+
+Rules:
+- treat `shipflow lint` as the source of truth
+- if lint fails because the pack is wrong or ambiguous, send the user back to `/shipflow:draft`
+"""

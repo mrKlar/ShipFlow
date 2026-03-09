@@ -97,10 +97,22 @@ describe("buildDraft", () => {
       const api = result.type_discussion.find(item => item.type === "api");
       const database = result.type_discussion.find(item => item.type === "database");
       assert.ok(ui.recommended);
+      assert.equal(ui.priority, "primary");
       assert.match(ui.question, /Do we want UI checks/i);
       assert.ok(ui.best_practices.some(item => /stable selectors/i.test(item)));
       assert.ok(api.signals.some(item => /Detected API endpoints/i.test(item)));
       assert.ok(database.best_practices.some(item => /setup, before\/after assertions, and cleanup/i.test(item)));
+    });
+  });
+
+  it("uses a greenfield shape-first conversation mode on empty repos", () => {
+    return withTmpDir(tmpDir => {
+      const result = buildDraft(tmpDir, "calculator");
+      assert.equal(result.conversation_mode, "greenfield-shape-first");
+      assert.equal(result.opening_questions.length, 1);
+      assert.match(result.opening_questions[0], /web app|api|cli\/tui|what form should this take/i);
+      assert.equal(result.workflow.next_action, "ask-next-question");
+      assert.equal(result.workflow.next_question, result.opening_questions[0]);
     });
   });
 
@@ -778,6 +790,10 @@ describe("draft", () => {
       assert.equal(followUp.result.request.raw, "todo app with login and sqlite");
       const accepted = followUp.result.proposals.find(proposal => proposal.path === acceptedPath);
       assert.equal(accepted.review.decision, "accept");
+      assert.equal(followUp.result.conversation_mode, "greenfield-shape-first");
+      assert.ok(Array.isArray(followUp.result.opening_questions));
+      assert.ok(followUp.result.workflow);
+      assert.equal(followUp.result.workflow.phase, "draft");
       assert.equal(followUp.result.type_discussion.length, 7);
       assert.ok(followUp.result.type_discussion.some(item => item.type === "security"));
     });

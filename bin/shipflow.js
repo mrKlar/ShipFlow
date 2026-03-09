@@ -77,13 +77,13 @@ Exit codes:
     process.exit(exitCode);
   }
 
-  if (cmd === "implement-once" || cmd === "impl-once") {
+  if (cmd === "implement-once") {
     const { impl } = await import("../lib/impl.js");
     await impl({ cwd: process.cwd(), provider: optionValue("provider"), model: optionValue("model") });
     return;
   }
 
-  if (cmd === "implement" || cmd === "impl" || cmd === "run") {
+  if (cmd === "implement" || cmd === "run") {
     const { run } = await import("../lib/loop.js");
     const code = await run({ cwd: process.cwd(), provider: optionValue("provider"), model: optionValue("model") });
     process.exit(code);

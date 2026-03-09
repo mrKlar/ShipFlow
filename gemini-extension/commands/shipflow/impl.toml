@@ -1,5 +1,0 @@
-description = "Legacy alias for the standard ShipFlow implementation loop. Preferred command: /shipflow:implement"
-
-prompt = """
-Use the same workflow as `/shipflow:implement`.
-"""

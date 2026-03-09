@@ -27,3 +27,30 @@ prefix_rule(
     decision="prompt",
     justification="ShipFlow: require approval for git operations"
 )
+
+# Block common draft-time introspection of the installed ShipFlow package.
+# During drafting, the agent should use `shipflow draft`, `shipflow lint`,
+# and `shipflow gen` rather than reverse-engineering examples/templates/schema files.
+prefix_rule(
+    pattern=["cat", ["~/.local/bin/shipflow", "/home/n/.local/bin/shipflow"]],
+    decision="forbidden",
+    justification="ShipFlow: use `shipflow draft --json` instead of inspecting the installed CLI wrapper"
+)
+
+prefix_rule(
+    pattern=["realpath", ["~/.local/bin/shipflow", "/home/n/.local/bin/shipflow"]],
+    decision="forbidden",
+    justification="ShipFlow: do not resolve the installed ShipFlow path during draft"
+)
+
+prefix_rule(
+    pattern=["find", ["~/.claude/plugins", "/home/n/.claude/plugins", "~/.local/share", "/home/n/.local/share", "~/.local/lib", "/home/n/.local/lib", "~/.npm", "/home/n/.npm"]],
+    decision="forbidden",
+    justification="ShipFlow: do not mine installed plugin/package locations during draft"
+)
+
+prefix_rule(
+    pattern=["ls", ["~/.claude/plugins", "/home/n/.claude/plugins", "~/.claude/plugins/cache", "/home/n/.claude/plugins/cache"]],
+    decision="forbidden",
+    justification="ShipFlow: do not inspect installed Claude plugin caches during draft"
+)

@@ -1,6 +1,6 @@
 ---
 name: shipflow-draft
-description: "Draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl."
+description: "Draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement."
 ---
 
 # ShipFlow — Verification Collaboration
@@ -23,7 +23,8 @@ shipflow init
 2. Build context before writing:
 - Read the user request
 - Review existing `vp/` files if they exist
-- Run `shipflow map --json "<user request>"` when repo context matters
+- On an empty or low-signal greenfield repo, start with `shipflow draft --json "<user request>"`
+- Run `shipflow map --json "<user request>"` only when repo context matters, especially for brownfield work
 - Run `shipflow draft --json "<user request>"` when starter proposals would help
 
 If the user is continuing an existing draft session, you may omit the request and let ShipFlow reuse the saved draft request.
@@ -31,12 +32,18 @@ If the user wants to restart the draft from scratch, use `shipflow draft --clear
 
 3. Make it interactive before writing:
 - First summarize what ShipFlow understood from the request and the repo
-- Then walk type by type through UI, behavior, API, database, performance, security, and technical
-- For each type, ask what the user wants ShipFlow to verify and surface the best-practice prompts that ShipFlow returned
+- On an empty or low-signal greenfield repo, do not dump all seven verification types immediately
+- Ask only the single highest-leverage next question from `shipflow draft --json` unless the user explicitly asks for a full review
+- After each user answer, rerun `shipflow draft --json` with the refined request or reuse the saved draft session
+- Ask one focused question at a time, then narrow into the relevant verification types
+- Use the per-type discussion prompts as your checklist, not as a rigid script
+- Once the shape is clear, cover UI, behavior, API, database, performance, security, and technical progressively
+- For each relevant type, ask what the user wants ShipFlow to verify and surface at most one or two best-practice prompts that ShipFlow returned
 - Then surface the top candidate verification files and the biggest coverage gaps
 - If `clarifications` are present and the user did not explicitly delegate the decision, ask concise clarification questions before writing
-- If the user explicitly allows autonomous choices, say which defaults you are choosing
+- If the user explicitly allows autonomous choices, say which defaults you are choosing, rerun `shipflow draft --json` with those choices folded into the scope, then materialize the selected proposals
 - Do not jump from `shipflow draft --json` straight into manual YAML authoring when ShipFlow already returned valid proposals
+- Do not present a long list of open questions spanning several verification types in one turn
 
 4. Finalize proposals before writing:
 - Treat `shipflow draft` as the pack-definition workflow
@@ -44,6 +51,7 @@ If the user wants to restart the draft from scratch, use `shipflow draft --clear
 - Use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
 - Use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
 - Use manual `vp/` editing only for focused refinements that `shipflow draft` did not already express cleanly
+- Do not inspect ShipFlow examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow; use `shipflow draft`, `shipflow lint`, and `shipflow gen`
 - Prefer one observable behavior per file
 - Cover the relevant types: UI, behavior, API, database, performance, security, technical
 - For `technical`, choose `runner.kind` / `runner.framework` deliberately and prefer backend-native architecture rules over smoke commands
@@ -66,12 +74,6 @@ shipflow gen
 
 ```text
 $shipflow-implement
-```
-
-Legacy alias:
-
-```text
-$shipflow-impl
 ```
 
 ## Rules
