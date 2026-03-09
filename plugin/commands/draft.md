@@ -9,6 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 Use this command when the user wants to define, add, remove, tighten, or finalize ShipFlow verifications.
 
 This phase finalizes the verification pack before implementation. It can be collaborative, or AI-led when the user explicitly wants automatic materialization.
+Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 
 ## Context
 
@@ -65,6 +66,7 @@ Conversation style:
 - once the shape is clear, cover UI, behavior, API, database, performance, security, and technical progressively
 - for each relevant type, ask what should be verified and surface at most one or two best-practice prompts before you write anything
 - do not present a long list of open questions spanning several verification types in one turn
+- keep speculative candidates pending by default instead of rejecting them early
 
 If `shipflow draft --json` returned `clarifications`, ask concise clarification questions unless the user explicitly delegated the choice to you.
 If the user did explicitly allow autonomous choices, say which defaults you are choosing, rerun `shipflow draft --json` with those choices folded into the scope, then materialize the selected proposals.
@@ -73,7 +75,9 @@ If the user did explicitly allow autonomous choices, say which defaults you are 
 
 Treat `shipflow draft` as the pack-definition workflow:
 - examine the candidate proposals with the user when collaboration is desired
-- accept or reject them explicitly
+- keep unclear candidates pending by default
+- accept them when they are clearly part of the pack
+- reject them only when the user explicitly says they are out of scope or conflicting
 - or, if the user asked for an autonomous draft, choose reasonable defaults and write the selected proposals into `vp/`
 - do not abandon this flow just because the proposals came from local drafting rather than AI refinement; ShipFlow proposals are first-class
 - do not pivot to “manual pack authoring” or example-hunting as the primary path when `shipflow draft` already returned valid proposals
@@ -83,9 +87,11 @@ Use:
 
 ```bash
 shipflow draft --accept=vp/path.yml
-shipflow draft --reject=vp/path.yml
+shipflow draft --pending=vp/path.yml
 shipflow draft --accept=vp/path.yml --write
 ```
+
+Use `shipflow draft --reject=vp/path.yml` only for an explicit out-of-scope decision.
 
 Use `--update-existing` only with explicit user approval when replacing an existing verification file:
 

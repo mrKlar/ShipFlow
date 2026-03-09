@@ -10,6 +10,7 @@ Use this skill when the user wants to define, add, remove, tighten, or finalize 
 ## Intent
 
 This phase finalizes the verification pack before implementation. Help the user shape a precise verification pack under `vp/`, or finalize it autonomously when the user explicitly wants that, then validate it with ShipFlow.
+Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 
 ## Workflow
 
@@ -44,9 +45,12 @@ If the user wants to restart the draft from scratch, use `shipflow draft --clear
 - if the user explicitly allows autonomous choices, say which defaults you are choosing, rerun `shipflow draft --json` with those choices folded into the scope, then materialize the selected proposals
 - do not jump from `shipflow draft --json` straight into manual YAML authoring when ShipFlow already returned valid proposals
 - do not present a long list of open questions spanning several verification types in one turn
+- keep speculative candidates pending by default instead of rejecting them early
 
 4. Finalize proposals before writing:
-- use `shipflow draft --accept=vp/path.yml` and `shipflow draft --reject=vp/path.yml` to record decisions
+- use `shipflow draft --accept=vp/path.yml` to record clear keep decisions
+- leave speculative candidates `pending` until the user narrows the scope
+- use `shipflow draft --reject=vp/path.yml` only when the user explicitly says a candidate is out of scope or conflicting
 - use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
 - use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
 - use manual `vp/` editing only for focused refinements that `shipflow draft` did not already express cleanly

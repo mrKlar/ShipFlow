@@ -109,7 +109,7 @@ Step 1. Start with `shipflow draft`. Use it to shape the verification pack befor
 
 Step 2. Run `shipflow implement`. It validates the pack, bootstraps the verification runtime it needs, generates tests and runners, implements, verifies, and retries within the configured budget.
 
-Between those two steps, `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `implementation_gate.ready === true`.
+Between those two steps, `shipflow draft` is the pack-definition workflow: keep speculative candidates pending, accept and write the ones that are now clear, and use reject only when something is explicitly out of scope or conflicting. Deterministic ShipFlow starters are there to cover universal foundations such as stack, protocol, architecture, delivery, and other base constraints. `shipflow implement` continues only when `shipflow status --json` reports `implementation_gate.ready === true`.
 
 Native debug commands are also exposed by each integration when you need them:
 - Claude Code: `/shipflow:map`, `/shipflow:doctor`, `/shipflow:lint`, `/shipflow:gen`, `/shipflow:verify`, `/shipflow:status`

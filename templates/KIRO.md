@@ -7,7 +7,8 @@ This project uses ShipFlow for verification-first shipping with Kiro.
 ### Phase 1: Verification Pack Definition
 
 Draft verifications in `vp/`. Use natural-language discussion when helpful, or finalize proposals directly when the user wants an autonomous draft.
-Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
+Use `shipflow draft` to propose, refine, and finalize candidates into `vp/`.
+Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 During drafting, first summarize what ShipFlow understood. On an empty or low-signal greenfield repo, ask only the single highest-leverage next question from `shipflow draft --json`, rerun `shipflow draft --json` after each answer, then narrow into UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts and best practices as a checklist. Surface at most one or two best-practice prompts for the current type, ask clarifications when the draft marks a decision unresolved, do not present a long list of open questions spanning several verification types in one turn, and do not inspect the installed ShipFlow wrapper/package, examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow.
 
 Seven verification types:
@@ -85,7 +86,7 @@ For technical checks: ensure the repository structure, manifests, workflows, arc
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
 shipflow draft --clear-session
 shipflow draft --accept=vp/path.yml
-shipflow draft --reject=vp/path.yml
+shipflow draft --pending=vp/path.yml
 shipflow draft --accept=vp/path.yml --write
 shipflow draft --accept=vp/path.yml --update-existing --write
 shipflow implement      # Standard flow: validate, generate, implement, verify
@@ -98,3 +99,8 @@ shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
 Only use `--update-existing` with explicit approval before replacing an existing verification file.
+Use `--reject` only when a candidate is explicitly out of scope:
+
+```bash
+shipflow draft --reject=vp/path.yml
+```

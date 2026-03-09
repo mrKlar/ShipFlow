@@ -7,7 +7,8 @@ This project uses ShipFlow for verification-first shipping with Gemini CLI.
 ### Phase 1: Verification Pack Definition
 
 Draft verifications in `vp/`. Use natural-language collaboration when helpful, or finalize proposals directly when the user wants automatic materialization.
-Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
+Use `shipflow draft` to propose, refine, and finalize candidates into `vp/`.
+Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks
@@ -80,7 +81,7 @@ If a verification seems wrong, stop and return to the verification phase with th
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
 shipflow draft --clear-session
 shipflow draft --accept=vp/path.yml
-shipflow draft --reject=vp/path.yml
+shipflow draft --pending=vp/path.yml
 shipflow draft --accept=vp/path.yml --write
 shipflow draft --accept=vp/path.yml --update-existing --write
 shipflow implement      # Standard flow: validate, generate, implement, verify
@@ -93,6 +94,11 @@ shipflow implement-once # Advanced: single implementation pass, no retry loop
 ```
 
 Only use `--update-existing` with explicit approval before replacing an existing verification file.
+Use `--reject` only when a candidate is explicitly out of scope:
+
+```bash
+shipflow draft --reject=vp/path.yml
+```
 
 ## Gemini Commands
 

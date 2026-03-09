@@ -45,5 +45,7 @@ describe("ShipFlow skill frontmatter", () => {
     assert.match(source, /ask concise clarification questions/i);
     assert.match(source, /reason to abandon the draft workflow/i);
     assert.match(source, /local proposals are first-class/i);
+    assert.match(source, /pending by default/i);
+    assert.match(source, /foundational hints/i);
   });
 });
