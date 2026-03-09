@@ -257,24 +257,6 @@ shipflow implement-once                                 # Single implementation 
 
 Use the [User Guide configuration section](./docs/USER-GUIDE.md#configuration) for the full shape and examples.
 
-## 🔄 CI
-
-```yaml
-name: ShipFlow Verify
-on: [pull_request]
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: shipflow gen
-      - run: shipflow verify
-```
-
 ## 🔬 Scientific Foundations
 
 ShipFlow is built around the idea that the durable artifact is not the source code and not a prose spec, but the executable contract fixed before implementation. The deeper rationale is documented in [docs/SCIENTIFIC-FOUNDATIONS.md](./docs/SCIENTIFIC-FOUNDATIONS.md).
