@@ -8,6 +8,7 @@ This project uses ShipFlow for verification-first shipping.
 
 Draft verifications in `vp/` — YAML files describing what the app must do.
 Use `shipflow draft` to propose, refine, accept or reject candidates, then write the selected verifications into `vp/`.
+During drafting, first summarize what ShipFlow understood, then walk through UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts and best practices, ask clarifications when the draft marks a decision unresolved, and do not abandon the workflow just because proposals came from local drafting rather than extra AI refinement.
 
 Seven verification types:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
@@ -35,7 +36,7 @@ Implement app code that passes all generated checks. Treat the verification pack
 
 Do NOT skip any step. Do NOT report completion until `shipflow verify` exits 0.
 
-Before `shipflow implement`, run `shipflow status --json`. Only continue when there is no `draft_session`, or `draft_session.ready_for_implement === true`.
+Before `shipflow implement`, run `shipflow status --json`. Only continue when `implementation_gate.ready === true`.
 
 ## Protected Paths — NEVER Modify During Implementation
 

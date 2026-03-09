@@ -54,6 +54,11 @@ Give the user a short summary:
 - what the repo map suggests is already present
 - what coverage gaps look important
 - what remains ambiguous and needs an explicit decision
+- then walk through UI, behavior, API, database, performance, security, and technical using the per-type discussion prompts from `shipflow draft --json`
+- for each type, ask what should be verified and surface the best-practice prompts before you write anything
+
+If `shipflow draft --json` returned `clarifications`, ask concise clarification questions unless the user explicitly delegated the choice to you.
+If the user did explicitly allow autonomous choices, say which defaults you are choosing before you write.
 
 ### 3. Finalize proposals before writing
 
@@ -61,6 +66,8 @@ Treat `shipflow draft` as the pack-definition workflow:
 - examine the candidate proposals with the user when collaboration is desired
 - accept or reject them explicitly
 - or, if the user asked for an autonomous draft, choose reasonable defaults and write the selected proposals into `vp/`
+- do not abandon this flow just because the proposals came from local drafting rather than AI refinement; ShipFlow proposals are first-class
+- do not pivot to “manual pack authoring” or example-hunting as the primary path when `shipflow draft` already returned valid proposals
 
 Use:
 

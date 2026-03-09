@@ -12,7 +12,14 @@ const requestText = fs.readFileSync(path.join(__dirname, "request.txt"), "utf-8"
 const keep = process.argv.includes("--keep");
 const aiDraft = process.argv.includes("--ai-draft");
 const modelArg = process.argv.find(arg => arg.startsWith("--model="));
-const provider = "claude";
+const providerArg = process.argv.find(arg => arg.startsWith("--provider="));
+const provider = (providerArg ? providerArg.slice("--provider=".length) : "claude").trim();
+const platformFlagByProvider = {
+  claude: "--claude",
+  codex: "--codex",
+  gemini: "--gemini",
+  kiro: "--kiro",
+};
 
 const CANONICAL_PATHS = [
   "vp/ui/add-todo.yml",
@@ -93,7 +100,8 @@ function parseJsonResult(result, cwd) {
 
 function ensurePrerequisites() {
   const missing = [];
-  for (const cmd of ["claude", "npm", "npx"]) {
+  const requiredProviderCommand = provider === "kiro" ? "kiro-cli" : provider;
+  for (const cmd of [requiredProviderCommand, "npm", "npx"]) {
     if (!commandExists(cmd)) missing.push(cmd);
   }
   if (!commandExists("sqlite3") && !supportsNodeSqlite()) {
@@ -125,7 +133,11 @@ function main() {
   try {
     copyTemplateProject(tmpDir);
     installLocalShipFlow(tmpDir);
-    runShipFlow(["init", "--claude"], tmpDir, { stdio: "inherit" });
+    const platformFlag = platformFlagByProvider[provider];
+    if (!platformFlag) {
+      fail(`unsupported provider: ${provider}`);
+    }
+    runShipFlow(["init", platformFlag], tmpDir, { stdio: "inherit" });
 
     const draftArgs = ["draft", "--json", requestText];
     if (aiDraft) draftArgs.push("--ai", `--provider=${provider}`);
@@ -147,7 +159,7 @@ function main() {
     }
 
     keepWorkingCopy = true;
-    console.log(`ShipFlow live todo example passed. Working copy: ${tmpDir}`);
+    console.log(`ShipFlow live todo example passed for provider=${provider}. Working copy: ${tmpDir}`);
   } catch (error) {
     keepWorkingCopy = true;
     fail(error.message, error.stack || "", tmpDir);

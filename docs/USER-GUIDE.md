@@ -47,8 +47,8 @@ shipflow init
 This creates `vp/` directories, `shipflow.json`, `.gitignore`, and the project-local files for the selected platform(s), such as `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `KIRO.md`, `.claude/hooks.json`, or `.gemini/settings.json`.
 By default, `shipflow init` scaffolds the files for the currently detected CLI. Use explicit flags when you want another surface or multiple surfaces.
 
-For the normal greenfield flow, `shipflow implement` now bootstraps the JS verification runtime it needs when possible, including packages such as `@playwright/test` or `@cucumber/cucumber`, and generates its own Playwright runtime config under `.gen/`.
-Native binaries such as `psql`, `k6`, or `opa` still need to exist when your verification pack requires them. SQLite checks can use `sqlite3` when it is installed, or fall back to Node's `node:sqlite` runtime on newer Node versions.
+For the normal greenfield flow, `shipflow implement` bootstraps a local verification runtime under `.shipflow/runtime/` when possible, including JS packages such as `@playwright/test` or `@cucumber/cucumber`, a local Playwright browser runtime, and supported native backends such as `k6` or `opa`.
+Some system-level tools may still be required depending on your pack. SQLite checks can use `sqlite3` when it is installed, or fall back to Node's `node:sqlite` runtime on newer Node versions. PostgreSQL checks still require `psql`.
 
 ### Multi-platform
 
@@ -574,11 +574,11 @@ shipflow verify
 2. Evaluates OPA policies (if present)
 3. Runs generated Playwright tests and writes per-type evidence files
 4. Runs generated technical backend runners when present and writes `evidence/technical.json`
-5. Runs k6 NFR scripts when present. Missing `k6` is treated as a verification failure and writes `evidence/load.json`
+5. Runs k6 NFR scripts when present. Missing `k6` after bootstrap is treated as a verification failure and writes `evidence/load.json`
 6. Writes aggregate `evidence/run.json`
 7. Exits 0 if all tests pass
 
-`shipflow implement` also writes `evidence/implement.json` with the latest loop result so you can inspect the last implementation pass.
+`shipflow implement` also writes `evidence/implement.json` as it moves through the loop, so you can inspect the current stage while it is running and the latest result afterward.
 If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.
 By default, implementation writes are allowed under the configured `srcDir`. When `vp/technical/*.yml` references repo-level files such as `package.json`, `.github/workflows/*.yml`, or infrastructure paths, ShipFlow also allows those targets automatically. For extra cases, set `impl.writeRoots` in `shipflow.json`.
 

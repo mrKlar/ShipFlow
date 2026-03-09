@@ -141,6 +141,8 @@ describe("status", () => {
       assert.equal(parsed.draft_session.request, "todo app");
       assert.equal(parsed.draft_session.review.pending, 2);
       assert.equal(parsed.draft_session.ready_for_implement, false);
+      assert.equal(parsed.implementation_gate.ready, false);
+      assert.equal(parsed.implementation_gate.source, "draft_session");
       assert.equal(parsed.evidence.run.ok, true);
       assert.equal(parsed.evidence.run.groups[0].label, "ui");
     } finally {
@@ -173,6 +175,7 @@ describe("status", () => {
     try {
       const parsed = collectStatus(tmpDir);
       assert.equal(parsed.draft_session.ready_for_implement, false);
+      assert.equal(parsed.implementation_gate.ready, false);
       assert.equal(parsed.draft_session.accepted_unwritten, 1);
       assert.equal(parsed.draft_session.accepted_unwritten_paths[0], "vp/ui/home.yml");
       assert.match(parsed.draft_session.blocking_reasons[0], /not yet written/i);
@@ -223,6 +226,7 @@ describe("status", () => {
     try {
       const parsed = collectStatus(tmpDir);
       assert.equal(parsed.draft_session.ready_for_implement, true);
+      assert.equal(parsed.implementation_gate.ready, true);
       assert.equal(parsed.draft_session.accepted_unwritten, 0);
       assert.equal(parsed.draft_session.stale, false);
       assert.deepEqual(parsed.draft_session.blocking_reasons, []);
@@ -288,8 +292,24 @@ describe("status", () => {
       const parsed = collectStatus(tmpDir);
       assert.equal(parsed.draft_session.stale, true);
       assert.equal(parsed.draft_session.ready_for_implement, false);
+      assert.equal(parsed.implementation_gate.ready, false);
       assert.equal(parsed.draft_session.stale_paths[0], "vp/ui/home.yml");
       assert.ok(parsed.draft_session.blocking_reasons.some(reason => /changed after the last saved draft session/i.test(reason)));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("marks the implementation gate ready when a verification pack exists without a draft session", () => {
+    const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
+    fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\n");
+    try {
+      const parsed = collectStatus(tmpDir);
+      assert.equal(parsed.draft_session, null);
+      assert.equal(parsed.implementation_gate.ready, true);
+      assert.equal(parsed.implementation_gate.source, "verification_pack");
+      assert.deepEqual(parsed.implementation_gate.blocking_reasons, []);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

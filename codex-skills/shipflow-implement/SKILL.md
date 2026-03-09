@@ -1,6 +1,6 @@
 ---
 name: shipflow-implement
-description: Run the standard ShipFlow implementation loop once the draft is ready.
+description: "Run the standard ShipFlow implementation loop once the draft is ready."
 ---
 
 # ShipFlow — Implementation Loop
@@ -16,9 +16,9 @@ shipflow status --json
 shipflow implement
 ```
 
-Only continue when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
+Only continue when `shipflow status --json` shows `implementation_gate.ready === true`.
 
-If `draft_session.ready_for_implement !== true`, stop and send the user back to `$shipflow-draft`.
+If `implementation_gate.ready !== true`, stop and send the user back to `$shipflow-draft`.
 
 That command already runs the useful pipeline:
 - doctor
@@ -41,6 +41,8 @@ shipflow init
 ```bash
 shipflow implement
 ```
+
+If it takes time, inspect `evidence/implement.json` or `shipflow status --json` for the current stage before assuming the loop is stuck.
 
 3. Only if that fails, inspect:
 - `evidence/implement.json`

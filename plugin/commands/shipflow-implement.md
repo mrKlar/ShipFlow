@@ -38,9 +38,9 @@ node "$SHIPFLOW_DIR/bin/shipflow.js" status --json
 node "$SHIPFLOW_DIR/bin/shipflow.js" implement
 ```
 
-Only continue to implementation when `shipflow status --json` shows either no `draft_session`, or `draft_session.ready_for_implement === true`.
+Only continue to implementation when `shipflow status --json` shows `implementation_gate.ready === true`.
 
-If `draft_session.ready_for_implement !== true`, stop and send the user back to `/shipflow-draft`. Typical blocking reasons are:
+If `implementation_gate.ready !== true`, stop and send the user back to `/shipflow-draft`. Typical blocking reasons are:
 - pending draft items
 - accepted proposals not yet written into `vp/**`
 - the verification pack changed after the last saved draft session
@@ -52,6 +52,8 @@ That command already runs:
 - provider implementation
 - verify
 - retry until green or retry budget exhausted
+
+If the loop takes time, inspect `evidence/implement.json` or `shipflow status --json` for the current stage before assuming it is hung.
 
 ## Debug Only If Needed
 

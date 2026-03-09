@@ -16,7 +16,7 @@ function withTmpDir(fn) {
 
 function makeSpawnRecorder(cwd, calls) {
   return (bin, args, options = {}) => {
-    calls.push({ bin, args: [...args] });
+    calls.push({ bin, args: [...args], env: options.env || null });
     if (bin === "npm" && args[0] === "install") {
       const pkgPath = path.join(cwd, "package.json");
       const pkg = fs.existsSync(pkgPath) ? JSON.parse(fs.readFileSync(pkgPath, "utf-8")) : { name: "tmp", private: true };
@@ -116,7 +116,9 @@ describe("bootstrapVerificationRuntime", () => {
       assert.equal(result.playwright_browsers_installed, true);
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@playwright/test")));
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@cucumber/cucumber")));
-      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install"));
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install" && call.args[2] === "chromium"));
+      assert.ok(calls.some(call => call.env?.npm_config_cache === path.join(tmpDir, ".shipflow", "runtime", "npm-cache")));
+      assert.ok(calls.some(call => call.env?.PLAYWRIGHT_BROWSERS_PATH === path.join(tmpDir, ".shipflow", "runtime", "playwright")));
 
       const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8"));
       assert.ok(pkg.devDependencies["@playwright/test"]);
@@ -157,7 +159,7 @@ describe("bootstrapVerificationRuntime", () => {
       assert.deepEqual(result.installed_packages, ["@playwright/test"]);
       assert.equal(result.playwright_browsers_installed, true);
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@playwright/test")));
-      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install"));
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install" && call.args[2] === "chromium"));
     });
   });
 
@@ -185,6 +187,69 @@ describe("bootstrapVerificationRuntime", () => {
       });
       assert.equal(result.ok, false);
       assert.ok(result.issues.some(issue => issue.includes("invalid JSON")));
+    });
+  });
+
+  it("installs required native verification backends locally when supported", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "nfr"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "nfr", "load.yml"), [
+        "id: perf-load",
+        "title: Load check",
+        "severity: blocker",
+        "app:",
+        "  kind: nfr",
+        "  base_url: http://localhost:3000",
+        "scenario:",
+        "  endpoint: /health",
+        "  thresholds:",
+        "    http_req_duration_p95: 300",
+        "  vus: 1",
+        "  duration: 10s",
+        "",
+      ].join("\n"));
+
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        commandExists: cmd => ["npm", "npx"].includes(cmd),
+        spawnSync: () => ({ status: 0, stdout: "", stderr: "" }),
+        installK6: () => ({ ok: true, installed: true, path: path.join(tmpDir, ".shipflow", "runtime", "bin", "k6") }),
+      });
+
+      assert.equal(result.ok, true);
+      assert.deepEqual(result.installed_backends, ["k6"]);
+      assert.ok(result.actions.some(action => /Installed local k6 runtime/i.test(action)));
+    });
+  });
+
+  it("reuses a local Playwright runtime when browsers were already bootstrapped", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".shipflow", "runtime", "playwright"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "runtime", "playwright", "marker.txt"), "ready\n");
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+
+      const calls = [];
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        spawnSync: makeSpawnRecorder(tmpDir, calls),
+        commandExists: cmd => ["npm", "npx"].includes(cmd),
+      });
+
+      assert.equal(result.ok, true);
+      assert.equal(result.playwright_browsers_reused, true);
+      assert.equal(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install"), false);
     });
   });
 });

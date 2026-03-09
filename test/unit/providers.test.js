@@ -141,4 +141,12 @@ describe("normalizeProviderText", () => {
       "--- FILE: src/app.js ---\nconsole.log('ok');\n--- END FILE ---",
     );
   });
+
+  it("normalizes ANSI-wrapped loose file block lines", () => {
+    const raw = "\u001b[35m━━━━━━━━ FILE: src/x.txt ---\u001b[0m\nok\n\u001b[35m━━━━━━━━ END FILE ---\u001b[0m";
+    assert.equal(
+      normalizeProviderText(raw, "files"),
+      "--- FILE: src/x.txt ---\nok\n--- END FILE ---",
+    );
+  });
 });

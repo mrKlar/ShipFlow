@@ -41,10 +41,10 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
 1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
 2. Evaluates OPA policies (if `vp/policy/*.rego` exist) → `evidence/policy.json`
 3. Runs generated Playwright tests per verification type and writes `evidence/*.json`
-4. Runs k6 NFR scripts when `.gen/k6/*.js` exist. Missing `k6` is a verification failure, not a skip → `evidence/load.json`
+4. Runs k6 NFR scripts when `.gen/k6/*.js` exist. Missing `k6` after ShipFlow bootstrap is a verification failure, not a skip → `evidence/load.json`
 5. Runs generated technical backend runners when `.gen/technical/*.runner.mjs` exist → `evidence/technical.json`
 6. Emits aggregate `evidence/run.json` with group summaries
-7. `shipflow implement` emits `evidence/implement.json` with the latest loop result
+7. `shipflow implement` updates `evidence/implement.json` as it advances through bootstrap, generation, implementation, and verification
 8. `shipflow status` may also show recent implementation history when available
 9. Prints colored summary
 10. Exits 0 if all pass, 1 if tests fail, 3 if policy denies

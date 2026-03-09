@@ -109,7 +109,7 @@ Step 1. Start with `shipflow draft`. Use it to shape the verification pack befor
 
 Step 2. Run `shipflow implement`. It validates the pack, bootstraps the verification runtime it needs, generates tests and runners, implements, verifies, and retries within the configured budget.
 
-Between those two steps, `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `draft_session.ready_for_implement === true`.
+Between those two steps, `shipflow draft` is the pack-definition workflow: accept or reject proposals, write the chosen ones, or explicitly let the AI auto-materialize them. `shipflow implement` continues only when `shipflow status --json` reports `implementation_gate.ready === true`.
 
 ## 🔬 How It Works
 
@@ -310,7 +310,7 @@ assert:
 }
 ```
 
-`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, `gemini`, or `kiro`) and falls back to the configured runtime defaults when needed. `shipflow implement` always allows the configured `srcDir`, can bootstrap the JS verification runtime it needs, derives extra repo-level write targets from `vp/technical/*.yml` when needed, and can be widened explicitly with `impl.writeRoots`.
+`provider: "auto"` resolves to the active local CLI integration when possible (`claude`, `codex`, `gemini`, or `kiro`) and falls back to the configured runtime defaults when needed. `shipflow implement` always allows the configured `srcDir`, bootstraps its local verification runtime under `.shipflow/runtime/` when possible, derives extra repo-level write targets from `vp/technical/*.yml` when needed, and can be widened explicitly with `impl.writeRoots`.
 
 ## 🔄 CI
 

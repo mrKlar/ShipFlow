@@ -1,6 +1,6 @@
 ---
 name: shipflow-draft
-description: Draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl.
+description: "Draft or refine a ShipFlow verification pack. Preferred follow-up command: $shipflow-implement. Legacy follow-up alias: $shipflow-impl."
 ---
 
 # ShipFlow — Verification Collaboration
@@ -29,31 +29,40 @@ shipflow init
 If the user is continuing an existing draft session, you may omit the request and let ShipFlow reuse the saved draft request.
 If the user wants to restart the draft from scratch, use `shipflow draft --clear-session`.
 
-3. Finalize proposals before writing:
+3. Make it interactive before writing:
+- First summarize what ShipFlow understood from the request and the repo
+- Then walk type by type through UI, behavior, API, database, performance, security, and technical
+- For each type, ask what the user wants ShipFlow to verify and surface the best-practice prompts that ShipFlow returned
+- Then surface the top candidate verification files and the biggest coverage gaps
+- If `clarifications` are present and the user did not explicitly delegate the decision, ask concise clarification questions before writing
+- If the user explicitly allows autonomous choices, say which defaults you are choosing
+- Do not jump from `shipflow draft --json` straight into manual YAML authoring when ShipFlow already returned valid proposals
+
+4. Finalize proposals before writing:
 - Treat `shipflow draft` as the pack-definition workflow
 - Use `shipflow draft --accept=vp/path.yml` and `shipflow draft --reject=vp/path.yml` to record decisions
 - Use `shipflow draft --accept=vp/path.yml --write` to materialize an accepted proposal
 - Use `shipflow draft --accept=vp/path.yml --update-existing --write` only with explicit user approval when replacing an existing verification file
-- For precise changes that do not fit a proposal cleanly, edit focused checks under `vp/` manually
+- Use manual `vp/` editing only for focused refinements that `shipflow draft` did not already express cleanly
 - Prefer one observable behavior per file
 - Cover the relevant types: UI, behavior, API, database, performance, security, technical
 - For `technical`, choose `runner.kind` / `runner.framework` deliberately and prefer backend-native architecture rules over smoke commands
 - Call out ambiguities instead of hiding them
 - Do not jump straight to `--write` before the draft is finalized unless the user explicitly wants automatic materialization
 
-4. Validate every pass:
+5. Validate every pass:
 
 ```bash
 shipflow lint
 shipflow gen
 ```
 
-5. Present a short summary:
+6. Present a short summary:
 - what was added or changed
 - what is still ambiguous
 - what is intentionally not covered yet
 
-6. Iterate until the user is satisfied, then direct them to:
+7. Iterate until the user is satisfied, then direct them to:
 
 ```text
 $shipflow-implement
@@ -73,3 +82,5 @@ $shipflow-impl
 - Use `warn` only for genuinely non-blocking checks
 - Do not replace an existing `vp/` file unless the user explicitly approved that update
 - If validation fails, fix the pack before presenting it as ready
+- Do not say ShipFlow “didn’t return AI-generated proposals” as a reason to abandon the draft workflow; local proposals are first-class
+- Do not go mining example repos or installed templates as the primary drafting path when `shipflow draft` already returned valid proposals

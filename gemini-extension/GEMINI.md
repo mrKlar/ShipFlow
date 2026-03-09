@@ -41,9 +41,15 @@ Typical handoff:
 - finalize the pack with the user when needed
 - `/shipflow:implement` once the pack is finalized
 
+During drafting:
+- summarize what ShipFlow understood before writing
+- walk through UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts
+- ask clarifications when `shipflow draft` surfaces unresolved decisions
+- treat local ShipFlow proposals as first-class; do not abandon the workflow just because no extra AI refinement appeared
+
 Do NOT report completion until `shipflow verify` exits 0.
 
-Before `shipflow implement`, run `shipflow status --json`. Only continue when there is no `draft_session`, or `draft_session.ready_for_implement === true`.
+Before `shipflow implement`, run `shipflow status --json`. Only continue when `implementation_gate.ready === true`.
 
 ## Protected Paths
 
