@@ -193,15 +193,24 @@ describe("buildDraft", () => {
     });
   });
 
-  it("drafts a calculator behavior matrix that asserts results instead of generic errors", () => {
+  it("drafts calculator verification starters across UI, API, and behavior", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
 
-      const result = buildDraft(tmpDir, "calculator API with addition, multiplication, division, and invalid expression handling");
+      const result = buildDraft(tmpDir, "web calculator app with API addition, multiplication, division, and invalid expression handling");
+      const uiAddition = result.proposals.find(proposal => proposal.path === "vp/ui/calculator-addition.yml");
+      const uiMultiplication = result.proposals.find(proposal => proposal.path === "vp/ui/calculator-multiplication.yml");
       const behavior = result.proposals.find(proposal => proposal.path === "vp/behavior/calculate-basic-arithmetic.yml");
       const invalid = result.proposals.find(proposal => proposal.path === "vp/behavior/calculate-invalid-expression.yml");
-      const api = result.proposals.find(proposal => proposal.path === "vp/api/post-api-calculate.yml" || proposal.path === "vp/api/post-calculate.yml");
+      const apiAddition = result.proposals.find(proposal => proposal.path === "vp/api/post-calculate-addition.yml");
+      const apiMultiplication = result.proposals.find(proposal => proposal.path === "vp/api/post-calculate-multiplication.yml");
+
+      assert.ok(uiAddition);
+      assert.ok(uiAddition.data.assert.some(item => item.text_equals?.equals === "5"));
+      assert.ok(uiAddition.data.assert.some(item => item.hidden?.testid === "calculator-error"));
+      assert.ok(uiMultiplication);
+      assert.ok(uiMultiplication.data.assert.some(item => item.text_equals?.equals === "64"));
 
       assert.ok(behavior);
       assert.equal(behavior.data.app.kind, "api");
@@ -215,9 +224,12 @@ describe("buildDraft", () => {
       assert.ok(invalid.data.then.some(item => item.status === 400));
       assert.ok(invalid.data.then.some(item => item.json_has?.path === "$.error"));
 
-      assert.ok(api);
-      assert.ok(api.data.assert.some(item => item.json_has?.path === "$.result"));
-      assert.ok(api.data.assert.some(item => item.json_absent?.path === "$.error"));
+      assert.ok(apiAddition);
+      assert.ok(apiAddition.data.assert.some(item => item.json_has?.path === "$.result"));
+      assert.ok(apiAddition.data.assert.some(item => item.json_absent?.path === "$.error"));
+      assert.ok(apiMultiplication);
+      assert.ok(apiMultiplication.data.assert.some(item => item.json_matches?.matches === "^64$"));
+      assert.ok(apiMultiplication.data.assert.some(item => item.json_absent?.path === "$.error"));
     });
   });
 
