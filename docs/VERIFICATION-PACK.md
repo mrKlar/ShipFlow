@@ -2,7 +2,7 @@
 
 ## Principle
 
-Only `vp/` is human-readable and editable. Everything else is generated or opaque implementation.
+Only `vp/` is the durable, human-editable definition of what must be true. Everything else is generated artifacts or implementation.
 
 ## Directories
 

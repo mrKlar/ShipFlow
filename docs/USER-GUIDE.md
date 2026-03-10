@@ -2,7 +2,9 @@
 
 ## What is ShipFlow?
 
-ShipFlow is a verification-first shipping framework. You describe what your app must do, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
+ShipFlow is a verification-first shipping framework. You define what must be observably true when the work is done, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
+
+The verification pack records required checks and constraints, not a prose description of the app.
 
 ```
 vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json

@@ -18,11 +18,11 @@ Every "AI-powered" development framework makes the same fundamental mistake: it 
 
 This is a first-principles failure. If you have an agent that can write, test, and iterate at machine speed, why are you still asking it to follow a human playbook?
 
-> 🚀 **ShipFlow starts from zero.** No specs. No handoffs. You describe what the app must do, you and/or the AI shape executable verifications, ShipFlow generates real tests and runners, and the AI implements against that locked pack. The process is not assisted by AI. It is designed for AI.
+> 🚀 **ShipFlow starts from zero.** No specs. No handoffs. You define what must be true when the work is done, you and/or the AI shape executable verifications, ShipFlow generates real tests and runners, and the AI implements against that locked pack. The process is not assisted by AI. It is designed for AI.
 
 ```text
- You describe        Draft / finalize        ShipFlow generates      AI builds & loops
-"a calculator" ──▶  vp/**/*.yml         ──▶  tests + runners     ──▶  src/**  ──▶  ✅ locked pack enforced
+ You define outcomes     Draft / finalize        ShipFlow generates      AI builds & loops
+"2+3 returns 5" ──▶    vp/**/*.yml         ──▶  tests + runners     ──▶  src/**  ──▶  ✅ locked pack enforced
 ```
 
 🔒 The AI cannot win by editing the pack out from under the loop. Cryptographic locks and runtime hooks protect the verification pack and generated artifacts during implementation. The only way out is working code.
@@ -49,9 +49,9 @@ Most AI dev workflows still look like human workflows:
 
 ShipFlow replaces that with one durable artifact: the verification pack.
 
-- You define what must be true.
-- ShipFlow turns that into real tests and runners.
-- The agent implements against that locked pack.
+- The pack records what must be true, visible, accepted, rejected, or preserved.
+- ShipFlow turns that pack into real tests and runners.
+- The agent implements against that locked boundary.
 - The loop ends only when verification is green.
 
 ## ⚡ Install — One Command, Fully Automatic
@@ -107,12 +107,12 @@ For the exact Claude / Codex / Gemini / Kiro commands, plus debug commands like 
 
 ## 🔬 How It Works
 
-1. You describe the app.
-2. You and/or the AI draft the verification pack.
+1. You define what must be observably true when the work is done.
+2. You and/or the AI turn that into a verification pack.
 3. ShipFlow turns that pack into real tests and runners.
-4. The AI implements until verification passes.
+4. The AI implements until the required checks pass.
 
-That is the core idea: define what must be true first, then let the agent code against that locked boundary.
+That is the core idea: define the finished-state checks in executable terms, lock them, and let the agent implement against them.
 
 Why believe it? Because ShipFlow locks the verification pack and generated artifacts before implementation, and the loop ends on verification, not on a claim that the work is “done”.
 

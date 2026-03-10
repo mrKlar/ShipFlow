@@ -1,13 +1,13 @@
 # The Scientific Foundations of ShipFlow
 ## A Verification-First Paradigm for AI-Native Engineering
 
-ShipFlow is not merely a testing tool; it is a concrete implementation of several advanced software engineering paradigms, reinterpreted for the era of generative AI. In practice, the workflow starts with definition of a verification pack, then moves into a locked implementation loop. This document outlines the theoretical principles and academic foundations of the framework.
+ShipFlow is not merely a testing tool; it is a concrete implementation of several advanced software engineering paradigms, reinterpreted for the era of generative AI. In practice, the workflow starts by defining a verification pack that captures what must be observably true, then moves into a locked implementation loop. This document outlines the theoretical principles and academic foundations of the framework.
 
 ---
 
 ### 1. Executable Specifications (Specification by Example)
 
-**Principle:** In ShipFlow, the Verification Pack (`vp/`) is not passive documentation but an executable contract fixed before implementation.
+**Principle:** In ShipFlow, the Verification Pack (`vp/`) is not passive documentation but an executable statement of what must be true before implementation can be accepted.
 
 - **Theoretical Root:** This concept builds on **Behavior-Driven Development (BDD)** introduced by Dan North and popularized by Gojko Adzic in *"Specification by Example"*.
 - **Analysis:** ShipFlow takes this further by eliminating the "Glue Code" (Step Definitions) typically required in tools like Cucumber. The compiler (`shipflow gen`) transforms YAML models into runnable tests and harnesses for the relevant surface area, reducing indirection and eliminating "test drift."
@@ -18,7 +18,7 @@ ShipFlow is not merely a testing tool; it is a concrete implementation of severa
 
 - **Theoretical Root:** Refers to **Model-Driven Software Development (MDSD)** and the works of Douglas C. Schmidt.
 - **Analysis:** Unlike legacy MDA (Model Driven Architecture) of the 2000s which generated unreadable "code slop," ShipFlow uses LLMs to ensure the resulting artifact is idiomatic, performant, and maintainable by other agents. It acts as a transformation engine:
-    1. **Intent -> Verification Pack** (pack definition before implementation).
+    1. **Required outcomes -> Verification Pack** (pack definition before implementation).
     2. **VP -> Tests / Harnesses** (Compilation to runnable constraints).
     3. **Tests -> Implementation** (AI-assisted Program Synthesis).
 
@@ -41,7 +41,7 @@ ShipFlow is not merely a testing tool; it is a concrete implementation of severa
 **Principle:** Source code is no longer the "source of truth," but a transient compilation of human intent.
 
 - **Theoretical Root:** Extension of the **Immutable Infrastructure** and **Cattle vs. Pets** patterns (DevOps) to the source code level.
-- **Analysis:** By treating code as a disposable artifact, ShipFlow reduces the cost of technical debt. If code becomes obsolete or messy, it can be regenerated from the permanent Verification Pack. Judgment shifts from the *implementation* (how it works) to the *verification* (what it must do).
+- **Analysis:** By treating code as a disposable artifact, ShipFlow reduces the cost of technical debt. If code becomes obsolete or messy, it can be regenerated from the permanent Verification Pack. Judgment shifts from the *implementation* (how it works) to the *verification* (what must be true).
 
 ---
 
