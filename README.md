@@ -114,6 +114,8 @@ For the exact Claude / Codex / Gemini / Kiro commands, plus debug commands like 
 
 That is the core idea: define the finished-state checks in executable terms, lock them, and let the agent implement against them.
 
+On a new project, that boundary includes the verification environment itself. ShipFlow can draft technical starters that pin the initial runtime and declared stack, so Node, package manager, and dependency-spec drift become explicit pack changes instead of ambient machine-state surprises.
+
 Why believe it? Because ShipFlow locks the verification pack and generated artifacts before implementation, and the loop ends on verification, not on a claim that the work is “done”.
 
 If you want the exact file formats, generated outputs, lock semantics, or command reference, use the docs:

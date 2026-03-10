@@ -59,8 +59,10 @@ describe("buildDraft", () => {
       assert.ok(architecture.data.assert.some(item => item.no_circular_dependencies));
       const framework = result.proposals.find(p => p.path === "vp/technical/framework-stack.yml");
       assert.ok(framework);
-      assert.ok(framework.data.assert.some(item => item.json_matches?.query === "$.packageManager"));
+      assert.ok(framework.data.assert.some(item => item.json_matches?.query === "$.packageManager" && item.json_matches.matches === "^pnpm@9\\.0\\.0$"));
       assert.ok(framework.data.assert.some(item => item.script_present?.name === "build"));
+      assert.ok(framework.data.assert.some(item => item.dependency_version_matches?.name === "@playwright/test" && item.dependency_version_matches.matches === "^\\^1\\.0\\.0$"));
+      assert.ok(framework.data.assert.some(item => item.dependency_version_matches?.name === "tsarch" && item.dependency_version_matches.matches === "^\\^0\\.1\\.0$"));
       assert.equal(framework.data.assert.some(item => item.path_exists?.path === "playwright.config.ts"), false);
       assert.ok(result.proposals.some(p => p.path.startsWith("vp/nfr/")));
       assert.ok(result.ambiguities.length > 0);
@@ -123,9 +125,13 @@ describe("buildDraft", () => {
 
       const result = buildDraft(tmpDir, "todo app with login, REST API, sqlite, GitHub Actions, Docker, and stress testing");
       const apiProtocol = result.proposals.find(proposal => proposal.path === "vp/technical/api-protocol.yml");
+      const runtimeEnvironment = result.proposals.find(proposal => proposal.path === "vp/technical/runtime-environment.yml");
       const sqliteRuntime = result.proposals.find(proposal => proposal.path === "vp/technical/sqlite-runtime.yml");
       assert.ok(apiProtocol);
       assert.ok(apiProtocol.data.assert.some(item => item.rest_api_present));
+      assert.ok(runtimeEnvironment);
+      assert.ok(runtimeEnvironment.data.assert.some(item => item.command_stdout_contains?.command === "node --version"));
+      assert.ok(runtimeEnvironment.data.assert.some(item => item.command_stdout_contains?.text === process.version));
       assert.ok(sqliteRuntime);
       assert.ok(result.proposals.some(proposal => proposal.type === "technical" && proposal.path === "vp/technical/delivery-stack.yml"));
       assert.equal(result.proposals.some(proposal => proposal.type === "ui"), false);
@@ -428,6 +434,10 @@ describe("buildDraft", () => {
       assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "next"));
       assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "react"));
       assert.ok(technical.data.assert.some(item => item.dependency_present?.name === "graphql"));
+      assert.ok(technical.data.assert.some(item => item.dependency_version_matches?.name === "next" && item.dependency_version_matches.matches === "^\\^15\\.0\\.0$"));
+      assert.ok(technical.data.assert.some(item => item.dependency_version_matches?.name === "react" && item.dependency_version_matches.matches === "^\\^19\\.0\\.0$"));
+      assert.ok(technical.data.assert.some(item => item.dependency_version_matches?.name === "graphql" && item.dependency_version_matches.matches === "^\\^16\\.0\\.0$"));
+      assert.ok(technical.data.assert.some(item => item.json_matches?.query === "$.packageManager" && item.json_matches.matches === "^pnpm@9\\.0\\.0$"));
     });
   });
 
@@ -607,6 +617,28 @@ describe("draft", () => {
       assert.ok(result.written.some(file => file.startsWith("vp/technical/")));
       assert.ok(!result.written.some(file => file.startsWith("vp/behavior/")));
       assert.ok(fs.existsSync(path.join(tmpDir, result.written[0])));
+    });
+  });
+
+  it("auto-writes the runtime environment starter on a greenfield project", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+      for (const dir of ["ui", "behavior", "api", "db", "nfr", "security", "technical"]) {
+        fs.mkdirSync(path.join(tmpDir, "vp", dir), { recursive: true });
+      }
+
+      const { result } = await draft({
+        cwd: tmpDir,
+        input: "todo app with login, REST API, sqlite, GitHub Actions, Docker, and stress testing",
+        write: true,
+        json: false,
+      });
+
+      assert.ok(result.written.includes("vp/technical/runtime-environment.yml"));
+      const written = fs.readFileSync(path.join(tmpDir, "vp", "technical", "runtime-environment.yml"), "utf-8");
+      assert.match(written, /node --version/);
+      assert.ok(written.includes(process.version));
     });
   });
 

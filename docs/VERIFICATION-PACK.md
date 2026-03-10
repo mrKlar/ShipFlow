@@ -54,6 +54,7 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
 2. Folds in the user request when provided
 3. Summarizes gaps and ambiguities
 4. Proposes starter verifications
+   On greenfield repos, these starters can include technical boundary files such as `vp/technical/runtime-environment.yml` and `vp/technical/framework-stack.yml` so the initial verification runtime and declared stack become part of the pack immediately.
 5. Optionally writes starter files to `vp/` with `--write`
 
 ## Anti-Cheat Invariants

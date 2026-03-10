@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { TechnicalCheck } from "../../lib/schema/technical-check.zod.js";
 import { technicalAssertExpr, genTechnicalArtifacts } from "../../lib/gen-technical.js";
 
@@ -14,6 +14,45 @@ const base = {
   category: "ci",
   app: { kind: "technical", root: "." },
 };
+
+async function runGeneratedRunner(runnerFile, cwd) {
+  const stdout = [];
+  const stderr = [];
+  let status = 0;
+  const originalCwd = process.cwd();
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalExit = process.exit;
+
+  try {
+    process.chdir(cwd);
+    console.log = (...args) => stdout.push(args.join(" "));
+    console.error = (...args) => stderr.push(args.join(" "));
+    process.exit = code => {
+      status = Number(code ?? 0);
+      throw new Error(`__SHIPFLOW_EXIT__:${status}`);
+    };
+
+    try {
+      const specifier = `${pathToFileURL(runnerFile).href}?run=${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      await import(specifier);
+      await new Promise(resolve => setImmediate(resolve));
+    } catch (error) {
+      if (!String(error?.message || error).startsWith("__SHIPFLOW_EXIT__:")) throw error;
+    }
+  } finally {
+    process.chdir(originalCwd);
+    console.log = originalLog;
+    console.error = originalError;
+    process.exit = originalExit;
+  }
+
+  return {
+    status,
+    stdout: stdout.join("\n"),
+    stderr: stderr.join("\n"),
+  };
+}
 
 describe("TechnicalCheck schema", () => {
   it("accepts a CI technical check", () => {
@@ -270,7 +309,7 @@ describe("genTechnicalArtifacts", () => {
     assert.ok(artifacts[1].content.includes('"boundaries/element-types"'));
   });
 
-  it("executes GraphQL and REST protocol assertions in the generated runner", () => {
+  it("executes GraphQL and REST protocol assertions in the generated runner", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-runner-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
@@ -300,7 +339,7 @@ describe("genTechnicalArtifacts", () => {
 
       const runnerFile = path.join(tmpDir, runner.name);
       fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
-      const result = spawnSync(process.execPath, [runnerFile], { cwd: tmpDir, encoding: "utf-8" });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
       assert.equal(result.status, 0, result.stdout + result.stderr);
       assert.match(result.stdout, /PASS technical-ci/);
     } finally {
@@ -308,7 +347,7 @@ describe("genTechnicalArtifacts", () => {
     }
   });
 
-  it("treats rest_api_present without methods as any REST method", () => {
+  it("treats rest_api_present without methods as any REST method", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-any-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "app", "api", "todos"), { recursive: true });
@@ -331,14 +370,14 @@ describe("genTechnicalArtifacts", () => {
 
       const runnerFile = path.join(tmpDir, runner.name);
       fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
-      const result = spawnSync(process.execPath, [runnerFile], { cwd: tmpDir, encoding: "utf-8" });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
       assert.equal(result.status, 0, result.stdout + result.stderr);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
-  it("detects REST routes declared in a native node:http server", () => {
+  it("detects REST routes declared in a native node:http server", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-node-http-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
@@ -362,14 +401,14 @@ describe("genTechnicalArtifacts", () => {
 
       const runnerFile = path.join(tmpDir, runner.name);
       fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
-      const result = spawnSync(process.execPath, [runnerFile], { cwd: tmpDir, encoding: "utf-8" });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
       assert.equal(result.status, 0, result.stdout + result.stderr);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
-  it("detects REST routes declared through local path and method aliases", () => {
+  it("detects REST routes declared through local path and method aliases", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-node-alias-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
@@ -394,7 +433,7 @@ describe("genTechnicalArtifacts", () => {
 
       const runnerFile = path.join(tmpDir, runner.name);
       fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
-      const result = spawnSync(process.execPath, [runnerFile], { cwd: tmpDir, encoding: "utf-8" });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
       assert.equal(result.status, 0, result.stdout + result.stderr);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });

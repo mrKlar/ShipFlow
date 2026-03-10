@@ -51,6 +51,7 @@ By default, `shipflow init` scaffolds the files for the currently detected CLI. 
 
 For the normal greenfield flow, `shipflow implement` bootstraps a local verification runtime under `.shipflow/runtime/` when possible, including JS packages such as `@playwright/test` or `@cucumber/cucumber`, a local Playwright browser runtime, and supported native backends such as `k6` or `opa`.
 Some system-level tools may still be required depending on your pack. SQLite checks can use `sqlite3` when it is installed, or fall back to Node's `node:sqlite` runtime on newer Node versions. PostgreSQL checks still require `psql`.
+On greenfield drafts, ShipFlow can also write technical starters that pin that initial verification environment into the pack, so runtime drift is reviewed as a pack change rather than discovered later as a flaky implementation failure.
 
 ### Multi-platform
 
@@ -487,6 +488,10 @@ Requires `k6` installed. Runs during `shipflow verify`; missing `k6` is a failur
 
 Verify repository-level technical constraints: framework selection, architecture boundaries, CI workflows, infrastructure files, SaaS/tooling declarations, and browser/mobile test services.
 
+For greenfield repos, ShipFlow can propose these by default as part of the first technical boundary. Typical starters include:
+- `vp/technical/runtime-environment.yml` to pin the verification runtime that ShipFlow observed when the pack was drafted, such as `node --version` and the exact `packageManager` declaration.
+- `vp/technical/framework-stack.yml` to pin declared framework/tooling choices and their exact dependency specs from `package.json`.
+
 ```yaml
 id: technical-ci-stack
 title: Repository uses GitHub Actions and Playwright
@@ -549,10 +554,10 @@ Technical checks compile to `.gen/technical/*.runner.mjs`. `runner.framework: cu
 - file_not_contains: { path: "package.json", text: "\"express\"" }
 - json_has: { path: "package.json", query: "$.scripts.test" }
 - json_equals: { path: "package.json", query: "$.type", equals: "module" }
-- json_matches: { path: "package.json", query: "$.packageManager", matches: "^pnpm@" }
+- json_matches: { path: "package.json", query: "$.packageManager", matches: "^pnpm@9\\.0\\.0$" }
 - dependency_present: { name: "next", section: dependencies }
 - dependency_absent: { name: "express", section: all }
-- dependency_version_matches: { name: "next", section: dependencies, matches: "^14\\." }
+- dependency_version_matches: { name: "next", section: dependencies, matches: "^\\^14\\.2\\.0$" }
 - script_present: { name: "build" }
 - script_contains: { name: "test:e2e", text: "playwright" }
 - github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/setup-node@v4" }
@@ -570,9 +575,11 @@ Technical checks compile to `.gen/technical/*.runner.mjs`. `runner.framework: cu
       - { name: ui, files: "src/ui/**/*.ts", may_import: ["application", "shared"] }
       - { name: application, files: "src/application/**/*.ts", may_import: ["domain", "shared"] }
 - command_succeeds: { command: "terraform validate", cwd: "infra" }
+- command_stdout_contains: { command: "node --version", text: "v22.22.1" }
 ```
 
 Protocol-oriented technical checks let you enforce stack direction, not just package presence. For example, a GraphQL-first service can require a declared GraphQL surface and forbid parallel REST routes, while a REST-only service can require `/api/*` routes and forbid GraphQL server surfaces.
+They can also pin the runtime assumptions that make the rest of the pack trustworthy, especially when native addons or Node-version-sensitive tooling are involved.
 
 ### Local Draft Workflow
 
@@ -588,7 +595,7 @@ shipflow gen
 Recommended usage:
 1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
 2. `shipflow draft "..."` to see the understood coverage, request-driven gaps, ambiguities, and proposed starter files.
-3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps.
+3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include technical starters such as `vp/technical/runtime-environment.yml` and `vp/technical/framework-stack.yml`.
 4. Review/edit the VP files.
 5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
 
