@@ -193,6 +193,21 @@ describe("UiCheck schema — setup field", () => {
     const r = UiCheck.parse({ ...base, flow: [], assert: [] });
     assert.equal(r.setup, undefined);
   });
+
+  it("accepts optional sqlite state reset", () => {
+    const r = UiCheck.parse({
+      ...base,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      flow: [],
+      assert: [],
+    });
+    assert.equal(r.state.kind, "sqlite");
+    assert.equal(r.state.connection, "./test.db");
+  });
 });
 
 describe("UiCheck schema — top-level validation", () => {

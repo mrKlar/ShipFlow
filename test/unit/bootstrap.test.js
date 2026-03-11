@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { bootstrapVerificationRuntime, detectPackageManager, syncProjectDependencies } from "../../lib/bootstrap.js";
+import { bootstrapVerificationRuntime, dependencyFingerprint, detectPackageManager, syncProjectDependencies } from "../../lib/bootstrap.js";
 
 function withTmpDir(fn) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-bootstrap-"));
@@ -35,11 +35,33 @@ function makeSpawnRecorder(cwd, calls) {
       fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
       return { status: 0, stdout: "", stderr: "" };
     }
-    if (bin === "npx" && args[0] === "playwright" && args[1] === "install") {
+    if (bin === "npx" && args[0] === "--no-install" && args[1] === "playwright" && args[2] === "install") {
       return { status: 0, stdout: "", stderr: "" };
     }
     return { status: 0, stdout: "", stderr: "" };
   };
+}
+
+function writeFakePlaywrightInstall(cwd, revision = "1234") {
+  const testDir = path.join(cwd, "node_modules", "@playwright", "test");
+  const coreDir = path.join(cwd, "node_modules", "playwright-core");
+  fs.mkdirSync(testDir, { recursive: true });
+  fs.mkdirSync(coreDir, { recursive: true });
+  fs.writeFileSync(path.join(testDir, "package.json"), JSON.stringify({
+    name: "@playwright/test",
+    type: "module",
+    exports: "./index.js",
+  }, null, 2));
+  fs.writeFileSync(path.join(testDir, "index.js"), "export {};\n");
+  fs.writeFileSync(path.join(coreDir, "browsers.json"), JSON.stringify({
+    browsers: [{ name: "chromium", revision }],
+  }, null, 2));
+}
+
+function writeFakePlaywrightRuntime(cwd, revision = "1234") {
+  const runtimeDir = path.join(cwd, ".shipflow", "runtime", "playwright", `chromium-${revision}`, "chrome-linux");
+  fs.mkdirSync(runtimeDir, { recursive: true });
+  fs.writeFileSync(path.join(runtimeDir, "chrome"), "");
 }
 
 describe("detectPackageManager", () => {
@@ -120,7 +142,7 @@ describe("bootstrapVerificationRuntime", () => {
       assert.equal(result.playwright_browsers_installed, true);
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@playwright/test")));
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@cucumber/cucumber")));
-      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install" && call.args[2] === "chromium"));
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
       assert.ok(calls.some(call => call.env?.npm_config_cache === path.join(tmpDir, ".shipflow", "runtime", "npm-cache")));
       assert.ok(calls.some(call => call.env?.PLAYWRIGHT_BROWSERS_PATH === path.join(tmpDir, ".shipflow", "runtime", "playwright")));
 
@@ -204,7 +226,7 @@ describe("bootstrapVerificationRuntime", () => {
           return { status: 0, stdout: "", stderr: "" };
         }
         if (bin === "npm" && args[0] === "install") return { status: 0, stdout: "", stderr: "" };
-        if (bin === "npx" && args[0] === "playwright") return { status: 0, stdout: "", stderr: "" };
+        if (bin === "npx" && args[0] === "--no-install" && args[1] === "playwright") return { status: 0, stdout: "", stderr: "" };
         return { status: 0, stdout: "", stderr: "" };
       };
 
@@ -256,7 +278,7 @@ describe("bootstrapVerificationRuntime", () => {
       assert.deepEqual(result.installed_packages, ["@playwright/test"]);
       assert.equal(result.playwright_browsers_installed, true);
       assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("@playwright/test")));
-      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install" && call.args[2] === "chromium"));
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
     });
   });
 
@@ -321,8 +343,12 @@ describe("bootstrapVerificationRuntime", () => {
   it("reuses a local Playwright runtime when browsers were already bootstrapped", () => {
     withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
-      fs.mkdirSync(path.join(tmpDir, ".shipflow", "runtime", "playwright"), { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, ".shipflow", "runtime", "playwright", "marker.txt"), "ready\n");
+      writeFakePlaywrightInstall(tmpDir, "1234");
+      writeFakePlaywrightRuntime(tmpDir, "1234");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.45.0" },
+      }, null, 2));
       fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
         "id: ui-home",
         "title: Home screen is visible",
@@ -346,7 +372,45 @@ describe("bootstrapVerificationRuntime", () => {
 
       assert.equal(result.ok, true);
       assert.equal(result.playwright_browsers_reused, true);
-      assert.equal(calls.some(call => call.bin === "npx" && call.args[0] === "playwright" && call.args[1] === "install"), false);
+      assert.deepEqual(result.installed_packages, []);
+      assert.equal(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install"), false);
+    });
+  });
+
+  it("reinstalls Playwright browsers when the local runtime does not match the installed revision", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      writeFakePlaywrightInstall(tmpDir, "5678");
+      writeFakePlaywrightRuntime(tmpDir, "1234");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.45.0" },
+      }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+
+      const calls = [];
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        spawnSync: makeSpawnRecorder(tmpDir, calls),
+        commandExists: cmd => ["npm", "npx"].includes(cmd),
+      });
+
+      assert.equal(result.ok, true);
+      assert.equal(result.playwright_browsers_installed, true);
+      assert.equal(result.playwright_browsers_reused, false);
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
     });
   });
 });
@@ -377,6 +441,97 @@ describe("syncProjectDependencies", () => {
       assert.equal(result.ok, true);
       assert.ok(calls.some(call => call.bin === "npm" && call.args[0] === "install"));
       assert.ok(result.actions.some(action => /Synchronized project dependencies with npm/i.test(action)));
+    });
+  });
+
+  it("repairs Playwright browsers after dependency sync when UI checks are present", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.45.0" },
+      }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "{}");
+      writeFakePlaywrightInstall(tmpDir, "5678");
+
+      const calls = [];
+      const result = syncProjectDependencies(tmpDir, {
+        spawnSync: (bin, args, options = {}) => {
+          calls.push({ bin, args: [...args], env: options.env || {} });
+          if (bin === "npm" && args[0] === "install") return { status: 0, stdout: "", stderr: "" };
+          if (bin === "npx" && args[0] === "--no-install" && args[1] === "playwright" && args[2] === "install") {
+            return { status: 0, stdout: "", stderr: "" };
+          }
+          if (bin === "bash" && args[0] === "-lc") return { status: 0, stdout: "", stderr: "" };
+          return { status: 0, stdout: "", stderr: "" };
+        },
+      });
+
+      assert.equal(result.ok, true);
+      assert.equal(result.playwright_browsers_installed, true);
+      assert.ok(calls.some(call => call.bin === "npm" && call.args[0] === "install"));
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
+    });
+  });
+
+  it("repairs Playwright browsers even when manifests are unchanged", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "node_modules"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.45.0" },
+      }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "{}");
+      writeFakePlaywrightInstall(tmpDir, "5678");
+      const fingerprint = dependencyFingerprint(tmpDir);
+
+      const calls = [];
+      const result = syncProjectDependencies(tmpDir, {
+        previousFingerprint: fingerprint,
+        spawnSync: (bin, args, options = {}) => {
+          calls.push({ bin, args: [...args], env: options.env || {} });
+          if (bin === "npx" && args[0] === "--no-install" && args[1] === "playwright" && args[2] === "install") {
+            return { status: 0, stdout: "", stderr: "" };
+          }
+          if (bin === "bash" && args[0] === "-lc") return { status: 0, stdout: "", stderr: "" };
+          return { status: 0, stdout: "", stderr: "" };
+        },
+      });
+
+      assert.equal(result.ok, true);
+      assert.equal(result.skipped, true);
+      assert.equal(result.playwright_browsers_installed, true);
+      assert.equal(calls.some(call => call.bin === "npm" && call.args[0] === "install"), false);
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
     });
   });
 });

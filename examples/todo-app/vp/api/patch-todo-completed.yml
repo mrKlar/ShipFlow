@@ -1,0 +1,54 @@
+id: api-patch-todo-completed
+title: PATCH /api/todos/1 marks a todo complete
+severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0
+    );
+    DELETE FROM todos;
+    INSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 0);
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: PATCH
+  path: /api/todos/1
+  body_json:
+    completed: true
+assert:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_type:
+      path: $
+      type: object
+  - json_equals:
+      path: $.id
+      equals: 1
+  - json_equals:
+      path: $.title
+      equals: Task one
+  - json_equals:
+      path: $.completed
+      equals: true
+  - json_schema:
+      path: $
+      schema:
+        type: object
+        required:
+          - id
+          - title
+          - completed
+        properties:
+          id:
+            type: number
+          title:
+            type: string
+          completed:
+            type: boolean

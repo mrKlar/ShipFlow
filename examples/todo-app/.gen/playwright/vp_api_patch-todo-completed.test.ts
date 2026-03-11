@@ -64,30 +64,15 @@ function assertJsonSchema(value, schema, at = "$") {
   expect(jsonMatchesSchema(value, schema)).toBe(true);
 }
 
-function shipflowValuesMatch(actual, expected) {
-  if (expected === null || typeof expected !== "object") return JSON.stringify(actual) === JSON.stringify(expected);
-  if (Array.isArray(expected)) {
-    return Array.isArray(actual)
-      && actual.length === expected.length
-      && expected.every((item, index) => shipflowValuesMatch(actual[index], item));
-  }
-  if (!actual || typeof actual !== "object" || Array.isArray(actual)) return false;
-  return Object.entries(expected).every(([key, value]) => shipflowValuesMatch(actual[key], value));
-}
-
-function shipflowArrayIncludes(actual, expected) {
-  return Array.isArray(actual) && actual.some(item => shipflowValuesMatch(item, expected));
-}
-
-const REQUEST_SPEC = {"method":"GET","path":"/api/todos?filter=active"};
-const MUTATION_REQUEST_SPECS = [{"method":"GET","path":"/api/todos/__shipflow_mutant__?filter=active"},{"method":"POST","path":"/api/todos?filter=active"},{"method":"GET","path":"/api/todos?filter=active&__shipflow_mutant__=1"}];
-const MUTATION_STRATEGIES = ["mutated-path-segment","mutated-method","path-query"];
+const REQUEST_SPEC = {"method":"PATCH","path":"/api/todos/1","body_json":{"completed":true}};
+const MUTATION_REQUEST_SPECS = [{"method":"PATCH","path":"/api/todos/1","body_json":{"completed":false}},{"method":"PATCH","path":"/api/todos/1/__shipflow_mutant__","body_json":{"completed":true}},{"method":"GET","path":"/api/todos/1","body_json":{"completed":true}},{"method":"PATCH","path":"/api/todos/1?__shipflow_mutant__=1","body_json":{"completed":true}}];
+const MUTATION_STRATEGIES = ["mutated-body-json","mutated-path-segment","mutated-method","path-query"];
 
 async function sendShipFlowRequest(client, spec) {
   const headers = { ...(spec.headers || {}) };
   if (spec.auth) {
     const authToken = spec.auth.env ? (process.env[spec.auth.env] ?? (spec.auth.token ?? "")) : (spec.auth.token ?? "");
-    if (!authToken) throw new Error("Missing auth token for api-get-todos");
+    if (!authToken) throw new Error("Missing auth token for api-patch-todo-completed");
     headers[spec.auth.header || "Authorization"] = (spec.auth.prefix ?? "Bearer ") + authToken;
   }
   const options = {};
@@ -112,15 +97,16 @@ function responseMatchesOriginalAssertions(res, rawBody, body) {
   return [
     res.status() === 200,
     new RegExp("json").test(String(res.headers()["content-type"] ?? "")),
-    jsonPath(body, "$").exists && jsonType(jsonPath(body, "$").value) === "array",
-    jsonPath(body, "$").exists && Array.isArray(jsonPath(body, "$").value) && jsonPath(body, "$").value.length === 1,
-    jsonPath(body, "$").exists && shipflowArrayIncludes(jsonPath(body, "$").value, {"title":"Task two","completed":false}),
-    jsonPath(body, "$").exists && jsonMatchesSchema(jsonPath(body, "$").value, {"type":"array","items":{"type":"object","required":["id","title","completed"],"properties":{"id":{"type":"number"},"title":{"type":"string"},"completed":{"type":"boolean"}}}}),
+    jsonPath(body, "$").exists && jsonType(jsonPath(body, "$").value) === "object",
+    jsonPath(body, "$.id").exists && JSON.stringify(jsonPath(body, "$.id").value) === JSON.stringify(1),
+    jsonPath(body, "$.title").exists && JSON.stringify(jsonPath(body, "$.title").value) === JSON.stringify("Task one"),
+    jsonPath(body, "$.completed").exists && JSON.stringify(jsonPath(body, "$.completed").value) === JSON.stringify(true),
+    jsonPath(body, "$").exists && jsonMatchesSchema(jsonPath(body, "$").value, {"type":"object","required":["id","title","completed"],"properties":{"id":{"type":"number"},"title":{"type":"string"},"completed":{"type":"boolean"}}}),
   ].every(Boolean);
 }
 
-test("api-get-todos: GET /api/todos?filter=active returns only active todos", async ({ request }) => {
-  resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);\nINSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);"});
+test("api-patch-todo-completed: PATCH /api/todos/1 marks a todo complete", async ({ request }) => {
+  resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 0);"});
   const res = await sendShipFlowRequest(request, REQUEST_SPEC);
   const rawBody = await res.text();
   let body;
@@ -131,14 +117,15 @@ test("api-get-todos: GET /api/todos?filter=active returns only active todos", as
   }
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toMatch(new RegExp("json"));
-  expect(jsonPath(body, "$").exists).toBe(true); expect(jsonType(jsonPath(body, "$").value)).toBe("array");
-  expect(jsonPath(body, "$").exists).toBe(true); expect(jsonPath(body, "$").value).toHaveLength(1);
-  expect(jsonPath(body, "$").exists).toBe(true); expect(shipflowArrayIncludes(jsonPath(body, "$").value, {"title":"Task two","completed":false})).toBe(true);
-  expect(jsonPath(body, "$").exists).toBe(true); assertJsonSchema(jsonPath(body, "$").value, {"type":"array","items":{"type":"object","required":["id","title","completed"],"properties":{"id":{"type":"number"},"title":{"type":"string"},"completed":{"type":"boolean"}}}}, "$");
+  expect(jsonPath(body, "$").exists).toBe(true); expect(jsonType(jsonPath(body, "$").value)).toBe("object");
+  expect(jsonPath(body, "$.id").exists).toBe(true); expect(jsonPath(body, "$.id").value).toEqual(1);
+  expect(jsonPath(body, "$.title").exists).toBe(true); expect(jsonPath(body, "$.title").value).toEqual("Task one");
+  expect(jsonPath(body, "$.completed").exists).toBe(true); expect(jsonPath(body, "$.completed").value).toEqual(true);
+  expect(jsonPath(body, "$").exists).toBe(true); assertJsonSchema(jsonPath(body, "$").value, {"type":"object","required":["id","title","completed"],"properties":{"id":{"type":"number"},"title":{"type":"string"},"completed":{"type":"boolean"}}}, "$");
 });
 
-test("api-get-todos: GET /api/todos?filter=active returns only active todos [mutation guard]", async ({ request }) => {
-  resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);\nINSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);"});
+test("api-patch-todo-completed: PATCH /api/todos/1 marks a todo complete [mutation guard]", async ({ request }) => {
+  resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 0);"});
   let mutationGuardKilled = 0;
   const survivors = [];
   for (let index = 0; index < MUTATION_REQUEST_SPECS.length; index += 1) {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -422,18 +423,134 @@ async function loadTodoModule(cwd) {
   return import(moduleUrl);
 }
 
+function readTodoSourceFiles(cwd) {
+  const root = path.join(cwd, "src");
+  if (!fs.existsSync(root)) return [];
+  const files = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!/\.(?:[cm]?[jt]sx?|html|css)$/i.test(entry.name)) continue;
+      files.push(full);
+    }
+  }
+  return files.sort();
+}
+
+function readTodoSourceCorpus(cwd) {
+  const files = readTodoSourceFiles(cwd);
+  const parts = files.map(file => fs.readFileSync(file, "utf-8"));
+  const packageJsonPath = path.join(cwd, "package.json");
+  if (fs.existsSync(packageJsonPath)) {
+    parts.push(fs.readFileSync(packageJsonPath, "utf-8"));
+  }
+  return parts.join("\n\n");
+}
+
+function assertTodoSourceQuality(cwd, { requiredSelectors = [] } = {}) {
+  const corpus = readTodoSourceCorpus(cwd);
+  assert.match(corpus, /node:sqlite/, "implementation should use node:sqlite");
+  assert.doesNotMatch(corpus, /better-sqlite3|from\s+["']sqlite3["']|require\(["']sqlite3["']\)/, "implementation should avoid native sqlite addons");
+  assert.doesNotMatch(corpus, /\bTODO[:\s-]/, "implementation should not leave TODO markers");
+  assert.doesNotMatch(corpus, /your implementation here|replace me/i, "implementation should not leave obvious unfinished placeholders");
+  assert.match(corpus, /\/api\/todos/, "implementation should expose /api/todos");
+  for (const selector of requiredSelectors) {
+    assert.match(corpus, new RegExp(selector.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")));
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function spawnTodoDevServer(cwd, port) {
+  const stdout = [];
+  const stderr = [];
+  const child = spawn("npm", ["run", "dev"], {
+    cwd,
+    detached: true,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: "127.0.0.1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const processGroupId = child.pid;
+  child.stdout.on("data", chunk => stdout.push(Buffer.from(chunk)));
+  child.stderr.on("data", chunk => stderr.push(Buffer.from(chunk)));
+  const logs = () => `${Buffer.concat(stdout).toString("utf-8")}${Buffer.concat(stderr).toString("utf-8")}`;
+  async function stop() {
+    if (!processGroupId) return;
+    try {
+      process.kill(-processGroupId, "SIGTERM");
+    } catch (error) {
+      if (error?.code === "ESRCH") return;
+      throw error;
+    }
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      if (child.exitCode !== null) return;
+      await sleep(100);
+    }
+    try {
+      process.kill(-processGroupId, "SIGKILL");
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
+  }
+  return { child, logs, stop };
+}
+
+async function waitForHttpOk(url, child, logs, timeoutMs = 15000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (child.exitCode !== null) {
+      throw new Error(`todo dev server exited early (${child.exitCode}).\n${logs()}`.trim());
+    }
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+    } catch {}
+    await sleep(200);
+  }
+  throw new Error(`timed out waiting for ${url}\n${logs()}`.trim());
+}
+
+async function fetchJson(url, init) {
+  const response = await fetch(url, init);
+  const text = await response.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = text;
+  }
+  return { status: response.status, body, headers: response.headers, text };
+}
+
+function readTodoRows(dbPath) {
+  const db = new DatabaseSync(dbPath);
+  try {
+    return db.prepare("SELECT title, completed FROM todos ORDER BY id").all()
+      .map(row => ({ title: row.title, completed: row.completed }));
+  } finally {
+    db.close();
+  }
+}
+
 export async function assertTodoAppQuality(cwd) {
   const serverPath = path.join(cwd, "src", "server.js");
   assert.ok(fs.existsSync(serverPath), "todo example should generate src/server.js");
-
-  const source = fs.readFileSync(serverPath, "utf-8");
-  assert.match(source, /node:sqlite/, "implementation should use node:sqlite");
-  assert.doesNotMatch(source, /better-sqlite3|from\s+["']sqlite3["']|require\(["']sqlite3["']\)/, "implementation should avoid native sqlite addons");
-  assert.doesNotMatch(source, /\bTODO[:\s-]/, "implementation should not leave TODO markers");
-  assert.doesNotMatch(source, /your implementation here|replace me/i, "implementation should not leave obvious unfinished placeholders");
-  for (const selector of ["new-todo-input", "todo-item-last", "completed-count", "no-todos-message"]) {
-    assert.match(source, new RegExp(selector.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")));
-  }
+  assertTodoSourceQuality(cwd, {
+    requiredSelectors: ["new-todo-input", "todo-item-last", "completed-count", "no-todos-message"],
+  });
 
   const { createTodoApp } = await loadTodoModule(cwd);
   assert.equal(typeof createTodoApp, "function");
@@ -518,5 +635,76 @@ export async function assertTodoAppQuality(cwd) {
     assert.deepEqual(persistedTodos.body.map(todo => todo.completed), [true, false]);
   } finally {
     app.close();
+  }
+}
+
+export async function assertTodoAppRuntimeQuality(cwd, { port } = {}) {
+  assert.ok(Number.isInteger(port) && port > 0, "runtime quality checks require a concrete port");
+  assertTodoSourceQuality(cwd);
+
+  const server = spawnTodoDevServer(cwd, port);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  try {
+    const home = await waitForHttpOk(`${baseUrl}/`, server.child, server.logs);
+    const homeHtml = await home.text();
+    assert.match(homeHtml, /<select/i, "runtime app should render a filter control");
+    assert.match(homeHtml, />Filter</i, "runtime app should label the filter control");
+    assert.match(homeHtml, /<input/i, "runtime app should render a todo entry input");
+
+    const initialTodos = await fetchJson(`${baseUrl}/api/todos`);
+    assert.equal(initialTodos.status, 200);
+    assert.deepEqual(initialTodos.body, []);
+
+    const alpha = await fetchJson(`${baseUrl}/api/todos`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Alpha", completed: false }),
+    });
+    const beta = await fetchJson(`${baseUrl}/api/todos`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Beta", completed: false }),
+    });
+    assert.equal(alpha.status, 201);
+    assert.equal(beta.status, 201);
+    assert.equal(alpha.body.completed, false);
+    assert.equal(beta.body.completed, false);
+
+    const toggled = await fetchJson(`${baseUrl}/api/todos/${alpha.body.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ completed: true }),
+    });
+    assert.equal(toggled.status, 200);
+    assert.equal(toggled.body.completed, true);
+
+    const allTodos = await fetchJson(`${baseUrl}/api/todos`);
+    assert.deepEqual(allTodos.body.map(todo => todo.title), ["Alpha", "Beta"]);
+    assert.deepEqual(allTodos.body.map(todo => todo.completed), [true, false]);
+
+    const activeTodos = await fetchJson(`${baseUrl}/api/todos?filter=active`);
+    assert.deepEqual(activeTodos.body.map(todo => todo.title), ["Beta"]);
+
+    const completedTodos = await fetchJson(`${baseUrl}/api/todos?filter=completed`);
+    assert.deepEqual(completedTodos.body.map(todo => todo.title), ["Alpha"]);
+  } finally {
+    await server.stop();
+  }
+
+  const dbPath = path.join(cwd, "test.db");
+  assert.ok(fs.existsSync(dbPath), "runtime app should persist to test.db");
+  assert.deepEqual(readTodoRows(dbPath), [
+    { title: "Alpha", completed: 1 },
+    { title: "Beta", completed: 0 },
+  ]);
+
+  const restarted = spawnTodoDevServer(cwd, port);
+  try {
+    await waitForHttpOk(`${baseUrl}/`, restarted.child, restarted.logs);
+    const persistedTodos = await fetchJson(`${baseUrl}/api/todos`);
+    assert.deepEqual(persistedTodos.body.map(todo => todo.title), ["Alpha", "Beta"]);
+    assert.deepEqual(persistedTodos.body.map(todo => todo.completed), [true, false]);
+  } finally {
+    await restarted.stop();
   }
 }

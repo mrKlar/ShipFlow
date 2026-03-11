@@ -14,7 +14,7 @@ test("add-todo: User can add a new todo item [mutation guard]", async ({ page })
   await page.goto("http://localhost:3000");
   await page.goto("http://localhost:3000/");
   const mutationGuardPasses = [
-    ((await page.getByTestId("todo-item-last").textContent().catch(() => null)) ?? "").trim() === "Buy groceries",
+    (await page.getByTestId("todo-item-last").evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())) === "Buy groceries",
     (await page.getByTestId("todo-item").count().catch(() => -1)) === 1,
   ].every(Boolean);
   expect(mutationGuardPasses).toBe(false);

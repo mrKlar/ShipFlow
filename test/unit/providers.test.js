@@ -9,6 +9,7 @@ import {
   claudeEffortForResponseFormat,
   claudePermissionModeForResponseFormat,
   cliProviderChildEnv,
+  codexEffortForResponseFormat,
   normalizeProviderText,
   providerReady,
   resolveAutoProvider,
@@ -113,6 +114,17 @@ describe("claudeEffortForResponseFormat", () => {
   it("uses medium effort for review and text outputs", () => {
     assert.equal(claudeEffortForResponseFormat("json"), "medium");
     assert.equal(claudeEffortForResponseFormat("text"), "medium");
+  });
+});
+
+describe("codexEffortForResponseFormat", () => {
+  it("uses medium effort for file generation", () => {
+    assert.equal(codexEffortForResponseFormat("files"), "medium");
+  });
+
+  it("keeps high effort for non-file outputs", () => {
+    assert.equal(codexEffortForResponseFormat("text"), "high");
+    assert.equal(codexEffortForResponseFormat("json"), "high");
   });
 });
 

@@ -408,6 +408,48 @@ describe("genTechnicalArtifacts", () => {
     }
   });
 
+  it("detects REST routes declared with nested pathname and method checks", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-node-nested-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), [
+        "const pathname = url.pathname;",
+        "if (pathname === '/api/todos') {",
+        "  if (req.method === 'GET') {",
+        "    return sendJson(res, 200, []);",
+        "  }",
+        "  if (req.method === 'POST') {",
+        "    return sendJson(res, 201, {});",
+        "  }",
+        "}",
+        "const match = pathname.match(/^\\/api\\/todos\\/(\\d+)$/);",
+        "if (match) {",
+        "  if (req.method === 'PATCH') {",
+        "    return sendJson(res, 200, {});",
+        "  }",
+        "}",
+        "",
+      ].join("\n"));
+
+      const [runner] = genTechnicalArtifacts({
+        ...base,
+        __file: "vp/technical/rest-node-http-nested.yml",
+        category: "framework",
+        runner: { kind: "custom", framework: "custom" },
+        assert: [
+          { rest_api_present: { files: "src/**/*", path_prefix: "/api/" } },
+        ],
+      });
+
+      const runnerFile = path.join(tmpDir, runner.name);
+      fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("detects REST routes declared through local path and method aliases", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-node-alias-"));
     try {

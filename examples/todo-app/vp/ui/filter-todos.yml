@@ -1,32 +1,26 @@
 id: filter-todos
 title: User can filter todos by status
 severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0
+    );
+    DELETE FROM todos;
+    INSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);
+    INSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);
 app:
   kind: web
   base_url: http://localhost:3000
 flow:
   - open: /
-  - fill:
-      testid: new-todo-input
-      value: Task one
-  - click:
-      name: Add
-  - fill:
-      testid: new-todo-input
-      value: Task two
-  - click:
-      name: Add
-  - wait_for:
-      ms: 200
-  - click:
-      testid: todo-toggle-0
-  - wait_for:
-      ms: 200
   - select:
       label: Filter
       value: active
-  - wait_for:
-      ms: 200
 assert:
   - count:
       testid: todo-item

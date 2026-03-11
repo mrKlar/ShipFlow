@@ -30,6 +30,21 @@ describe("BehaviorCheck schema", () => {
     assert.equal(parsed.feature, "Calculator");
   });
 
+  it("accepts optional sqlite state reset", () => {
+    const parsed = BehaviorCheck.parse({
+      ...webBase,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      given: [{ open: "/calc" }],
+      when: [{ click: { testid: "btn-add" } }],
+      then: [{ text_equals: { testid: "display", equals: "5" } }],
+    });
+    assert.equal(parsed.state.kind, "sqlite");
+  });
+
   it("accepts valid API behavior checks", () => {
     const parsed = BehaviorCheck.parse({
       id: "api-checkout",
@@ -112,6 +127,23 @@ describe("genBehaviorTest", () => {
     assert.ok(code.includes('goto("http://localhost:3000/calc")'));
   });
 
+  it("injects sqlite state reset into web behavior tests", () => {
+    const code = genBehaviorTest({
+      ...webBase,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      given: [{ open: "/calc" }],
+      when: [{ click: { role: "button", name: "Add" } }],
+      then: [{ text_equals: { testid: "display", equals: "5" } }],
+    });
+    assert.ok(code.includes('import { DatabaseSync } from "node:sqlite"'));
+    assert.ok(code.includes('db.exec("PRAGMA busy_timeout = 5000")'));
+    assert.ok(code.includes('resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"DELETE FROM todos;"})'));
+  });
+
   it("inlines setup fixtures for web behavior checks", () => {
     const code = genBehaviorTest({
       ...webBase,
@@ -162,6 +194,32 @@ describe("genBehaviorTest", () => {
     assert.ok(!code.includes("const mutatedVariants = undefined;"));
   });
 
+  it("injects sqlite state reset into API behavior tests", () => {
+    const code = genBehaviorTest({
+      id: "api-checkout",
+      feature: "Checkout API",
+      scenario: "Authenticated checkout succeeds",
+      severity: "blocker",
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{
+        request: {
+          method: "POST",
+          path: "/api/checkout",
+          body_json: { sku: "sku-1" },
+        },
+      }],
+      then: [{ status: 201 }],
+    });
+    assert.ok(code.includes('import { DatabaseSync } from "node:sqlite"'));
+    assert.ok(code.includes('resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"DELETE FROM todos;"})'));
+  });
+
   it("includes schema helpers for API behavior json_schema assertions", () => {
     const code = genBehaviorTest({
       id: "api-list",
@@ -175,6 +233,22 @@ describe("genBehaviorTest", () => {
     });
     assert.ok(code.includes("function assertJsonSchema"));
     assert.ok(code.includes("assertJsonSchema(jsonPath(body,"));
+  });
+
+  it("uses subset array matching for API behavior json_array_includes assertions", () => {
+    const code = genBehaviorTest({
+      id: "api-list",
+      feature: "Todo API",
+      scenario: "Listing todos returns an array",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [],
+      when: [{ request: { method: "GET", path: "/api/todos" } }],
+      then: [{ json_array_includes: { path: "$", equals: { title: "Alice" } } }],
+    });
+    assert.ok(code.includes("function shipflowValuesMatch"));
+    assert.ok(code.includes("function shipflowArrayIncludes"));
+    assert.ok(code.includes("shipflowArrayIncludes(jsonPath(body, \"$\""));
   });
 
   it("generates TUI behavior tests with a PTY-like harness", () => {

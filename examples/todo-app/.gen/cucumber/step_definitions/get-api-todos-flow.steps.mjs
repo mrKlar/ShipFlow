@@ -21,6 +21,21 @@ function jsonType(value) {
   return typeof value;
 }
 
+function shipflowValuesMatch(actual, expected) {
+  if (expected === null || typeof expected !== "object") return JSON.stringify(actual) === JSON.stringify(expected);
+  if (Array.isArray(expected)) {
+    return Array.isArray(actual)
+      && actual.length === expected.length
+      && expected.every((item, index) => shipflowValuesMatch(actual[index], item));
+  }
+  if (!actual || typeof actual !== "object" || Array.isArray(actual)) return false;
+  return Object.entries(expected).every(([key, value]) => shipflowValuesMatch(actual[key], value));
+}
+
+function shipflowArrayIncludes(actual, expected) {
+  return Array.isArray(actual) && actual.some(item => shipflowValuesMatch(item, expected));
+}
+
 function jsonMatchesSchema(value, schema) {
   if (schema.type && jsonType(value) !== schema.type) return false;
   if (schema.enum && !schema.enum.some(item => JSON.stringify(item) === JSON.stringify(value))) return false;
@@ -129,8 +144,8 @@ async function runWebBehaviorAssert(page, assertion) {
 }
 
 async function webBehaviorAssertMatches(page, assertion) {
-  if (assertion.text_equals) return (((await page.getByTestId(assertion.text_equals.testid).textContent().catch(() => null)) ?? "").trim()) === assertion.text_equals.equals;
-  if (assertion.text_matches) return new RegExp(assertion.text_matches.regex).test(((await page.getByTestId(assertion.text_matches.testid).textContent().catch(() => null)) ?? "").trim());
+  if (assertion.text_equals) return (await page.getByTestId(assertion.text_equals.testid).evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())) === assertion.text_equals.equals;
+  if (assertion.text_matches) return new RegExp(assertion.text_matches.regex).test(await page.getByTestId(assertion.text_matches.testid).evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim()));
   if (assertion.visible) return await page.getByTestId(assertion.visible.testid).isVisible().catch(() => false);
   if (assertion.hidden) return await page.getByTestId(assertion.hidden.testid).isHidden().catch(() => false);
   if (assertion.url_matches) return new RegExp(assertion.url_matches.regex).test(page.url());
@@ -192,7 +207,7 @@ async function runApiBehaviorAssert(world, assertion) {
   if (assertion.json_has) { expect(jsonPath(body, assertion.json_has.path).exists).toBe(true); return; }
   if (assertion.json_absent) { expect(jsonPath(body, assertion.json_absent.path).exists).toBe(false); return; }
   if (assertion.json_type) { expect(jsonPath(body, assertion.json_type.path).exists).toBe(true); expect(jsonType(jsonPath(body, assertion.json_type.path).value)).toBe(assertion.json_type.type); return; }
-  if (assertion.json_array_includes) { expect(jsonPath(body, assertion.json_array_includes.path).exists).toBe(true); expect(jsonPath(body, assertion.json_array_includes.path).value).toContainEqual(assertion.json_array_includes.equals); return; }
+  if (assertion.json_array_includes) { expect(jsonPath(body, assertion.json_array_includes.path).exists).toBe(true); expect(shipflowArrayIncludes(jsonPath(body, assertion.json_array_includes.path).value, assertion.json_array_includes.equals)).toBe(true); return; }
   if (assertion.json_schema) { expect(jsonPath(body, assertion.json_schema.path).exists).toBe(true); expect(jsonMatchesSchema(jsonPath(body, assertion.json_schema.path).value, assertion.json_schema.schema)).toBe(true); return; }
   throw new Error("Unknown ShipFlow API behavior assertion");
 }
@@ -217,7 +232,7 @@ async function apiBehaviorAssertMatches(world, assertion) {
   if (assertion.json_has) return jsonPath(body, assertion.json_has.path).exists;
   if (assertion.json_absent) return !jsonPath(body, assertion.json_absent.path).exists;
   if (assertion.json_type) return jsonPath(body, assertion.json_type.path).exists && jsonType(jsonPath(body, assertion.json_type.path).value) === assertion.json_type.type;
-  if (assertion.json_array_includes) return jsonPath(body, assertion.json_array_includes.path).exists && Array.isArray(jsonPath(body, assertion.json_array_includes.path).value) && jsonPath(body, assertion.json_array_includes.path).value.some(item => JSON.stringify(item) === JSON.stringify(assertion.json_array_includes.equals));
+  if (assertion.json_array_includes) return jsonPath(body, assertion.json_array_includes.path).exists && shipflowArrayIncludes(jsonPath(body, assertion.json_array_includes.path).value, assertion.json_array_includes.equals);
   if (assertion.json_schema) return jsonPath(body, assertion.json_schema.path).exists && jsonMatchesSchema(jsonPath(body, assertion.json_schema.path).value, assertion.json_schema.schema);
   return false;
 }
@@ -500,6 +515,7 @@ function currentScenario(world) {
 Before(async function ({ pickle }) {
   this.__shipflowScenarioName = String(pickle.name || "").replace(/ \[mutation guard\]$/, "");
   const scenario = currentScenario(this);
+  resetShipFlowState(scenario.state);
   this.__shipflowApiResponse = null;
   this.__shipflowApiPayload = null;
   if (scenario.surface === "web") {

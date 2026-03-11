@@ -1,12 +1,24 @@
 id: api-get-todos
-title: GET /api/todos returns the todo list
+title: GET /api/todos?filter=active returns only active todos
 severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0
+    );
+    DELETE FROM todos;
+    INSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);
+    INSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);
 app:
   kind: api
   base_url: http://localhost:3000
 request:
   method: GET
-  path: /api/todos
+  path: /api/todos?filter=active
 assert:
   - status: 200
   - header_matches:
@@ -15,6 +27,14 @@ assert:
   - json_type:
       path: $
       type: array
+  - json_count:
+      path: $
+      count: 1
+  - json_array_includes:
+      path: $
+      equals:
+        title: Task two
+        completed: false
   - json_schema:
       path: $
       schema:

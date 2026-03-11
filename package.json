@@ -12,7 +12,8 @@
     "shipflow-kiro-guard": "hooks/kiro-guard.js"
   },
   "scripts": {
-    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/nfr.test.js test/unit/security.test.js test/unit/technical.test.js test/unit/map.test.js test/unit/lint.test.js test/unit/draft.test.js test/unit/bootstrap.test.js test/unit/doctor.test.js test/unit/providers.test.js test/unit/impl.test.js test/unit/loop.test.js test/unit/policy.test.js test/unit/verify.test.js test/unit/approve-visual.test.js test/unit/init.test.js test/unit/status.test.js test/unit/skills.test.js test/unit/hooks.test.js test/integration/gen-cycle.test.js test/integration/golden.test.js test/integration/todo-example-temp.test.js test/integration/greenfield-live.test.js"
+    "test": "node --test test/unit/schema.test.js test/unit/gen.test.js test/unit/behavior.test.js test/unit/api.test.js test/unit/db.test.js test/unit/nfr.test.js test/unit/security.test.js test/unit/technical.test.js test/unit/map.test.js test/unit/lint.test.js test/unit/draft.test.js test/unit/bootstrap.test.js test/unit/doctor.test.js test/unit/providers.test.js test/unit/impl.test.js test/unit/loop.test.js test/unit/policy.test.js test/unit/verify.test.js test/unit/approve-visual.test.js test/unit/init.test.js test/unit/status.test.js test/unit/skills.test.js test/unit/hooks.test.js test/unit/todo-live.test.js test/integration/gen-cycle.test.js test/integration/golden.test.js test/integration/todo-example-temp.test.js test/integration/greenfield-live.test.js",
+    "test:live:todo": "SHIPFLOW_RUN_LIVE_TODO=1 node --test test/integration/todo-live-cli-matrix.test.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

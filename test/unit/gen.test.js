@@ -201,10 +201,24 @@ describe("genPlaywrightTest", () => {
     assert.ok(code.includes('await page.goto("http://localhost:3000")'));
     assert.ok(code.includes('[mutation guard]'));
     assert.ok(code.includes("mutationGuardPasses"));
+    assert.ok(code.includes('evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())'));
     assert.ok(code.includes('=== "OK"'));
     assert.ok(code.includes('await page.goto("http://localhost:3000/page")'));
     assert.ok(code.includes('.click()'));
     assert.ok(code.includes('toHaveText("OK")'));
+  });
+
+  it("injects sqlite state reset into Playwright UI tests", () => {
+    const code = genPlaywrightTest({
+      ...check,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+    });
+    assert.ok(code.includes('import { DatabaseSync } from "node:sqlite"'));
+    assert.ok(code.includes('resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"DELETE FROM todos;"})'));
   });
 
   it("inlines setup fixture flow", () => {

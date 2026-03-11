@@ -337,18 +337,42 @@ describe("buildDraft", () => {
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/get-todos.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/post-todos.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/patch-todo-completed.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/db/todos-state.yml"));
 
       const addTodo = result.proposals.find(proposal => proposal.path === "vp/ui/add-todo.yml");
+      const filterTodo = result.proposals.find(proposal => proposal.path === "vp/ui/filter-todos.yml");
       const behavior = result.proposals.find(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml");
+      const listTodos = result.proposals.find(proposal => proposal.path === "vp/api/get-todos.yml");
       const createTodo = result.proposals.find(proposal => proposal.path === "vp/api/post-todos.yml");
+      const completeTodo = result.proposals.find(proposal => proposal.path === "vp/api/patch-todo-completed.yml");
       const database = result.proposals.find(proposal => proposal.path === "vp/db/todos-state.yml");
 
       assert.equal(addTodo.data.severity, "blocker");
+      assert.equal(addTodo.data.state.kind, "sqlite");
+      assert.match(addTodo.data.state.reset_sql, /DELETE FROM todos;/);
+      assert.equal(filterTodo.data.state.kind, "sqlite");
+      assert.match(filterTodo.data.state.reset_sql, /INSERT INTO todos \(id, title, completed\) VALUES \(1, 'Task one', 1\);/);
+      assert.deepEqual(filterTodo.data.flow, [
+        { open: "/" },
+        { select: { label: "Filter", value: "active" } },
+      ]);
       assert.equal(behavior.data.severity, "blocker");
+      assert.equal(behavior.data.state.connection, "./test.db");
+      assert.equal(listTodos.data.request.path, "/api/todos?filter=active");
+      assert.equal(listTodos.data.state.kind, "sqlite");
+      assert.match(listTodos.data.state.reset_sql, /INSERT INTO todos \(id, title, completed\) VALUES \(1, 'Task one', 1\);/);
+      assert.ok(listTodos.data.assert.some(item => item.json_count?.path === "$" && item.json_count.count === 1));
+      assert.ok(listTodos.data.assert.some(item => item.json_array_includes?.equals?.title === "Task two"));
       assert.equal(createTodo.data.severity, "blocker");
+      assert.equal(createTodo.data.state.kind, "sqlite");
       assert.equal(createTodo.data.assert.some(item => item.status === 201), true);
       assert.ok(createTodo.data.assert.some(item => item.json_equals?.path === "$.title"));
+      assert.equal(completeTodo.data.request.method, "PATCH");
+      assert.equal(completeTodo.data.request.path, "/api/todos/1");
+      assert.equal(completeTodo.data.state.kind, "sqlite");
+      assert.match(completeTodo.data.state.reset_sql, /INSERT INTO todos \(id, title, completed\) VALUES \(1, 'Task one', 0\);/);
+      assert.ok(completeTodo.data.assert.some(item => item.json_equals?.path === "$.completed" && item.json_equals.equals === true));
       assert.match(database.data.before_query, /PRAGMA table_info\(todos\)/);
       assert.match(database.data.setup_sql, /completed INTEGER NOT NULL DEFAULT 0/);
       assert.equal(database.data.cleanup_sql, "DELETE FROM todos;");

@@ -1,11 +1,15 @@
 {
-  "version": 1,
-  "created_at": "2026-03-09T00:02:59.849Z",
-  "vp_sha256": "0f818db09a247472e82a599a12578af9f38e80b54984a513fe63822e76f1068c",
+  "version": 2,
+  "created_at": "2026-03-11T15:10:58.699Z",
+  "vp_sha256": "d325d655dc3876e4c5ae75231b777ac05520300f9e7b6281c861175d4c7d6f77",
   "files": [
     {
       "path": "vp/api/get-todos.yml",
-      "sha256": "b34a796a74e66b4267d6951996006dba91ba6c13ffb89e1890d7ed79bd32c7c3"
+      "sha256": "342a893ba8b4f1228c3cbc76c8385b649436fcebe10cb45a308ddd32d6a2b10a"
+    },
+    {
+      "path": "vp/api/patch-todo-completed.yml",
+      "sha256": "b568946cc86b08173bfff7905223a15c6b0da64904af2787f923c35fd463cb14"
     },
     {
       "path": "vp/api/post-todos.yml",
@@ -41,7 +45,66 @@
     },
     {
       "path": "vp/ui/filter-todos.yml",
-      "sha256": "9ad9cf34abacc16f957eb1ce166231ed1d1f07888e75a0ccf44a387dd86fb05d"
+      "sha256": "2693876727f79058c567db3abac6eed441b9ecb574e1f09b721a590c93605f69"
+    }
+  ],
+  "generated_sha256": "ff8d66fca0a120ab0d5a08a9ee12769e41c887068e921e5244540b4de732df39",
+  "generated_files": [
+    {
+      "path": ".gen/cucumber/features/get-api-todos-flow.feature",
+      "sha256": "f7836acf414498fb29cca28575da26d633892d274a7da7aeaeec90542fc73856"
+    },
+    {
+      "path": ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs",
+      "sha256": "08160fc6c2389c96ff2987670ae00dcbaa3ac4281566d331842aa254e21a0c3c"
+    },
+    {
+      "path": ".gen/manifest.json",
+      "sha256": "c9cb5f6ca5fa7be4e7514eb3a14b46eb953a160bfcf2e07ebe4d5d2cc8a61aaa"
+    },
+    {
+      "path": ".gen/playwright.config.mjs",
+      "sha256": "0902fd985225b0165bde9935fbfd3adb00e8c592bc01c003c013a33de379db05"
+    },
+    {
+      "path": ".gen/playwright/vp_api_get-todos.test.ts",
+      "sha256": "0f4f98ea7ded81edd3744228dfad69a05d460d053e3909f4673e2cb26d867639"
+    },
+    {
+      "path": ".gen/playwright/vp_api_patch-todo-completed.test.ts",
+      "sha256": "f0513837dbe6d547d40e68dac2c8907a024178b3668efd8a95bfb4edb88d550b"
+    },
+    {
+      "path": ".gen/playwright/vp_api_post-todos.test.ts",
+      "sha256": "5443d9c76b2dcfbc1b798df9fe8a9112a0a9916b577c872ace1a8c2af1dfb002"
+    },
+    {
+      "path": ".gen/playwright/vp_db_todos-state.test.ts",
+      "sha256": "fd93082863bdf0862ceb6f786ff32ff68af580348948b143fcb03c97c3f7c8f9"
+    },
+    {
+      "path": ".gen/playwright/vp_ui_add-todo.test.ts",
+      "sha256": "cfd11474ace393b184e4029c4671a61516c42060cecf6a3a9c5166ba6fd64928"
+    },
+    {
+      "path": ".gen/playwright/vp_ui_complete-todo.test.ts",
+      "sha256": "541f15ed5e7f72300178728f4f6d4ceec2be285538773ad44b8dfe8c05c00ec0"
+    },
+    {
+      "path": ".gen/playwright/vp_ui_filter-todos.test.ts",
+      "sha256": "65f3cdc846ea345ddbbcc63f086f3061b594ff4d14931c0bf4665b00513e6f1d"
+    },
+    {
+      "path": ".gen/technical/vp_technical_api-protocol.runner.mjs",
+      "sha256": "96179391150e8f7236c1055ca2854256e6ccce97d62cdbe968052f586b3bff5d"
+    },
+    {
+      "path": ".gen/technical/vp_technical_framework-stack.runner.mjs",
+      "sha256": "2fa46b70130267694595161e3b805a1f783daedbabbeb2077e3200351166efc7"
+    },
+    {
+      "path": ".gen/technical/vp_technical_sqlite-runtime.runner.mjs",
+      "sha256": "68a714e25d7737a14158237bbfd977551efe2b9d1f33db307e42e9fc7bd4ce13"
     }
   ]
 }

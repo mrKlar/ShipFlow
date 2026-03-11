@@ -30,6 +30,8 @@ describe("gen integration — full cycle on test fixtures", () => {
     const content = fs.readFileSync(configPath, "utf-8");
     assert.ok(content.includes('import { defineConfig } from "@playwright/test"'));
     assert.ok(content.includes('const webServerCommand = process.env.SHIPFLOW_WEB_SERVER_COMMAND || "npm run dev";'));
+    assert.ok(content.includes('const workers = Number(process.env.SHIPFLOW_PLAYWRIGHT_WORKERS || "1");'));
+    assert.ok(content.includes("workers: Number.isFinite(workers) && workers > 0 ? workers : 1,"));
     assert.ok(content.includes('url: baseURL'));
     assert.ok(!content.includes("port:"), "should not mix url and port in webServer config");
   });

@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  TODO_LIVE_MINIMAL_VP_PATHS,
+  rewriteTodoLiveBaseUrls,
+  todoLiveBaseUrl,
+  todoLiveProviderCommand,
+  withTodoLivePortInDevScript,
+} from "../../test/support/todo-live.js";
+import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -21,19 +30,10 @@ const platformFlagByProvider = {
   gemini: "--gemini",
   kiro: "--kiro",
 };
-
-const CANONICAL_PATHS = [
-  "vp/ui/add-todo.yml",
-  "vp/ui/complete-todo.yml",
-  "vp/ui/filter-todos.yml",
-  "vp/behavior/get-api-todos-flow.yml",
-  "vp/api/get-todos.yml",
-  "vp/api/post-todos.yml",
-  "vp/db/todos-state.yml",
-  "vp/technical/framework-stack.yml",
-  "vp/technical/api-protocol.yml",
-  "vp/technical/sqlite-runtime.yml",
-];
+const nodeBinDir = path.dirname(process.execPath);
+if (!String(process.env.PATH || "").split(path.delimiter).includes(nodeBinDir)) {
+  process.env.PATH = [nodeBinDir, process.env.PATH || ""].filter(Boolean).join(path.delimiter);
+}
 
 function commandExists(cmd) {
   const result = spawnSync("bash", ["-lc", `command -v ${cmd}`], { stdio: "pipe" });
@@ -77,21 +77,79 @@ function installLocalShipFlow(cwd) {
   runCommand("npm", ["install", "--no-save", repoRoot], cwd, { stdio: "inherit" });
 }
 
-function copyTemplateProject(targetDir) {
+function copyTemplateProject(targetDir, port) {
   fs.mkdirSync(path.join(targetDir, "src"), { recursive: true });
   fs.writeFileSync(path.join(targetDir, ".gitignore"), ".gen/\nevidence/\n.shipflow/\nnode_modules/\n");
 
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf-8"));
   packageJson.scripts = {
-    dev: packageJson.scripts.dev,
+    dev: withTodoLivePortInDevScript(packageJson.scripts.dev, port),
   };
   delete packageJson.devDependencies?.["@anthropic-ai/sdk"];
   fs.writeFileSync(path.join(targetDir, "package.json"), JSON.stringify(packageJson, null, 2) + "\n");
 
   const shipflowConfig = JSON.parse(fs.readFileSync(path.join(__dirname, "shipflow.json"), "utf-8"));
   shipflowConfig.impl.provider = "auto";
+  const maxIterations = Number.parseInt(process.env.SHIPFLOW_LIVE_MAX_ITERATIONS || "", 10);
+  if (Number.isFinite(maxIterations) && maxIterations > 0) {
+    shipflowConfig.impl.maxIterations = maxIterations;
+  }
   fs.writeFileSync(path.join(targetDir, "shipflow.json"), JSON.stringify(shipflowConfig, null, 2) + "\n");
   fs.writeFileSync(path.join(targetDir, "src", ".gitkeep"), "");
+}
+
+async function allocatePort() {
+  return await new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = address && typeof address === "object" ? address.port : 0;
+      server.close(error => {
+        if (error) reject(error);
+        else resolve(port);
+      });
+    });
+  });
+}
+
+function rewriteDraftBaseUrls(cwd, baseUrl) {
+  const vpDir = path.join(cwd, "vp");
+  if (!fs.existsSync(vpDir)) return;
+  const stack = [vpDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      if (!entry.isFile() || !/\.ya?ml$/i.test(entry.name)) continue;
+      const source = fs.readFileSync(full, "utf-8");
+      const rewritten = rewriteTodoLiveBaseUrls(source, baseUrl);
+      if (rewritten !== source) fs.writeFileSync(full, rewritten);
+    }
+  }
+}
+
+function rewriteDraftSessionBaseUrls(cwd, baseUrl) {
+  const sessionPath = path.join(cwd, ".shipflow", "draft-session.json");
+  if (!fs.existsSync(sessionPath)) return;
+  const session = JSON.parse(fs.readFileSync(sessionPath, "utf-8"));
+  if (Array.isArray(session.proposals)) {
+    session.proposals = session.proposals.map(proposal => {
+      if (proposal?.data === undefined) return proposal;
+      return {
+        ...proposal,
+        data: JSON.parse(rewriteTodoLiveBaseUrls(JSON.stringify(proposal.data), baseUrl)),
+      };
+    });
+  }
+  session.vp_snapshot = computeVerificationPackSnapshot(cwd);
+  session.updated_at = new Date().toISOString();
+  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2) + "\n");
 }
 
 function parseJsonResult(result, cwd) {
@@ -104,8 +162,10 @@ function parseJsonResult(result, cwd) {
 
 function ensurePrerequisites() {
   const missing = [];
-  const requiredProviderCommand = provider === "kiro" ? "kiro-cli" : provider;
-  const requiredCommands = [requiredProviderCommand];
+  const requiredProviderCommand = todoLiveProviderCommand(provider, commandExists);
+  const requiredCommands = [];
+  if (requiredProviderCommand) requiredCommands.push(requiredProviderCommand);
+  else missing.push(`provider CLI for ${provider}`);
   if (useWorkspaceCli) requiredCommands.push("node");
   else requiredCommands.push("npm", "npx");
   for (const cmd of requiredCommands) {
@@ -121,24 +181,31 @@ function ensurePrerequisites() {
 
 function acceptAndRejectArgs(proposals) {
   const proposedPaths = proposals.map(proposal => proposal.path);
-  const missing = CANONICAL_PATHS.filter(rel => !proposedPaths.includes(rel));
+  const missing = TODO_LIVE_MINIMAL_VP_PATHS.filter(rel => !proposedPaths.includes(rel));
   if (missing.length > 0) {
     throw new Error(`Draft did not produce the expected proposal paths: ${missing.join(", ")}`);
   }
-  const accepts = CANONICAL_PATHS.map(rel => `--accept=${rel}`);
+  const accepts = TODO_LIVE_MINIMAL_VP_PATHS.map(rel => `--accept=${rel}`);
   const rejects = proposedPaths
-    .filter(rel => !CANONICAL_PATHS.includes(rel))
+    .filter(rel => !TODO_LIVE_MINIMAL_VP_PATHS.includes(rel))
     .map(rel => `--reject=${rel}`);
   return [...accepts, ...rejects];
 }
 
-function main() {
+async function assertTodoQuality(cwd, port) {
+  const qualityModule = await import(pathToFileURL(path.join(repoRoot, "test", "support", "todo-example.js")).href);
+  await qualityModule.assertTodoAppRuntimeQuality(cwd, { port });
+}
+
+async function main() {
   ensurePrerequisites();
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-todo-live-"));
+  const port = await allocatePort();
+  const baseUrl = todoLiveBaseUrl(port);
   let keepWorkingCopy = keep;
   try {
-    copyTemplateProject(tmpDir);
+    copyTemplateProject(tmpDir, port);
     const platformFlag = platformFlagByProvider[provider];
     if (!platformFlag) {
       fail(`unsupported provider: ${provider}`);
@@ -154,16 +221,25 @@ function main() {
     const reviewArgs = acceptAndRejectArgs(draftResult.proposals || []);
     runShipFlow(["draft", ...reviewArgs], tmpDir, { stdio: "inherit" });
     runShipFlow(["draft", "--write"], tmpDir, { stdio: "inherit" });
+    rewriteDraftBaseUrls(tmpDir, baseUrl);
+    rewriteDraftSessionBaseUrls(tmpDir, baseUrl);
 
     const implementArgs = ["implement", `--provider=${provider}`];
     if (modelArg) implementArgs.push(modelArg);
-    runShipFlow(implementArgs, tmpDir, { stdio: "inherit" });
+    runShipFlow(implementArgs, tmpDir, {
+      stdio: "inherit",
+      env: {
+        PORT: String(port),
+        SHIPFLOW_BASE_URL: baseUrl,
+      },
+    });
 
     const implementEvidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
     const runEvidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "run.json"), "utf-8"));
     if (!implementEvidence.ok || !runEvidence.ok) {
       fail("implementation loop finished without a green run.", JSON.stringify({ implementEvidence, runEvidence }, null, 2), tmpDir);
     }
+    await assertTodoQuality(tmpDir, port);
 
     keepWorkingCopy = true;
     console.log(`ShipFlow live todo example passed for provider=${provider}. Working copy: ${tmpDir}`);
@@ -175,4 +251,4 @@ function main() {
   }
 }
 
-main();
+await main();

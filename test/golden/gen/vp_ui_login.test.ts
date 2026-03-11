@@ -17,7 +17,7 @@ test("ui-login: User can log in [mutation guard]", async ({ page }) => {
   const mutationGuardPasses = [
     new RegExp("/dashboard").test(page.url()),
     await page.getByTestId("user-avatar").isVisible().catch(() => false),
-    ((await page.getByTestId("welcome-msg").textContent().catch(() => null)) ?? "").trim() === "Welcome back",
+    (await page.getByTestId("welcome-msg").evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())) === "Welcome back",
   ].every(Boolean);
   expect(mutationGuardPasses).toBe(false);
 });

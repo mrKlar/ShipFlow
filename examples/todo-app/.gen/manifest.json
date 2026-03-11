@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "created_at": "2026-03-09T00:02:59.849Z",
+  "created_at": "2026-03-11T15:10:58.699Z",
   "outputs": {
     "ui": {
       "label": "UI",
@@ -68,22 +68,39 @@
         }
       ]
     },
+    "domain": {
+      "label": "Business Domain",
+      "output_kind": "domain",
+      "output_dir": "domain",
+      "evidence_file": "domain.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
     "api": {
       "label": "API",
       "output_kind": "playwright",
       "output_dir": "playwright",
       "evidence_file": "api.json",
-      "count": 2,
+      "count": 3,
       "files": [
         ".gen/playwright/vp_api_get-todos.test.ts",
+        ".gen/playwright/vp_api_patch-todo-completed.test.ts",
         ".gen/playwright/vp_api_post-todos.test.ts"
       ],
       "checks": [
         {
           "id": "api-get-todos",
-          "title": "GET /api/todos returns the todo list",
+          "title": "GET /api/todos?filter=active returns only active todos",
           "severity": "blocker",
           "file": ".gen/playwright/vp_api_get-todos.test.ts",
+          "companion_files": []
+        },
+        {
+          "id": "api-patch-todo-completed",
+          "title": "PATCH /api/todos/1 marks a todo complete",
+          "severity": "blocker",
+          "file": ".gen/playwright/vp_api_patch-todo-completed.test.ts",
           "companion_files": []
         },
         {
@@ -198,6 +215,11 @@
       {
         "type": "api",
         "file": ".gen/playwright/vp_api_get-todos.test.ts",
+        "ok": true
+      },
+      {
+        "type": "api",
+        "file": ".gen/playwright/vp_api_patch-todo-completed.test.ts",
         "ok": true
       },
       {

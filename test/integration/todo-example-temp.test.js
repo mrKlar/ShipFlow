@@ -17,7 +17,7 @@ describe("todo example temp project", () => {
       await gen({ cwd: tmpDir });
       const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, ".gen", "manifest.json"), "utf-8"));
       assert.equal(manifest.outputs.ui.count, 3);
-      assert.equal(manifest.outputs.api.count, 2);
+      assert.equal(manifest.outputs.api.count, 3);
       assert.equal(manifest.outputs.db.count, 1);
       assert.equal(manifest.outputs.technical.count, 3);
 

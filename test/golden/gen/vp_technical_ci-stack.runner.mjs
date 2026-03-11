@@ -119,6 +119,22 @@ function detectDeclaredHttpRoutes(glob) {
   const files = globFiles(glob);
   for (const file of files) {
     const content = readText(file);
+    function pushRoute(method, routePath) {
+      routes.push({ file, method: method.toUpperCase(), path: normalizeRoutePath(routePath) });
+    }
+    function methodsNear(index) {
+      const window = content.slice(index, index + 800);
+      return [...new Set([
+        ...[...window.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)].map(match => match[1].toUpperCase()),
+        ...[...window.matchAll(/\bmethod\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)].map(match => match[1].toUpperCase()),
+      ])];
+    }
+    function routePrefixFromRegexLiteral(literal) {
+      const normalized = String(literal || "").replace(/^\/\^/, "").replace(/\/[a-z]*$/, "").replaceAll("\\/", "/");
+      const prefix = normalized.split(/[\(\[\.\+\*\?\|]/)[0];
+      if (!prefix.startsWith("/")) return null;
+      return normalizeRoutePath(prefix);
+    }
     for (const match of content.matchAll(/\b(?:app|router|server|fastify)\.(get|post|put|patch|delete|options|head|all)\(\s*["'` ]([^"'`]+)["'`]/gi)) {
       const method = match[1].toUpperCase() === "ALL" ? "ANY" : match[1].toUpperCase();
       routes.push({ file, method, path: normalizeRoutePath(match[2]) });
@@ -134,6 +150,14 @@ function detectDeclaredHttpRoutes(glob) {
     }
     for (const match of content.matchAll(/method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       routes.push({ file, method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) });
+    }
+    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+      for (const method of methodsNear(match.index)) pushRoute(method, match[1]);
+    }
+    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\.match\(\s*(\/\^[^\n]+?\/[gimuy]*)\s*\)/g)) {
+      const routePath = routePrefixFromRegexLiteral(match[1]);
+      if (!routePath) continue;
+      for (const method of methodsNear(match.index)) pushRoute(method, routePath);
     }
     const nextRoute = routePathFromFile(file);
     if (nextRoute) {

@@ -4,7 +4,7 @@
 
 ShipFlow is a verification-first shipping framework. You define what must be observably true when the work is done, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
 
-The verification pack records required checks and constraints, not a prose description of the app. That can now include visible UI contracts, locked visual baselines, business-domain objects and data objects, runtime and stack boundaries, and app-shape-aware bundles for frontend apps, fullstack apps, REST backend services, and CLI/TUI products.
+The verification pack records required checks and constraints, not a prose description of the app. It is the durable artifact. The implementation is disposable.
 
 ```
 vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/domain/*.runner.mjs + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
@@ -12,7 +12,38 @@ vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/*
 
 The only files you define and edit are under `vp/`. Everything else is generated.
 
-## Installation
+## What ShipFlow Can Lock
+
+ShipFlow is built to define the finished state in executable terms. In practice, that means the pack can lock:
+
+- Visible UI behavior: flows, selectors, rendered text, hidden states, and browser-level user interactions.
+- Visual UI contracts: layout, spacing, placement, computed styles, tokens, approved baselines, and screenshot diffs.
+- End-to-end behavior: what a real user, API client, or terminal user can actually do from input to observable outcome.
+- API contracts: request and response behavior, negative cases, JSON shapes, headers, and authentication expectations.
+- Database invariants: before/after state, persisted effects, and no-write-on-failure expectations.
+- Business domain contracts: business objects, identities, references, invariants, access patterns, and the data-engineering translation into technical data objects.
+- Technical boundaries: runtime pinning, dependency and package-manager constraints, protocols, CI, design-system policy, architecture rules, and required tooling.
+
+For stateful systems, the important distinction is this: ShipFlow does not stop at "the endpoint works" or "the table exists." It can lock the business truth first, then lock the required translation into storage models, read models, write models, and exchange models.
+
+For UI-heavy systems, ShipFlow does not stop at "the element exists." It can lock layout, style, and approved visual output through explicit visual contracts plus snapshot diff evidence.
+
+## App Shapes ShipFlow Understands
+
+ShipFlow drafts better packs when it understands the shape of the product, not just the words in the prompt.
+
+- `frontend-web`: browser UI with no backend surface
+- `fullstack-web-stateless`: browser UI plus API, without persistence
+- `fullstack-web-stateful`: browser UI plus API plus persistence
+- `rest-service`: backend service behind a REST API, including database-backed services and multi-API orchestration services
+- `api-service-stateless` / `api-service-stateful`: non-REST or protocol-agnostic API services
+- `cli-tui-stateless` / `cli-tui-stateful`: terminal-first applications with or without persistence
+
+That archetype drives the default verification bundle ShipFlow keeps in scope during draft. A `rest-service`, for example, is treated as a real product boundary, not just "one endpoint exists." ShipFlow can keep `behavior`, `domain`, `api`, and `technical` checks in play by default, then add `database` automatically when persistence is detected.
+
+For greenfield UI work, ShipFlow can also propose a mainstream open-source design-system component library when the repo has none yet. The default is to reuse an existing design system if one is present. Otherwise ShipFlow steers toward standard open-source choices instead of inventing a local component kit by accident.
+
+## Setup
 
 One command — auto-detects your AI coding agents:
 
@@ -63,7 +94,39 @@ shipflow init --claude --codex     # Multiple platforms
 shipflow init --all                # All platforms
 ```
 
-## Agent Workflow
+### Configuration
+
+ShipFlow reads `shipflow.json` from the project root.
+
+Minimal example:
+
+```json
+{
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
+  },
+  "impl": {
+    "provider": "auto",
+    "srcDir": "src",
+    "historyLimit": 50
+  }
+}
+```
+
+Useful fields:
+
+- `draft.provider`: keep `local` for deterministic local drafting, or override explicitly.
+- `draft.aiProvider`: choose which CLI/provider refines draft proposals when AI refinement is enabled.
+- `impl.provider`: `auto` resolves to the active CLI when possible.
+- `impl.srcDir`: main implementation root.
+- `impl.writeRoots`: extra repo-level paths allowed during implementation, such as `.github/workflows` or `infra`.
+- `impl.context`: extra project context passed into implementation.
+- `impl.autoBootstrap`: whether ShipFlow should bootstrap its local verification runtime under `.shipflow/runtime/`.
+
+## Working With ShipFlow
+
+The surface changes by CLI, but the workflow stays the same: draft the pack, tighten it, then run the implementation loop.
 
 ### With Claude Code
 
@@ -154,11 +217,11 @@ Review and iterate with the AI. Then:
 "run shipflow implement once the draft is ready"
 ```
 
-### All platforms
+### Standard Loop
 
 `shipflow implement` is the standard loop. It validates the verification pack, generates tests, applies code changes, runs verification, and retries within the configured budget.
 
-### CLI commands
+### Core Commands
 
 ```bash
 shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
@@ -175,50 +238,27 @@ shipflow status
 shipflow implement-once
 ```
 
-## Configuration
+### Draft Workflow
 
-ShipFlow reads `shipflow.json` from the project root.
-
-Minimal example:
-
-```json
-{
-  "draft": {
-    "provider": "local",
-    "aiProvider": "auto"
-  },
-  "impl": {
-    "provider": "auto",
-    "srcDir": "src",
-    "historyLimit": 50
-  }
-}
+```bash
+shipflow map "todo app with login"
+shipflow draft "todo app with login"
+shipflow draft "todo app with login" --write
+shipflow doctor
+shipflow lint
+shipflow gen
 ```
 
-Useful fields:
+Recommended usage:
+1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
+2. `shipflow draft "..."` to see the understood coverage, inferred app archetype, request-driven gaps, ambiguities, and proposed starter files.
+3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include business-domain starters such as `vp/domain/*.yml` plus technical starters such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml`.
+4. Review and tighten the `vp/` files.
+5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
 
-- `draft.provider`: keep `local` for deterministic local drafting, or override explicitly.
-- `draft.aiProvider`: choose which CLI/provider refines draft proposals when AI refinement is enabled.
-- `impl.provider`: `auto` resolves to the active CLI when possible.
-- `impl.srcDir`: main implementation root.
-- `impl.writeRoots`: extra repo-level paths allowed during implementation, such as `.github/workflows` or `infra`.
-- `impl.context`: extra project context passed into implementation.
-- `impl.autoBootstrap`: whether ShipFlow should bootstrap its local verification runtime under `.shipflow/runtime/`.
+## Authoring the Verification Pack
 
-## App Shapes ShipFlow Understands
-
-ShipFlow drafts better packs when it understands the shape of the product, not just the words in the prompt.
-
-- `frontend-web`: browser UI with no backend surface
-- `fullstack-web-stateless`: browser UI plus API, without persistence
-- `fullstack-web-stateful`: browser UI plus API plus persistence
-- `rest-service`: backend service behind a REST API, including database-backed services and multi-API orchestration services
-- `api-service-stateless` / `api-service-stateful`: non-REST or protocol-agnostic API services
-- `cli-tui-stateless` / `cli-tui-stateful`: terminal-first applications with or without persistence
-
-That archetype drives the default verification bundle ShipFlow keeps in scope during draft. A REST backend service, for example, is treated as a real product boundary, not just "one endpoint exists." ShipFlow can keep `behavior`, `domain`, `api`, and `technical` checks in play by default, then add `database` automatically when persistence is detected.
-
-## Writing Verifications
+ShipFlow works best when each file captures one concrete contract. Group the pack by verification type, keep each check observable, and let the type determine the right execution backend.
 
 ### UI Checks — `vp/ui/*.yml`
 
@@ -447,6 +487,33 @@ then:
 ```
 
 When `runner.kind: gherkin` or `runner.framework: cucumber` is selected, ShipFlow generates `.feature` files plus Cucumber step definitions under `.gen/cucumber/` and executes them with `npx cucumber-js`.
+
+### Fixtures — `vp/ui/_fixtures/*.yml`
+
+Reusable setup flows referenced by `setup:` in UI and behavior checks.
+
+```yaml
+# vp/ui/_fixtures/auth.yml
+id: login-as-user
+title: Log in as test user
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /login
+  - fill: { label: Email, value: "test@example.com" }
+  - fill: { label: Password, value: "testpass" }
+  - click: { name: "Sign in" }
+  - wait_for: { ms: 300 }
+```
+
+Reference it:
+
+```yaml
+setup: login-as-user
+```
+
+The fixture's flow steps are inlined before the check's own flow in the generated test.
 
 ### Business Domain Checks — `vp/domain/*.yml`
 
@@ -760,52 +827,9 @@ Technical checks compile to `.gen/technical/*.runner.mjs`. `runner.framework: cu
 Protocol-oriented technical checks let you enforce stack direction, not just package presence. For example, a GraphQL-first service can require a declared GraphQL surface and forbid parallel REST routes, while a REST-only service can require `/api/*` routes and forbid GraphQL server surfaces.
 They can also pin the runtime assumptions that make the rest of the pack trustworthy, especially when native addons or Node-version-sensitive tooling are involved. For backend services that call multiple upstream APIs, this is where you make the execution environment and client stack explicit instead of letting it fail later as "some flaky integration issue."
 
-### Local Draft Workflow
+## Generation, Verification, and Evidence
 
-```bash
-shipflow map "todo app with login"
-shipflow draft "todo app with login"
-shipflow draft "todo app with login" --write
-shipflow doctor
-shipflow lint
-shipflow gen
-```
-
-Recommended usage:
-1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
-2. `shipflow draft "..."` to see the understood coverage, inferred app archetype, request-driven gaps, ambiguities, and proposed starter files.
-3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include business-domain starters such as `vp/domain/*.yml` plus technical starters such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml`.
-4. Review/edit the VP files.
-5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
-
-### Fixtures — `vp/ui/_fixtures/*.yml`
-
-Reusable setup flows referenced by `setup:` in UI and behavior checks.
-
-```yaml
-# vp/ui/_fixtures/auth.yml
-id: login-as-user
-title: Log in as test user
-app:
-  kind: web
-  base_url: http://localhost:3000
-flow:
-  - open: /login
-  - fill: { label: Email, value: "test@example.com" }
-  - fill: { label: Password, value: "testpass" }
-  - click: { name: "Sign in" }
-  - wait_for: { ms: 300 }
-```
-
-Reference it:
-
-```yaml
-setup: login-as-user
-```
-
-The fixture's flow steps are inlined before the check's own flow in the generated test.
-
-## Running ShipFlow
+This is the execution side of ShipFlow: compile the pack, approve intended visuals when needed, run verification, and inspect evidence.
 
 ### Generate tests
 

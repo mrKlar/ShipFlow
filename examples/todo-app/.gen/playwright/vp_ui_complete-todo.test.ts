@@ -17,7 +17,7 @@ test("complete-todo: User can mark a todo as complete [mutation guard]", async (
   await page.goto("http://localhost:3000/");
   const mutationGuardPasses = [
     await page.getByTestId("todo-completed-0").isVisible().catch(() => false),
-    new RegExp("1 completed").test(((await page.getByTestId("completed-count").textContent().catch(() => null)) ?? "").trim()),
+    new RegExp("1 completed").test(await page.getByTestId("completed-count").evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())),
   ].every(Boolean);
   expect(mutationGuardPasses).toBe(false);
 });

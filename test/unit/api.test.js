@@ -18,6 +18,20 @@ describe("ApiCheck schema", () => {
     assert.equal(r.request.method, "GET");
   });
 
+  it("accepts optional sqlite state reset", () => {
+    const r = ApiCheck.parse({
+      ...base,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      assert: [{ status: 200 }],
+    });
+    assert.equal(r.state.kind, "sqlite");
+    assert.equal(r.state.connection, "./test.db");
+  });
+
   it("accepts all HTTP methods", () => {
     for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
       const r = ApiCheck.parse({
@@ -163,6 +177,12 @@ describe("apiAssertExpr", () => {
     assert.ok(r.includes("assertJsonSchema"));
   });
 
+  it("generates json_array_includes through subset helper", () => {
+    const r = apiAssertExpr({ json_array_includes: { path: "$.items", equals: { title: "Alice" } } });
+    assert.ok(r.includes("shipflowArrayIncludes"));
+    assert.ok(r.includes('"$.items"'));
+  });
+
   it("throws on unknown assert", () => {
     assert.throws(() => apiAssertExpr({ unknown: {} }), /Unknown API assert/);
   });
@@ -176,6 +196,11 @@ describe("apiAssertConditionExpr", () => {
   it("generates body condition", () => {
     const code = apiAssertConditionExpr({ body_not_contains: "stack" });
     assert.ok(code.includes("rawBody.includes"));
+  });
+
+  it("generates json_array_includes condition through subset helper", () => {
+    const code = apiAssertConditionExpr({ json_array_includes: { path: "$.items", equals: { title: "Alice" } } });
+    assert.ok(code.includes("shipflowArrayIncludes"));
   });
 });
 
@@ -197,6 +222,21 @@ describe("genApiTest", () => {
     assert.ok(code.includes("toBe(200)"));
     assert.ok(code.includes("[mutation guard]"));
     assert.ok(code.includes("toBeGreaterThan(0)"));
+  });
+
+  it("injects sqlite state reset before api checks", () => {
+    const code = genApiTest({
+      ...base,
+      state: {
+        kind: "sqlite",
+        connection: "./test.db",
+        reset_sql: "DELETE FROM todos;",
+      },
+      assert: [{ status: 200 }],
+    });
+    assert.ok(code.includes('import { DatabaseSync } from "node:sqlite"'));
+    assert.ok(code.includes('db.exec("PRAGMA busy_timeout = 5000")'));
+    assert.ok(code.includes('resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"DELETE FROM todos;"})'));
   });
 
   it("generates POST with body_json", () => {
@@ -233,6 +273,16 @@ describe("genApiTest", () => {
     assert.ok(code.includes("const rawBody = await res.text()"));
     assert.ok(code.includes("JSON.parse(rawBody)"));
     assert.ok(code.includes("jsonPath(body"));
+  });
+
+  it("emits array include helpers when json_array_includes is used", () => {
+    const code = genApiTest({
+      ...base,
+      assert: [{ json_array_includes: { path: "$.items", equals: { title: "Alice" } } }],
+    });
+    assert.ok(code.includes("function shipflowValuesMatch"));
+    assert.ok(code.includes("function shipflowArrayIncludes"));
+    assert.ok(code.includes("shipflowArrayIncludes(jsonPath(body, \"$.items\").value"));
   });
 
   it("does not parse JSON when only status check", () => {

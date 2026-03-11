@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  buildFileContentRepairPrompt,
   buildFileFormatRepairPrompt,
   buildPrompt,
   impl,
@@ -11,6 +12,8 @@ import {
   parseFiles,
   resolveImplOptions,
   resolveWritePolicy,
+  sanitizeGeneratedFiles,
+  validateGeneratedFiles,
 } from "../../lib/impl.js";
 
 describe("parseFiles", () => {
@@ -133,6 +136,24 @@ describe("buildPrompt", () => {
     assert.ok(!p.includes("const x = 1;"));
   });
 
+  it("points repo-aware retries to evidence artifacts instead of embedding huge failure logs", () => {
+    const failure = [
+      "Summary: 14 passed, 3 failed",
+      "UI: FAIL | Technical: FAIL",
+      "Error: Expected REST API routes under /api/ for any method",
+      "x".repeat(9000),
+    ].join("\n");
+    const p = buildPrompt(vpFiles, genFiles, [], config, failure, writePolicy, {
+      provider: "codex",
+      evidenceFiles: ["evidence/run.json", "evidence/ui.json", "evidence/artifacts/ui-blocker.log"],
+    });
+    assert.ok(p.includes("Failure Evidence To Inspect"));
+    assert.ok(p.includes("evidence/run.json"));
+    assert.ok(p.includes("Summary: 14 passed, 3 failed"));
+    assert.ok(p.includes("Error: Expected REST API routes under /api/ for any method"));
+    assert.ok(!p.includes("x".repeat(4000)));
+  });
+
   it("includes project context", () => {
     const p = buildPrompt(vpFiles, [], [], config, null, writePolicy);
     assert.ok(p.includes("Node.js app"));
@@ -155,9 +176,13 @@ describe("buildPrompt", () => {
     const embedded = buildPrompt(vpFiles, [], [], config, null, writePolicy);
     assert.match(embedded, /Fix real root causes/i);
     assert.match(embedded, /Never fake a pass/i);
+    assert.match(embedded, /Do not hand-edit lockfiles/i);
+    assert.match(embedded, /do not add conflicting package\.json overrides\/resolutions/i);
     const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "claude" });
     assert.match(repoAware, /Fix real root causes/i);
     assert.match(repoAware, /Never fake a pass/i);
+    assert.match(repoAware, /Do not hand-edit lockfiles/i);
+    assert.match(repoAware, /do not add conflicting package\.json overrides\/resolutions/i);
   });
 
   it("guides frontend work toward an existing or mainstream open-source design-system library", () => {
@@ -192,6 +217,13 @@ describe("buildPrompt", () => {
     assert.ok(p.includes(".github/workflows/**"));
     assert.ok(p.includes("package.json"));
   });
+
+  it("does not allow lockfiles by default in the write policy", () => {
+    const p = buildPrompt(vpFiles, [], [], config, null, { roots: ["src"], files: ["package.json"] });
+    assert.ok(!p.includes("package-lock.json"));
+    assert.ok(!p.includes("pnpm-lock.yaml"));
+    assert.ok(!p.includes("yarn.lock"));
+  });
 });
 
 describe("buildFileFormatRepairPrompt", () => {
@@ -202,6 +234,49 @@ describe("buildFileFormatRepairPrompt", () => {
     assert.ok(repair.includes("did not include any valid ShipFlow file blocks"));
     assert.ok(repair.includes("--- FILE: path/to/file ---"));
     assert.ok(repair.includes("Here is the plan."));
+  });
+});
+
+describe("buildFileContentRepairPrompt", () => {
+  it("preserves the original prompt and lists invalid content issues", () => {
+    const prompt = "Original implementation prompt";
+    const repair = buildFileContentRepairPrompt(prompt, "--- FILE: package.json ---\n{bad json}\n--- END FILE ---", [
+      "package.json: Expected property name or '}' in JSON",
+    ]);
+    assert.ok(repair.includes(prompt));
+    assert.ok(repair.includes("included ShipFlow file blocks, but one or more file contents were invalid"));
+    assert.ok(repair.includes("package.json: Expected property name"));
+    assert.ok(repair.includes("*.json file you return must be valid JSON"));
+  });
+});
+
+describe("validateGeneratedFiles", () => {
+  it("salvages balanced json objects with trailing provider noise", () => {
+    const files = sanitizeGeneratedFiles([
+      {
+        path: "package.json",
+        content: "{\n  \"name\": \"ok\"\n}\nThanks!\n",
+      },
+    ]);
+    assert.equal(files[0].content, "{\n  \"name\": \"ok\"\n}\n");
+    assert.deepEqual(validateGeneratedFiles(files), []);
+  });
+
+  it("flags malformed json files before ShipFlow writes them", () => {
+    assert.deepEqual(
+      validateGeneratedFiles([
+        { path: "package.json", content: "{\n  \"name\": \"ok\"\n}\n}\n" },
+        { path: "src/server.js", content: "console.log('ok');\n" },
+      ]),
+      ["package.json: Unexpected non-whitespace character after JSON at position 19 (line 4 column 1)"],
+    );
+  });
+
+  it("accepts valid json object files", () => {
+    assert.deepEqual(
+      validateGeneratedFiles([{ path: "package.json", content: "{\n  \"name\": \"ok\"\n}\n" }]),
+      [],
+    );
   });
 });
 
@@ -398,6 +473,52 @@ describe("impl", () => {
         }),
         /AI returned no files/,
       );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("retries when the provider returns malformed json content", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      const prompts = [];
+      let calls = 0;
+      const written = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt }) => {
+            prompts.push(prompt);
+            calls += 1;
+            if (calls === 1) {
+              return [
+                "--- FILE: package.json ---",
+                "{",
+                "  \"name\": \"broken\",",
+                "--- END FILE ---",
+              ].join("\n");
+            }
+            return [
+              "--- FILE: package.json ---",
+              "{",
+              "  \"name\": \"fixed\"",
+              "}",
+              "--- END FILE ---",
+              "",
+              "--- FILE: src/server.js ---",
+              "console.log('ok');",
+              "--- END FILE ---",
+            ].join("\n");
+          },
+        },
+      });
+
+      assert.equal(calls, 2);
+      assert.deepEqual(written, ["package.json", "src/server.js"]);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")).name, "fixed");
+      assert.ok(prompts[1].includes("Content Correction"));
+      assert.ok(prompts[1].includes("package.json:"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
