@@ -22,6 +22,7 @@ describe("init", () => {
       init({ cwd: tmpDir, deps: { env: {}, commandExists: () => false } });
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "ui", "_fixtures")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "behavior")));
+      assert.ok(fs.existsSync(path.join(tmpDir, "vp", "domain")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "api")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "db")));
       assert.ok(fs.existsSync(path.join(tmpDir, "vp", "nfr")));
@@ -61,6 +62,7 @@ describe("init", () => {
       const types = new Set(session.proposals.map(proposal => proposal.type));
       assert.ok(types.has("ui"));
       assert.ok(types.has("behavior"));
+      assert.ok(types.has("domain"));
       assert.ok(types.has("api"));
       assert.ok(types.has("database"));
       assert.ok(types.has("performance"));
@@ -75,6 +77,7 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
       const content = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       assert.ok(content.includes("ShipFlow"));
+      assert.ok(content.includes("Never fake green"));
     });
   });
 
@@ -156,6 +159,7 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "AGENTS.md")));
       const agents = fs.readFileSync(path.join(tmpDir, "AGENTS.md"), "utf-8");
       assert.ok(agents.includes("ShipFlow"));
+      assert.ok(agents.includes("Never fake green"));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "config.toml")));
       const toml = fs.readFileSync(path.join(tmpDir, ".codex", "config.toml"), "utf-8");
       assert.ok(toml.includes("sandbox_mode"));
@@ -178,6 +182,7 @@ describe("init", () => {
       assert.ok(fs.existsSync(path.join(tmpDir, "GEMINI.md")));
       const gemini = fs.readFileSync(path.join(tmpDir, "GEMINI.md"), "utf-8");
       assert.ok(gemini.includes("ShipFlow"));
+      assert.ok(gemini.includes("Never fake green"));
       assert.ok(fs.existsSync(path.join(tmpDir, ".gemini", "settings.json")));
       const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".gemini", "settings.json"), "utf-8"));
       assert.ok(settings.hooks.BeforeTool);
@@ -272,6 +277,7 @@ describe("init", () => {
       init({ cwd: tmpDir, platforms: ["kiro"] });
       const kiro = fs.readFileSync(path.join(tmpDir, "KIRO.md"), "utf-8");
       assert.ok(kiro.includes("with Kiro"));
+      assert.ok(kiro.includes("Never fake green"));
       const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".kiro", "settings.json"), "utf-8"));
       assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "write_file|replace"));
       assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "execute_bash|shell"));

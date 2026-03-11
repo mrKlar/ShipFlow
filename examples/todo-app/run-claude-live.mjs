@@ -14,6 +14,7 @@ const aiDraft = process.argv.includes("--ai-draft");
 const modelArg = process.argv.find(arg => arg.startsWith("--model="));
 const providerArg = process.argv.find(arg => arg.startsWith("--provider="));
 const provider = (providerArg ? providerArg.slice("--provider=".length) : "claude").trim();
+const useWorkspaceCli = process.env.SHIPFLOW_USE_WORKSPACE_CLI !== "0";
 const platformFlagByProvider = {
   claude: "--claude",
   codex: "--codex",
@@ -66,6 +67,9 @@ function runCommand(bin, args, cwd, options = {}) {
 }
 
 function runShipFlow(args, cwd, options = {}) {
+  if (useWorkspaceCli) {
+    return runCommand(process.execPath, [path.join(repoRoot, "bin", "shipflow.js"), ...args], cwd, options);
+  }
   return runCommand("npx", ["--no-install", "shipflow", ...args], cwd, options);
 }
 
@@ -101,7 +105,10 @@ function parseJsonResult(result, cwd) {
 function ensurePrerequisites() {
   const missing = [];
   const requiredProviderCommand = provider === "kiro" ? "kiro-cli" : provider;
-  for (const cmd of [requiredProviderCommand, "npm", "npx"]) {
+  const requiredCommands = [requiredProviderCommand];
+  if (useWorkspaceCli) requiredCommands.push("node");
+  else requiredCommands.push("npm", "npx");
+  for (const cmd of requiredCommands) {
     if (!commandExists(cmd)) missing.push(cmd);
   }
   if (!commandExists("sqlite3") && !supportsNodeSqlite()) {
@@ -132,11 +139,11 @@ function main() {
   let keepWorkingCopy = keep;
   try {
     copyTemplateProject(tmpDir);
-    installLocalShipFlow(tmpDir);
     const platformFlag = platformFlagByProvider[provider];
     if (!platformFlag) {
       fail(`unsupported provider: ${provider}`);
     }
+    if (!useWorkspaceCli) installLocalShipFlow(tmpDir);
     runShipFlow(["init", platformFlag], tmpDir, { stdio: "inherit" });
 
     const draftArgs = ["draft", "--json", requestText];

@@ -48,4 +48,13 @@ describe("ShipFlow skill frontmatter", () => {
     assert.match(source, /pending by default/i);
     assert.match(source, /foundational hints/i);
   });
+
+  it("keeps the implementation skills honest about broken backends", () => {
+    const codex = readSkill(path.join(repoRoot, "codex-skills/shipflow-implement/SKILL.md"));
+    const kiro = readSkill(path.join(repoRoot, "kiro-skills/shipflow-implement/SKILL.md"));
+    assert.match(codex, /Fix real backend, database, runtime, and dependency failures/i);
+    assert.match(codex, /Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system/i);
+    assert.match(kiro, /Fix real backend, database, runtime, and dependency failures/i);
+    assert.match(kiro, /Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system/i);
+  });
 });

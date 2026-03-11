@@ -80,6 +80,10 @@ For DB checks: ensure the database schema and data match the `query` and asserti
 
 For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions. Choose `runner.kind` / `runner.framework` deliberately and prefer backend-native technical rules over smoke commands.
 
+If a verification fails because the backend, database, runtime, or dependency stack is broken, fix that real failure. Never fake green by returning canned values, bypassing storage, suppressing errors, weakening checks, or otherwise making the test appear to pass while the underlying system is still broken.
+
+For browser UI work: reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
+
 ## Commands
 
 ```bash

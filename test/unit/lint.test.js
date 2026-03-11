@@ -163,4 +163,67 @@ assert:
       assert.ok(result.issues.some(i => i.code === "technical.framework_not_exercised"));
     });
   });
+
+  it("warns when a stateful fullstack archetype lacks its baseline bundle", () => {
+    withTmpDir(tmpDir => {
+      mkdirs(tmpDir);
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), `
+        app.get("/calculator", handler);
+        app.post("/api/calculate", handler);
+        const sql = "SELECT * FROM calculation_history";
+      `);
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "calculator.yml"), `
+id: calculator-ui
+title: Calculator UI
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /calculator
+assert:
+  - text_equals: { testid: result, equals: "5" }
+`);
+
+      const result = runLint(tmpDir);
+      const issue = result.issues.find(i => i.code === "vp.archetype_bundle_missing");
+      assert.ok(issue);
+      assert.match(issue.message, /fullstack-web-stateful/);
+      assert.match(issue.message, /behavior, domain, api, database, technical/);
+    });
+  });
+
+  it("warns when a REST backend service archetype lacks its baseline bundle", () => {
+    withTmpDir(tmpDir => {
+      mkdirs(tmpDir);
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "service.js"), `
+        app.post("/quotes", async (req, res) => {
+          await fetch("https://pricing.example.com/v1/quote");
+          const sql = "INSERT INTO quote_history";
+          return res.json({ ok: true });
+        });
+      `);
+      fs.writeFileSync(path.join(tmpDir, "vp", "api", "quotes.yml"), `
+id: quotes-api
+title: Quotes API
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: POST
+  path: /quotes
+assert:
+  - status: 200
+`);
+
+      const result = runLint(tmpDir);
+      const issue = result.issues.find(i => i.code === "vp.archetype_bundle_missing");
+      assert.ok(issue);
+      assert.match(issue.message, /rest-service/);
+      assert.match(issue.message, /behavior, domain, database, technical/);
+    });
+  });
 });

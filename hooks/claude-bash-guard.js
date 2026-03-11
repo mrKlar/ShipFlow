@@ -3,11 +3,7 @@
 // instead of using `shipflow draft`, `shipflow lint`, and `shipflow gen`.
 
 import { readFileSync } from "node:fs";
-import {
-  extractCommandFromHook,
-  INTROSPECTION_BLOCK_MESSAGE,
-  shouldBlockShipflowIntrospection,
-} from "./introspection-common.js";
+import { evaluateClaudeBashGuard } from "./guard-runtime.js";
 
 function readHookInput() {
   try {
@@ -20,8 +16,7 @@ function readHookInput() {
 const input = readHookInput();
 if (!input) process.exit(0);
 
-const command = extractCommandFromHook(input);
-if (!shouldBlockShipflowIntrospection(command)) process.exit(0);
-
-process.stderr.write(INTROSPECTION_BLOCK_MESSAGE);
-process.exit(2);
+const result = evaluateClaudeBashGuard(input);
+if (result.stderr) process.stderr.write(result.stderr);
+if (result.stdout) process.stdout.write(result.stdout);
+process.exit(result.code);

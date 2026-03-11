@@ -7,15 +7,7 @@
 // Exit 2 to block the operation.
 
 import { readFileSync } from "node:fs";
-import { resolve, relative } from "node:path";
-import {
-  extractCommandFromHook,
-  INTROSPECTION_BLOCK_MESSAGE,
-  isShellTool,
-  shouldBlockShipflowIntrospection,
-} from "./introspection-common.js";
-
-const PROTECTED = ["vp", ".gen", "evidence"];
+import { evaluateGeminiGuard } from "./guard-runtime.js";
 
 let input;
 try {
@@ -26,33 +18,7 @@ try {
   process.exit(0);
 }
 
-if (isShellTool(input.tool_name || input.toolName)) {
-  const command = extractCommandFromHook(input);
-  if (shouldBlockShipflowIntrospection(command)) {
-    process.stderr.write(INTROSPECTION_BLOCK_MESSAGE);
-    process.exit(2);
-  }
-  process.stdout.write(JSON.stringify({ decision: "allow" }));
-  process.exit(0);
-}
-
-const filePath = input.tool_input?.file_path || input.tool_input?.path || "";
-if (!filePath) {
-  process.stdout.write(JSON.stringify({ decision: "allow" }));
-  process.exit(0);
-}
-
-const rel = relative(process.cwd(), resolve(filePath)).replace(/\\/g, "/");
-const blocked = PROTECTED.some(dir => rel === dir || rel.startsWith(dir + "/"));
-
-if (blocked) {
-  process.stderr.write(
-    `BLOCKED by ShipFlow: cannot modify ${rel}\n` +
-    `Protected paths: ${PROTECTED.join("/*, ")}/*\n` +
-    `You can only modify files under src/. Fix the implementation, not the verifications or tests.\n`
-  );
-  process.exit(2);
-}
-
-process.stdout.write(JSON.stringify({ decision: "allow" }));
-process.exit(0);
+const result = evaluateGeminiGuard(input);
+if (result.stderr) process.stderr.write(result.stderr);
+if (result.stdout) process.stdout.write(result.stdout);
+process.exit(result.code);

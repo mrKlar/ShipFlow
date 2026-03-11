@@ -4,10 +4,10 @@
 
 ShipFlow is a verification-first shipping framework. You define what must be observably true when the work is done, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
 
-The verification pack records required checks and constraints, not a prose description of the app.
+The verification pack records required checks and constraints, not a prose description of the app. That can now include visible UI contracts, locked visual baselines, business-domain objects and data objects, runtime and stack boundaries, and app-shape-aware bundles for frontend apps, fullstack apps, REST backend services, and CLI/TUI products.
 
 ```
-vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
+vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/domain/*.runner.mjs + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
 ```
 
 The only files you define and edit are under `vp/`. Everything else is generated.
@@ -169,6 +169,7 @@ shipflow map "<user request>"
 shipflow doctor
 shipflow lint
 shipflow gen
+shipflow approve-visual
 shipflow verify
 shipflow status
 shipflow implement-once
@@ -204,11 +205,24 @@ Useful fields:
 - `impl.context`: extra project context passed into implementation.
 - `impl.autoBootstrap`: whether ShipFlow should bootstrap its local verification runtime under `.shipflow/runtime/`.
 
+## App Shapes ShipFlow Understands
+
+ShipFlow drafts better packs when it understands the shape of the product, not just the words in the prompt.
+
+- `frontend-web`: browser UI with no backend surface
+- `fullstack-web-stateless`: browser UI plus API, without persistence
+- `fullstack-web-stateful`: browser UI plus API plus persistence
+- `rest-service`: backend service behind a REST API, including database-backed services and multi-API orchestration services
+- `api-service-stateless` / `api-service-stateful`: non-REST or protocol-agnostic API services
+- `cli-tui-stateless` / `cli-tui-stateful`: terminal-first applications with or without persistence
+
+That archetype drives the default verification bundle ShipFlow keeps in scope during draft. A REST backend service, for example, is treated as a real product boundary, not just "one endpoint exists." ShipFlow can keep `behavior`, `domain`, `api`, and `technical` checks in play by default, then add `database` automatically when persistence is detected.
+
 ## Writing Verifications
 
 ### UI Checks — `vp/ui/*.yml`
 
-One file per behavior. Each check defines a flow (user actions) and assertions (expected results).
+One file per behavior or visible contract. Each check defines a flow (user actions), assertions (expected results), and optionally a strict `visual` contract for layout, placement, styles, and snapshots.
 
 ```yaml
 id: homepage-title
@@ -296,6 +310,75 @@ All steps support three locator strategies — use one per step:
 | Test ID | `testid` | `getByTestId("my-input")` |
 | Label | `label` | `getByLabel("Email")` |
 
+#### Visual UI Contracts
+
+When you need to lock what the interface actually looks like, add named `targets` plus a `visual` block. This is how ShipFlow moves from "the element exists" to "the layout, style, and rendered result stay correct."
+
+```yaml
+id: cart-summary-visual
+title: Cart summary stays visually correct
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /cart
+targets:
+  summary: { testid: cart-summary }
+  total: { testid: cart-total }
+  cta: { testid: checkout-button }
+assert:
+  - visible: { testid: cart-summary }
+visual:
+  context:
+    viewport: { width: 1440, height: 900 }
+    color_scheme: light
+    reduced_motion: true
+    locale: en-US
+    timezone: UTC
+    wait_for_fonts: true
+  assertions:
+    - aligned:
+        items: [total, cta]
+        axis: left
+        tolerance_px: 4
+    - spacing:
+        from: total
+        to: cta
+        axis: y
+        min_px: 16
+        max_px: 24
+    - css_equals:
+        target: cta
+        property: border-radius
+        equals: "12px"
+  snapshots:
+    - name: cart-summary.desktop.light
+      target: summary
+      max_diff_ratio: 0.002
+      max_diff_pixels: 120
+      per_pixel_threshold: 0.1
+```
+
+Supported visual assertions:
+
+- `aligned`
+- `spacing`
+- `size_range`
+- `inside`
+- `not_overlapping`
+- `css_equals`
+- `css_matches`
+- `token_resolves`
+
+Snapshots are intentionally explicit. Generate them with `shipflow gen`, then approve the intended baseline once:
+
+```bash
+shipflow approve-visual
+```
+
+That writes locked baselines under `vp/ui/_baselines/<check-id>/`. During `shipflow verify`, ShipFlow writes `expected.png`, `actual.png`, `diff.png`, and metrics under `evidence/visual/<check-id>/...` so UI regressions are reviewable instead of hand-waved.
+
 ### Behavior Checks — `vp/behavior/*.yml`
 
 Given/When/Then scenario checks. Web scenarios can reuse UI-style flow steps and assertions, API scenarios can issue request steps, and TUI scenarios can drive stdin/stdout flows.
@@ -364,6 +447,95 @@ then:
 ```
 
 When `runner.kind: gherkin` or `runner.framework: cucumber` is selected, ShipFlow generates `.feature` files plus Cucumber step definitions under `.gen/cucumber/` and executes them with `npx cucumber-js`.
+
+### Business Domain Checks — `vp/domain/*.yml`
+
+Business-domain checks define the product's business objects before the implementation hardens them into tables, JSON payloads, DTOs, caches, or denormalized views.
+
+This is where you say:
+- which business objects exist
+- which identities and references matter
+- which invariants must hold
+- which read and write access patterns the implementation must support
+- which technical data objects must exist after data engineering
+
+The point is not to force a naive 1:1 mapping from business objects to tables or API payloads. The point is to make the business truth explicit, then lock the required translation into technical data objects for persistence, reads, writes, and exchanges.
+
+```yaml
+id: domain-todo
+title: Todo business object and data engineering stay explicit
+severity: blocker
+object:
+  name: Todo
+  kind: entity
+description: Todos can be created, completed, and filtered by status.
+identity:
+  fields: [id]
+  strategy: surrogate
+attributes:
+  - { name: id, type: number, required: true, mutable: false }
+  - { name: title, type: string, required: true, mutable: true }
+  - { name: status, type: enum, values: [active, completed], required: true, mutable: true }
+references: []
+invariants:
+  - Todo title must be non-empty.
+  - Todo status is either active or completed.
+access_patterns:
+  reads:
+    - { name: list_todos_by_status, fields: [id, title, status] }
+  writes:
+    - { name: create_todo, fields: [title] }
+    - { name: complete_todo, fields: [id, status] }
+data_engineering:
+  storage:
+    canonical_model: todo
+    allow_denormalized_copies: true
+    write_models:
+      - { name: todo_record, fields: [id, title, status] }
+    read_models:
+      - { name: todo_list_item, fields: [id, title, status] }
+  exchange:
+    inbound:
+      - { name: create_todo_command, fields: [title] }
+      - { name: complete_todo_command, fields: [id] }
+    outbound:
+      - { name: todo_response, fields: [id, title, status] }
+  guidance:
+    - Split the business object from technical read/write/exchange models when it improves the system.
+assert:
+  - data_engineering_present: { sections: [storage, exchange] }
+  - read_model_defined: { name: todo_list_item }
+  - write_model_defined: { name: todo_record }
+  - exchange_model_defined: { direction: outbound, name: todo_response }
+```
+
+#### Domain Fields
+
+| Field | Purpose |
+|---|---|
+| `object` | Names the business object and its kind (`entity`, `aggregate`, `value_object`, `event`) |
+| `identity` | Declares the stable identity strategy and identity fields |
+| `attributes` | Declares the core business fields |
+| `references` | Declares links to other business objects |
+| `invariants` | Declares what must remain true in the business domain |
+| `access_patterns` | Declares the reads and writes the system must support |
+| `data_engineering` | Declares the required translation into technical data objects |
+| `assert` | Makes the required data-engineering outputs executable |
+
+#### Data Engineering
+
+`data_engineering` is the bridge between business truth and technical implementation.
+
+- `storage.canonical_model` names the primary persisted representation.
+- `storage.write_models` names the technical write-side data objects.
+- `storage.read_models` names the technical read-side data objects.
+- `exchange.inbound` names inbound command or request shapes.
+- `exchange.outbound` names outbound response or event shapes.
+- `guidance` records deliberate engineering choices, such as allowing denormalized copies or separating write and read models.
+
+This is the layer that lets the pack say "the business object is Todo" without forcing the code to use the exact same shape everywhere.
+
+Business-domain checks generate `.gen/domain/*.runner.mjs` and verify that the contract is internally coherent and that the required technical data objects are explicitly named.
 
 ### API Checks — `vp/api/*.yml`
 
@@ -491,6 +663,13 @@ Verify repository-level technical constraints: framework selection, architecture
 For greenfield repos, ShipFlow can propose these by default as part of the first technical boundary. Typical starters include:
 - `vp/technical/runtime-environment.yml` to pin the verification runtime that ShipFlow observed when the pack was drafted, such as `node --version` and the exact `packageManager` declaration.
 - `vp/technical/framework-stack.yml` to pin declared framework/tooling choices and their exact dependency specs from `package.json`.
+- `vp/technical/ui-component-library.yml` when the product shape implies a UI but the repo has no established design system yet. ShipFlow defaults to widely used open-source design-system libraries rather than drifting into an accidental local UI kit.
+
+That means ShipFlow can guide the stack toward proven defaults:
+- `Chakra UI` for marketing-style React / Next surfaces
+- `MUI` for general product UI on React / Next
+- `Ant Design` for admin or data-heavy React / Next apps
+- `Vuetify`, `Angular Material`, or `Skeleton` for their respective ecosystems
 
 ```yaml
 id: technical-ci-stack
@@ -579,7 +758,7 @@ Technical checks compile to `.gen/technical/*.runner.mjs`. `runner.framework: cu
 ```
 
 Protocol-oriented technical checks let you enforce stack direction, not just package presence. For example, a GraphQL-first service can require a declared GraphQL surface and forbid parallel REST routes, while a REST-only service can require `/api/*` routes and forbid GraphQL server surfaces.
-They can also pin the runtime assumptions that make the rest of the pack trustworthy, especially when native addons or Node-version-sensitive tooling are involved.
+They can also pin the runtime assumptions that make the rest of the pack trustworthy, especially when native addons or Node-version-sensitive tooling are involved. For backend services that call multiple upstream APIs, this is where you make the execution environment and client stack explicit instead of letting it fail later as "some flaky integration issue."
 
 ### Local Draft Workflow
 
@@ -594,8 +773,8 @@ shipflow gen
 
 Recommended usage:
 1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
-2. `shipflow draft "..."` to see the understood coverage, request-driven gaps, ambiguities, and proposed starter files.
-3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include technical starters such as `vp/technical/runtime-environment.yml` and `vp/technical/framework-stack.yml`.
+2. `shipflow draft "..."` to see the understood coverage, inferred app archetype, request-driven gaps, ambiguities, and proposed starter files.
+3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include business-domain starters such as `vp/domain/*.yml` plus technical starters such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml`.
 4. Review/edit the VP files.
 5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
 
@@ -634,7 +813,17 @@ The fixture's flow steps are inlined before the check's own flow in the generate
 shipflow gen
 ```
 
-Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, Cucumber artifacts into `.gen/cucumber/`, k6 scripts into `.gen/k6/`, technical runners into `.gen/technical/`, writes `.gen/manifest.json`, and then creates `.gen/vp.lock.json` covering both `vp/` and `.gen/`.
+Reads all `vp/**/*.yml` files, validates schemas, generates Playwright tests into `.gen/playwright/`, Cucumber artifacts into `.gen/cucumber/`, business-domain runners into `.gen/domain/`, k6 scripts into `.gen/k6/`, technical runners into `.gen/technical/`, writes `.gen/manifest.json`, and then creates `.gen/vp.lock.json` covering both `vp/` and `.gen/`.
+
+For visual UI contracts, `shipflow gen` also wires snapshot comparison into the generated Playwright tests. Approved baselines stay under `vp/ui/_baselines/`, which means they are locked as part of the pack rather than treated as disposable test output.
+
+### Approve visual baselines
+
+```bash
+shipflow approve-visual [check-id|vp/ui/file.yml]
+```
+
+Captures or refreshes the approved baseline images for visual UI checks after generation. This is an explicit review step, not something `verify` or `implement` will do automatically.
 
 ### Run verification
 
@@ -645,10 +834,12 @@ shipflow verify
 1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
 2. Evaluates OPA policies (if present)
 3. Runs generated Playwright tests and writes per-type evidence files
-4. Runs generated technical backend runners when present and writes `evidence/technical.json`
-5. Runs k6 NFR scripts when present. Missing `k6` after bootstrap is treated as a verification failure and writes `evidence/load.json`
-6. Writes aggregate `evidence/run.json`
-7. Exits 0 if all tests pass
+4. Writes visual diff artifacts under `evidence/visual/` when UI visual contracts are present
+5. Runs generated business-domain runners when present and writes `evidence/domain.json`
+6. Runs generated technical backend runners when present and writes `evidence/technical.json`
+7. Runs k6 NFR scripts when present. Missing `k6` after bootstrap is treated as a verification failure and writes `evidence/load.json`
+8. Writes aggregate `evidence/run.json`
+9. Exits 0 if all tests pass
 
 `shipflow implement` also writes `evidence/implement.json` as it moves through the loop, so you can inspect the current stage while it is running and the latest result afterward.
 If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.

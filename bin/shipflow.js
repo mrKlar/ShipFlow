@@ -35,6 +35,7 @@ Advanced / debug:
   shipflow lint                Lint verification quality before generation
   shipflow doctor              Check local tools, runners, and AI CLI adapters
   shipflow gen                 Generate runnable tests from the verification pack
+  shipflow approve-visual      Capture or refresh locked UI visual baselines
   shipflow verify              Run generated tests and write evidence
   shipflow status              Show pack, generated tests, and evidence
   shipflow implement-once      Single implementation pass without the retry loop
@@ -74,6 +75,12 @@ Exit codes:
 
   if (cmd === "verify") {
     const { exitCode } = await verify({ cwd: process.cwd(), verbose });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "approve-visual") {
+    const { approveVisual } = await import("../lib/approve-visual.js");
+    const { exitCode } = await approveVisual({ cwd: process.cwd(), input });
     process.exit(exitCode);
   }
 

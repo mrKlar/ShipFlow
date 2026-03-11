@@ -19,6 +19,14 @@ ShipFlow installs as a Claude Code plugin providing the standard flow plus nativ
 
 Install the global plugin with `./install.sh`. Then run `shipflow init --claude` inside each project that should use ShipFlow.
 
+For projects with visual UI contracts, baseline approval stays explicit and outside the slash-command flow:
+
+```bash
+shipflow approve-visual
+```
+
+That keeps visual truth reviewed and locked, instead of letting the implementation loop silently bless a changed UI.
+
 ## How the Loop Works
 
 ```

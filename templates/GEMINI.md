@@ -71,6 +71,10 @@ For DB checks: ensure the database schema and data match the `query` and asserti
 
 For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions. Choose `runner.kind` / `runner.framework` deliberately and prefer backend-native technical rules over smoke commands.
 
+If a verification fails because the backend, database, runtime, or dependency stack is broken, fix that real failure. Never fake green by returning canned values, bypassing storage, suppressing errors, weakening checks, or otherwise making the test appear to pass while the underlying system is still broken.
+
+For browser UI work: reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
+
 ## Commands
 
 ```bash
@@ -107,4 +111,4 @@ For Playwright-backed UI checks, common fixes:
 - **Status mismatch** → API returns wrong HTTP status
 - **JSON mismatch** → API response body doesn't match assertions
 
-Fix the code, run `shipflow verify` again. Repeat until green.
+Fix the real code or runtime problem, run `shipflow verify` again, and repeat until green. Do not fake green by bypassing a broken backend, database, or dependency.

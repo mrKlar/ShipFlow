@@ -65,6 +65,15 @@
       "files": [],
       "checks": []
     },
+    "domain": {
+      "label": "Business Domain",
+      "output_kind": "domain",
+      "output_dir": "domain",
+      "evidence_file": "domain.json",
+      "count": 0,
+      "files": [],
+      "checks": []
+    },
     "api": {
       "label": "API",
       "output_kind": "playwright",

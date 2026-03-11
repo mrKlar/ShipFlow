@@ -83,6 +83,156 @@ describe("buildDraft", () => {
     });
   });
 
+  it("uses the inferred app archetype to keep fullstack bundle types in discussion", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), `
+        app.get("/calculator", handler);
+        app.post("/api/calculate", handler);
+        const sql = "SELECT * FROM calculation_history";
+      `);
+
+      const result = buildDraft(tmpDir, "fix the calculator UI so valid operations stop showing error");
+      assert.equal(result.map.project.app_archetype, "fullstack-web-stateful");
+
+      const api = result.type_discussion.find(item => item.type === "api");
+      const database = result.type_discussion.find(item => item.type === "database");
+      const technical = result.type_discussion.find(item => item.type === "technical");
+
+      assert.equal(api.priority, "primary");
+      assert.ok(api.signals.some(item => /inferred app archetype/i.test(item)));
+      assert.equal(database.priority, "secondary");
+      assert.ok(database.signals.some(item => /inferred app archetype/i.test(item)));
+      assert.equal(technical.priority, "secondary");
+      assert.ok(technical.signals.some(item => /inferred app archetype/i.test(item)));
+    });
+  });
+
+  it("uses the inferred REST service archetype to keep backend bundle types in discussion without pulling in UI", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "service.js"), `
+        app.post("/quotes", async (req, res) => {
+          await fetch("https://pricing.example.com/v1/quote");
+          await axios.post("https://risk.example.com/check");
+          const sql = "INSERT INTO quote_history";
+          return res.json({ ok: true });
+        };
+      `);
+
+      const result = buildDraft(tmpDir, "tighten the backend service behind the REST API");
+      assert.equal(result.map.project.app_archetype, "rest-service");
+
+      const ui = result.type_discussion.find(item => item.type === "ui");
+      const behavior = result.type_discussion.find(item => item.type === "behavior");
+      const api = result.type_discussion.find(item => item.type === "api");
+      const database = result.type_discussion.find(item => item.type === "database");
+      const technical = result.type_discussion.find(item => item.type === "technical");
+
+      assert.equal(ui.priority, "optional");
+      assert.equal(behavior.priority, "primary");
+      assert.ok(behavior.signals.some(item => /inferred app archetype/i.test(item)));
+      assert.equal(api.priority, "primary");
+      assert.ok(api.signals.some(item => /inferred app archetype/i.test(item)));
+      assert.equal(database.priority, "secondary");
+      assert.ok(database.signals.some(item => /inferred app archetype/i.test(item)));
+      assert.equal(technical.priority, "secondary");
+      assert.ok(technical.signals.some(item => /inferred app archetype/i.test(item)));
+    });
+  });
+
+  it("proposes a standard open-source design-system component library for web UI stacks that have none yet", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.jsx"), "export const App = () => null;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        dependencies: {
+          next: "^15.0.0",
+          react: "^19.0.0",
+          "react-dom": "^19.0.0",
+        },
+      }));
+
+      const result = buildDraft(tmpDir, "browser UI for a dashboard");
+      const componentLibrary = result.proposals.find(proposal => proposal.path === "vp/technical/ui-component-library.yml");
+      assert.ok(componentLibrary);
+      assert.match(componentLibrary.reason, /widely used open-source Material UI default/i);
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@mui/material"));
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@emotion/react"));
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@emotion/styled"));
+    });
+  });
+
+  it("prefers Ant Design by default for admin or data-heavy React and Next apps", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.jsx"), "export const App = () => null;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        dependencies: {
+          next: "^15.0.0",
+          react: "^19.0.0",
+          "react-dom": "^19.0.0",
+        },
+      }));
+
+      const result = buildDraft(tmpDir, "browser admin app with reporting tables and user management");
+      const componentLibrary = result.proposals.find(proposal => proposal.path === "vp/technical/ui-component-library.yml");
+      assert.ok(componentLibrary);
+      assert.match(componentLibrary.reason, /Ant Design default for an admin or data-heavy next stack/i);
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "antd"));
+      assert.equal(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@mui/material"), false);
+    });
+  });
+
+  it("prefers Chakra UI by default for marketing or landing-page React and Next apps", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.jsx"), "export const App = () => null;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        dependencies: {
+          next: "^15.0.0",
+          react: "^19.0.0",
+          "react-dom": "^19.0.0",
+        },
+      }));
+
+      const result = buildDraft(tmpDir, "marketing landing page with pricing, features, and a waitlist signup");
+      const componentLibrary = result.proposals.find(proposal => proposal.path === "vp/technical/ui-component-library.yml");
+      assert.ok(componentLibrary);
+      assert.match(componentLibrary.reason, /Chakra UI default for a marketing or landing-page next stack/i);
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@chakra-ui/react"));
+      assert.equal(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@mui/material"), false);
+      assert.equal(componentLibrary.data.assert.some(item => item.dependency_present?.name === "antd"), false);
+    });
+  });
+
+  it("reuses the existing component library instead of proposing a new default one", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.jsx"), "export const App = () => null;\n");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        dependencies: {
+          react: "^19.0.0",
+          "react-dom": "^19.0.0",
+          antd: "^5.0.0",
+        },
+      }));
+
+      const result = buildDraft(tmpDir, "browser UI for a dashboard");
+      const componentLibrary = result.proposals.find(proposal => proposal.path === "vp/technical/ui-component-library.yml");
+      assert.ok(componentLibrary);
+      assert.match(componentLibrary.reason, /already depends on Ant Design/i);
+      assert.match(componentLibrary.data.title, /open-source design-system component library/i);
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_present?.name === "antd"));
+      assert.ok(componentLibrary.data.assert.some(item => item.dependency_version_matches?.name === "antd" && item.dependency_version_matches.matches === "^\\^5\\.0\\.0$"));
+      assert.equal(componentLibrary.data.assert.some(item => item.dependency_present?.name === "@mui/material"), false);
+    });
+  });
+
   it("builds per-type discussion prompts with best practices", () => {
     return withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
@@ -94,15 +244,21 @@ describe("buildDraft", () => {
       `);
 
       const result = buildDraft(tmpDir, "calculator app with UI, API, SQLite, performance, and security");
-      assert.equal(result.type_discussion.length, 7);
+      assert.equal(result.type_discussion.length, 8);
       const ui = result.type_discussion.find(item => item.type === "ui");
+      const domain = result.type_discussion.find(item => item.type === "domain");
       const api = result.type_discussion.find(item => item.type === "api");
       const database = result.type_discussion.find(item => item.type === "database");
       assert.ok(ui.recommended);
       assert.equal(ui.priority, "primary");
       assert.match(ui.question, /Do we want UI checks/i);
       assert.ok(ui.best_practices.some(item => /stable selectors/i.test(item)));
+      assert.ok(ui.best_practices.some(item => /design-system component library/i.test(item)));
+      assert.ok(domain.best_practices.some(item => /data-engineering translation/i.test(item)));
+      assert.match(domain.question, /business objects|data-engineering translation/i);
       assert.ok(api.signals.some(item => /Detected API endpoints/i.test(item)));
+      const technical = result.type_discussion.find(item => item.type === "technical");
+      assert.ok(technical.best_practices.some(item => /widely used open-source design-system library/i.test(item)));
       assert.ok(database.best_practices.some(item => /setup, before\/after assertions, and cleanup/i.test(item)));
     });
   });
@@ -196,6 +352,25 @@ describe("buildDraft", () => {
       assert.match(database.data.before_query, /PRAGMA table_info\(todos\)/);
       assert.match(database.data.setup_sql, /completed INTEGER NOT NULL DEFAULT 0/);
       assert.equal(database.data.cleanup_sql, "DELETE FROM todos;");
+    });
+  });
+
+  it("drafts a business-domain starter with explicit data engineering for stateful todo apps", () => {
+    return withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "app.js"), "export const app = true;\n");
+
+      const result = buildDraft(
+        tmpDir,
+        "todo app with a REST API, sqlite storage, and explicit business entities",
+      );
+
+      const domain = result.proposals.find(proposal => proposal.path === "vp/domain/todo.yml");
+      assert.ok(domain);
+      assert.match(domain.reason, /business object|data-engineering/i);
+      assert.ok(domain.data.data_engineering.storage);
+      assert.ok(domain.data.data_engineering.exchange);
+      assert.ok(domain.data.assert.some(item => item.data_engineering_present));
     });
   });
 
@@ -532,6 +707,7 @@ describe("draft", () => {
       assert.match(prompt, /feature\/scenario\/given\/when\/then/);
       assert.match(prompt, /category \+ request \+ assert/i);
       assert.match(prompt, /translate the relevant product, UI, API, and domain terms internally/i);
+      assert.match(prompt, /prefer the repo's existing design system or open-source design-system component library/i);
     });
   });
 
@@ -945,7 +1121,8 @@ describe("draft", () => {
       assert.ok(Array.isArray(followUp.result.opening_questions));
       assert.ok(followUp.result.workflow);
       assert.equal(followUp.result.workflow.phase, "draft");
-      assert.equal(followUp.result.type_discussion.length, 7);
+      assert.equal(followUp.result.type_discussion.length, 8);
+      assert.ok(followUp.result.type_discussion.some(item => item.type === "domain"));
       assert.ok(followUp.result.type_discussion.some(item => item.type === "security"));
     });
   });

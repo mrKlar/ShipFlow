@@ -12,7 +12,12 @@ describe("greenfield live example", () => {
     timeout: 60 * 60 * 1000,
     skip: process.env.SHIPFLOW_RUN_LIVE_GREENFIELD !== "1",
   }, () => {
-    const result = spawnSync(process.execPath, [path.join(exampleDir, "run-claude-live.mjs"), "--keep"], {
+    const provider = process.env.SHIPFLOW_LIVE_PROVIDER || "claude";
+    const args = [path.join(exampleDir, "run-claude-live.mjs"), "--keep", `--provider=${provider}`];
+    if (process.env.SHIPFLOW_LIVE_AI_DRAFT === "1") args.push("--ai-draft");
+    if (process.env.SHIPFLOW_LIVE_MODEL) args.push(`--model=${process.env.SHIPFLOW_LIVE_MODEL}`);
+
+    const result = spawnSync(process.execPath, args, {
       cwd: exampleDir,
       encoding: "utf-8",
       stdio: "pipe",

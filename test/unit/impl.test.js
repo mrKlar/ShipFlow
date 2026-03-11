@@ -151,6 +151,24 @@ describe("buildPrompt", () => {
     assert.ok(p.includes("Error: element not found"));
   });
 
+  it("forbids fake passes and requires real root-cause fixes", () => {
+    const embedded = buildPrompt(vpFiles, [], [], config, null, writePolicy);
+    assert.match(embedded, /Fix real root causes/i);
+    assert.match(embedded, /Never fake a pass/i);
+    const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "claude" });
+    assert.match(repoAware, /Fix real root causes/i);
+    assert.match(repoAware, /Never fake a pass/i);
+  });
+
+  it("guides frontend work toward an existing or mainstream open-source design-system library", () => {
+    const embedded = buildPrompt(vpFiles, [], [], config, null, writePolicy);
+    assert.match(embedded, /reuse the design system or open-source design-system component library already present/i);
+    assert.match(embedded, /standard, widely used open-source design-system component library/i);
+    const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "claude" });
+    assert.match(repoAware, /reuse the design system or open-source design-system component library already present/i);
+    assert.match(repoAware, /Only create a new local shared component library when the user explicitly asks/i);
+  });
+
   it("truncates long errors to 8000 chars", () => {
     const longError = "x".repeat(10000);
     const p = buildPrompt(vpFiles, [], [], config, longError, writePolicy);

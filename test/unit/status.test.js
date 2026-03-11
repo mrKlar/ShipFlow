@@ -116,9 +116,11 @@ describe("status", () => {
   it("returns machine-readable status when json output is requested", () => {
     const tmpDir = fs.mkdtempSync(path.join(__dirname, ".tmp-"));
     fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, "vp", "domain"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, "evidence"), { recursive: true });
     fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\n");
+    fs.writeFileSync(path.join(tmpDir, "vp", "domain", "todo.yml"), "id: domain-todo\n");
     fs.writeFileSync(path.join(tmpDir, ".shipflow", "draft-session.json"), JSON.stringify({
       version: 1,
       request: "todo app",
@@ -138,6 +140,7 @@ describe("status", () => {
       const output = captureStatusOutput(() => status({ cwd: tmpDir, json: true }));
       const parsed = JSON.parse(output);
       assert.equal(parsed.verifications.ui, 1);
+      assert.equal(parsed.verifications.domain, 1);
       assert.equal(parsed.draft_session.request, "todo app");
       assert.equal(parsed.draft_session.review.pending, 2);
       assert.equal(parsed.draft_session.ready_for_implement, false);

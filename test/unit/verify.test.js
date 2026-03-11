@@ -226,6 +226,39 @@ describe("verify", () => {
     }
   });
 
+  it("passes SHIPFLOW_EVIDENCE_DIR to Playwright runners", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
+    const binDir = path.join(tmpDir, "bin");
+    const marker = path.join(tmpDir, "playwright-evidence-dir.txt");
+    const previousPath = process.env.PATH;
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "playwright"), { recursive: true });
+      fs.mkdirSync(binDir, { recursive: true });
+
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "playwright", "vp_ui_home.test.ts"), "import { test, expect } from \"@playwright/test\";\ntest(\"x\", async () => {});\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
+        version: 1,
+        outputs: {
+          ui: { files: [".gen/playwright/vp_ui_home.test.ts"] },
+        },
+      }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
+
+      writeExecutable(path.join(binDir, "npx"), `#!/usr/bin/env bash\nprintf '%s' \"$SHIPFLOW_EVIDENCE_DIR\" > ${JSON.stringify(marker)}\necho '1 passed'\n`);
+      process.env.PATH = `${binDir}:${previousPath}`;
+
+      const result = await verify({ cwd: tmpDir, capture: true });
+      assert.equal(result.exitCode, 0);
+      assert.equal(fs.readFileSync(marker, "utf-8"), path.join(tmpDir, "evidence"));
+    } finally {
+      process.env.PATH = previousPath;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("fails when performance scripts fail even if Playwright passes", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
     const binDir = path.join(tmpDir, "bin");
@@ -422,6 +455,43 @@ describe("verify", () => {
       assert.equal(technical.ok, true);
       assert.equal(technical.passed, 1);
       assert.ok(technical.runners[0].file.endsWith(".runner.mjs"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("runs generated business-domain runners", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "domain"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".gen", "domain"), { recursive: true });
+
+      fs.writeFileSync(path.join(tmpDir, "vp", "domain", "todo.yml"), "id: domain-todo\n");
+      fs.writeFileSync(path.join(tmpDir, ".gen", "domain", "vp_domain_todo.runner.mjs"), "console.log('business domain ok');\n");
+
+      fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({
+        version: 1,
+        outputs: {
+          domain: {
+            files: [".gen/domain/vp_domain_todo.runner.mjs"],
+            checks: [{
+              id: "domain-todo",
+              severity: "blocker",
+              file: ".gen/domain/vp_domain_todo.runner.mjs",
+            }],
+          },
+        },
+      }, null, 2));
+      const lock = buildLock(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".gen", "vp.lock.json"), JSON.stringify(lock, null, 2));
+
+      const result = await verify({ cwd: tmpDir, capture: true });
+
+      assert.equal(result.exitCode, 0);
+      const domain = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "domain.json"), "utf-8"));
+      assert.equal(domain.label, "Business Domain");
+      assert.equal(domain.ok, true);
+      assert.equal(domain.passed, 1);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

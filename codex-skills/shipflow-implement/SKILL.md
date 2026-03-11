@@ -69,4 +69,6 @@ shipflow status
 
 - Never edit `vp/`, `.gen/`, `evidence/`, `.shipflow/`, or `shipflow.json`
 - Treat the verification pack as ground truth
+- Fix real backend, database, runtime, and dependency failures instead of faking green. Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system just to satisfy checks.
+- For browser UI work, reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
 - If the verification pack itself is wrong or ambiguous, stop and send the user back to `$shipflow-draft`

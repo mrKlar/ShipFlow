@@ -7,7 +7,7 @@
   "passed": 1,
   "failed": 0,
   "advisory_failed": 0,
-  "skipped": 6,
+  "skipped": 7,
   "groups": [
     {
       "version": 1,
@@ -156,6 +156,20 @@
       "ok": true,
       "skipped": true,
       "reason": "no generated technical runners",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
+      "kind": "domain",
+      "label": "Business Domain",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated business-domain runners",
       "passed": 0,
       "failed": 0,
       "skipped_count": 0,

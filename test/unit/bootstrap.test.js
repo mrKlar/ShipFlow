@@ -132,6 +132,51 @@ describe("bootstrapVerificationRuntime", () => {
     });
   });
 
+  it("installs visual snapshot dependencies for visual UI checks", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "visual.yml"), [
+        "id: ui-visual-home",
+        "title: Home visual contract",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "targets:",
+        "  shell:",
+        "    testid: home-shell",
+        "assert: []",
+        "visual:",
+        "  context:",
+        "    viewport:",
+        "      width: 1280",
+        "      height: 720",
+        "    reduced_motion: true",
+        "    wait_for_fonts: true",
+        "  snapshots:",
+        "    - name: home.desktop",
+        "      target: shell",
+        "      max_diff_ratio: 0",
+        "      per_pixel_threshold: 0.1",
+        "",
+      ].join("\n"));
+
+      const calls = [];
+      const spawnSync = makeSpawnRecorder(tmpDir, calls);
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        spawnSync,
+        commandExists: cmd => ["npm", "npx"].includes(cmd),
+      });
+
+      assert.equal(result.ok, true);
+      assert.deepEqual(result.installed_packages, ["@playwright/test", "pixelmatch", "pngjs"]);
+      assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("pixelmatch")));
+      assert.ok(calls.some(call => call.bin === "npm" && call.args.includes("pngjs")));
+    });
+  });
+
   it("captures a reusable local toolchain shim when the package manager is available", () => {
     withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });

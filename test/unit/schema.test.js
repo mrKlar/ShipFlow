@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { UiCheck, UiFixture } from "../../lib/schema/ui-check.zod.js";
+import { DomainCheck } from "../../lib/schema/domain-check.zod.js";
 
 const base = {
   id: "test-1",
@@ -214,6 +215,124 @@ describe("UiCheck schema — top-level validation", () => {
   });
 });
 
+describe("UiCheck schema — visual checks", () => {
+  it("accepts strict visual checks with named targets", () => {
+    const result = UiCheck.parse({
+      ...base,
+      flow: [{ open: "/cart" }],
+      targets: {
+        summary: { testid: "cart-summary" },
+        cta: { testid: "checkout-button" },
+      },
+      assert: [{ visible: { testid: "cart-summary" } }],
+      visual: {
+        context: {
+          viewport: { width: 1440, height: 900 },
+          color_scheme: "light",
+          reduced_motion: true,
+          wait_for_fonts: true,
+        },
+        assertions: [
+          {
+            css_equals: {
+              target: "cta",
+              property: "border-radius",
+              equals: "12px",
+            },
+          },
+        ],
+        snapshots: [
+          {
+            name: "cart-summary.desktop.light",
+            target: "summary",
+            max_diff_ratio: 0.002,
+            per_pixel_threshold: 0.1,
+          },
+        ],
+      },
+    });
+
+    assert.equal(result.visual.snapshots[0].target, "summary");
+    assert.equal(result.targets.summary.testid, "cart-summary");
+  });
+
+  it("rejects visual checks without named targets", () => {
+    assert.throws(() => {
+      UiCheck.parse({
+        ...base,
+        flow: [{ open: "/" }],
+        assert: [],
+        visual: {
+          context: {
+            viewport: { width: 1280, height: 720 },
+            reduced_motion: true,
+            wait_for_fonts: true,
+          },
+          snapshots: [
+            {
+              name: "home.desktop",
+              full_page: true,
+              max_diff_ratio: 0,
+              per_pixel_threshold: 0.1,
+            },
+          ],
+        },
+      });
+    }, /visual checks require named targets/);
+  });
+
+  it("rejects element snapshots without a target", () => {
+    assert.throws(() => {
+      UiCheck.parse({
+        ...base,
+        flow: [{ open: "/" }],
+        targets: { summary: { testid: "summary" } },
+        assert: [],
+        visual: {
+          context: {
+            viewport: { width: 1280, height: 720 },
+            reduced_motion: true,
+            wait_for_fonts: true,
+          },
+          snapshots: [
+            {
+              name: "summary.desktop",
+              max_diff_ratio: 0,
+              per_pixel_threshold: 0.1,
+            },
+          ],
+        },
+      });
+    }, /snapshot requires target unless full_page is true/);
+  });
+
+  it("accepts full-page snapshots without a target", () => {
+    const result = UiCheck.parse({
+      ...base,
+      flow: [{ open: "/" }],
+      targets: { page_shell: { testid: "shell" } },
+      assert: [],
+      visual: {
+        context: {
+          viewport: { width: 1280, height: 720 },
+          reduced_motion: true,
+          wait_for_fonts: true,
+        },
+        snapshots: [
+          {
+            name: "home.desktop",
+            full_page: true,
+            max_diff_ratio: 0,
+            per_pixel_threshold: 0.1,
+          },
+        ],
+      },
+    });
+
+    assert.equal(result.visual.snapshots[0].full_page, true);
+  });
+});
+
 describe("UiFixture schema", () => {
   const fb = { id: "fixture-1", app: { kind: "web", base_url: "http://localhost:3000" } };
 
@@ -246,5 +365,57 @@ describe("UiFixture schema", () => {
       ],
     });
     assert.equal(r.flow.length, 6);
+  });
+});
+
+describe("DomainCheck schema", () => {
+  const baseDomain = {
+    id: "domain-todo",
+    title: "Todo business object stays explicit",
+    severity: "blocker",
+    object: { name: "Todo", kind: "entity" },
+    identity: { fields: ["id"], strategy: "surrogate" },
+    attributes: [
+      { name: "id", type: "number", required: true, mutable: false },
+      { name: "title", type: "string", required: true, mutable: true },
+      { name: "status", type: "string", required: true, mutable: true },
+    ],
+    references: [],
+    invariants: ["Todo title must be non-empty."],
+    access_patterns: {
+      reads: [{ name: "list_todos", fields: ["id", "title", "status"] }],
+      writes: [{ name: "create_todo", fields: ["title"] }],
+    },
+    data_engineering: {
+      storage: {
+        canonical_model: "todo",
+        allow_denormalized_copies: true,
+        write_models: [{ name: "todo_record", fields: ["id", "title", "status"] }],
+        read_models: [{ name: "todo_list_item", fields: ["id", "title", "status"] }],
+      },
+      exchange: {
+        inbound: [{ name: "create_todo_command", fields: ["title"] }],
+        outbound: [{ name: "todo_response", fields: ["id", "title", "status"] }],
+      },
+      guidance: ["Split business objects from technical read/write/exchange models."],
+    },
+    assert: [
+      { data_engineering_present: { sections: ["storage", "exchange"] } },
+      { read_model_defined: { name: "todo_list_item" } },
+    ],
+  };
+
+  it("accepts business-domain checks with explicit data engineering", () => {
+    const result = DomainCheck.parse(baseDomain);
+    assert.equal(result.data_engineering.storage.canonical_model, "todo");
+    assert.equal(result.assert[0].data_engineering_present.sections[0], "storage");
+  });
+
+  it("rejects checks that omit data engineering", () => {
+    assert.throws(() => {
+      const invalid = { ...baseDomain };
+      delete invalid.data_engineering;
+      DomainCheck.parse(invalid);
+    });
   });
 });

@@ -49,6 +49,47 @@ describe("buildDoctor", () => {
     });
   });
 
+  it("requires visual diff packages when visual UI checks are present", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "visual.yml"), [
+        "id: ui-visual-home",
+        "title: Home visual contract",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "targets:",
+        "  shell:",
+        "    testid: home-shell",
+        "assert: []",
+        "visual:",
+        "  context:",
+        "    viewport:",
+        "      width: 1280",
+        "      height: 720",
+        "    reduced_motion: true",
+        "    wait_for_fonts: true",
+        "  snapshots:",
+        "    - name: home.desktop",
+        "      target: shell",
+        "      max_diff_ratio: 0",
+        "      per_pixel_threshold: 0.1",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        devDependencies: { "@playwright/test": "^1.0.0" },
+      }));
+      const available = new Set(["node", "npm", "npx", "codex"]);
+      const result = buildDoctor(tmpDir, { commandExists: cmd => available.has(cmd), env: {} });
+      assert.equal(result.ok, false);
+      assert.ok(result.issues.some(i => i.includes("pixelmatch")));
+      assert.ok(result.issues.some(i => i.includes("pngjs")));
+    });
+  });
+
   it("passes when required basics are available", () => {
     withTmpDir(tmpDir => {
       fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({ impl: { provider: "auto" } }));

@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { locatorExpr, genStep, assertExpr, genPlaywrightTest } from "../../lib/gen.js";
+import { genDomainArtifacts } from "../../lib/gen-domain.js";
 
 describe("locatorExpr", () => {
   it("generates getByTestId", () => {
@@ -260,5 +261,102 @@ describe("genPlaywrightTest", () => {
     assert.ok(code.includes("toBeHidden()"));
     assert.ok(code.includes("toHaveURL("));
     assert.ok(code.includes("toHaveCount(2)"));
+  });
+
+  it("generates visual helpers for visual UI checks", () => {
+    const visualCheck = {
+      id: "ui-cart-visual",
+      title: "Cart visual contract",
+      severity: "blocker",
+      app: { kind: "web", base_url: "http://localhost:3000" },
+      flow: [{ open: "/cart" }],
+      targets: {
+        summary: { testid: "cart-summary" },
+        cta: { testid: "checkout-button" },
+      },
+      assert: [{ visible: { testid: "cart-summary" } }],
+      visual: {
+        context: {
+          viewport: { width: 1440, height: 900 },
+          color_scheme: "light",
+          reduced_motion: true,
+          wait_for_fonts: true,
+        },
+        assertions: [
+          {
+            css_equals: {
+              target: "cta",
+              property: "border-radius",
+              equals: "12px",
+            },
+          },
+        ],
+        snapshots: [
+          {
+            name: "cart-summary.desktop.light",
+            target: "summary",
+            max_diff_ratio: 0.002,
+            max_diff_pixels: 120,
+            per_pixel_threshold: 0.1,
+          },
+        ],
+      },
+    };
+
+    const code = genPlaywrightTest(visualCheck);
+    assert.ok(code.includes('import { PNG } from "pngjs";'));
+    assert.ok(code.includes('import pixelmatch from "pixelmatch";'));
+    assert.ok(code.includes('test.use({'));
+    assert.ok(code.includes('colorScheme: "light"'));
+    assert.ok(code.includes('const projectRoot = path.resolve(__dirname, "..", "..");'));
+    assert.ok(code.includes('path.join(projectRoot, "vp", "ui", "_baselines"'));
+    assert.ok(code.includes('await runVisualChecks(page, "ui-cart-visual", visualTargets, '));
+    assert.ok(code.includes('"cart-summary.desktop.light"'));
+  });
+});
+
+describe("genDomainArtifacts", () => {
+  it("generates a business-domain runner that validates data engineering contracts", () => {
+    const [artifact] = genDomainArtifacts({
+      __file: "vp/domain/todo.yml",
+      id: "domain-todo",
+      title: "Todo business object stays explicit",
+      severity: "blocker",
+      object: { name: "Todo", kind: "entity" },
+      identity: { fields: ["id"], strategy: "surrogate" },
+      attributes: [
+        { name: "id", type: "number", required: true, mutable: false },
+        { name: "title", type: "string", required: true, mutable: true },
+        { name: "status", type: "string", required: true, mutable: true },
+      ],
+      references: [],
+      invariants: ["Todo title must be non-empty."],
+      access_patterns: {
+        reads: [{ name: "list_todos", fields: ["id", "title", "status"] }],
+        writes: [{ name: "create_todo", fields: ["title"] }],
+      },
+      data_engineering: {
+        storage: {
+          canonical_model: "todo",
+          allow_denormalized_copies: true,
+          write_models: [{ name: "todo_record", fields: ["id", "title", "status"] }],
+          read_models: [{ name: "todo_list_item", fields: ["id", "title", "status"] }],
+        },
+        exchange: {
+          inbound: [{ name: "create_todo_command", fields: ["title"] }],
+          outbound: [{ name: "todo_response", fields: ["id", "title", "status"] }],
+        },
+        guidance: ["Do not force a one-to-one mapping."],
+      },
+      assert: [
+        { data_engineering_present: { sections: ["storage", "exchange"] } },
+        { read_model_defined: { name: "todo_list_item" } },
+      ],
+    });
+
+    assert.equal(artifact.kind, "domain-runner");
+    assert.ok(artifact.content.includes("ShipFlow business-domain backend"));
+    assert.ok(artifact.content.includes("data engineering section"));
+    assert.ok(artifact.content.includes("todo_list_item"));
   });
 });

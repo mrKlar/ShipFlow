@@ -5,6 +5,8 @@ import os from "node:os";
 import path from "node:path";
 import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
 import { countVerificationPack, buildImplementationReport, projectRunHints, summarizeImplementationHistory, writeImplementationHistory, run } from "../../lib/loop.js";
+import { impl as applyImpl } from "../../lib/impl.js";
+import { assertTodoAppQuality, createTempTodoExampleProject, todoExampleImplementationFileBlocks } from "../support/todo-example.js";
 
 describe("countVerificationPack", () => {
   it("counts verifications by type", () => {
@@ -438,6 +440,48 @@ describe("run", () => {
       assert.equal(evidence.stage, "draft");
       assert.equal(evidence.iterations, 0);
       assert.equal(evidence.ok, false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("completes a temporary todo example project and records a green quality-gated report", async () => {
+    const tmpDir = createTempTodoExampleProject();
+    try {
+      const exitCode = await run({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          syncProjectDependencies: () => ({ ok: true, actions: [], issues: [], fingerprint: "todo-example" }),
+          impl: async ({ cwd, errors }) => applyImpl({
+            cwd,
+            errors,
+            provider: "command",
+            deps: {
+              generateWithProvider: async () => todoExampleImplementationFileBlocks(),
+            },
+          }),
+          verify: async ({ cwd }) => {
+            await assertTodoAppQuality(cwd);
+            return { exitCode: 0, output: "todo quality checks passed" };
+          },
+        },
+      });
+
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      const history = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement-history.json"), "utf-8"));
+      assert.equal(exitCode, 0);
+      assert.equal(evidence.ok, true);
+      assert.equal(evidence.stage, "verify");
+      assert.equal(evidence.iterations, 1);
+      assert.equal(evidence.vp_counts.ui, 3);
+      assert.equal(evidence.generated_counts.ui, 3);
+      assert.equal(history.summary.total_runs, 1);
+      assert.equal(history.summary.passed_runs, 1);
+      assert.equal(history.summary.first_pass_rate, 1);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

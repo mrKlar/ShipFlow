@@ -27,6 +27,15 @@ This is a first-principles failure. If you have an agent that can write, test, a
 
 🔒 The AI cannot win by editing the pack out from under the loop. Cryptographic locks and runtime hooks protect the verification pack and generated artifacts during implementation. The only way out is working code.
 
+It also means ShipFlow is not trapped in toy demos. It understands the shape of the thing you are building and drafts the right boundary:
+- frontend web apps
+- fullstack web apps
+- REST backend services
+- CLI and TUI apps
+
+That REST service support is not just "an endpoint exists." ShipFlow can now treat database-backed services and multi-API orchestration services as first-class products, then pull the right baseline bundle into the pack automatically.
+For stateful products, that boundary can also include the business domain itself: the core business objects, their identities, references, invariants, access patterns, and the data-engineering step that turns them into storage, read, write, and exchange models.
+
 ## 📚 Docs
 
 | README | User Guide | Verification Pack | Scientific Foundations |
@@ -53,6 +62,15 @@ ShipFlow replaces that with one durable artifact: the verification pack.
 - ShipFlow turns that pack into real tests and runners.
 - The agent implements against that locked boundary.
 - The loop ends only when verification is green.
+
+Now that boundary can reach further than before:
+- visual UI contracts for layout, placement, styles, and screenshot diffs
+- business-domain objects and technical data objects for stateful systems
+- runtime pinning for the verification environment itself
+- mainstream open-source design-system defaults instead of accidental one-off UI kits
+- backend-service bundles that cover API, database, and upstream dependency reality together
+
+That is what makes ShipFlow feel less like "AI coding with guardrails" and more like a real shipping system.
 
 ## ⚡ Install — One Command, Fully Automatic
 
@@ -87,6 +105,21 @@ That single command:
 
 It is the fastest way to prove the core claim: delete the implementation, keep the verification pack, and ShipFlow rebuilds the app from the pack.
 
+## 🎯 What ShipFlow Can Lock
+
+ShipFlow is built to define the finished state in executable terms, not just the happy path.
+
+- **Visual UI contracts**: verify layout, alignment, spacing, styles, tokens, and locked snapshots with diff artifacts.
+- **Behavior contracts**: verify what users or clients can actually do end to end.
+- **Business domain contracts**: define the business objects, references, invariants, and data objects the system must support before implementation choices harden.
+- **API contracts**: lock public request/response behavior, including negative cases.
+- **Database invariants**: verify before/after state, not just HTTP output.
+- **Technical boundaries**: pin runtimes, stack choices, protocols, CI, architecture, and required tooling.
+
+For stateful or integration-heavy systems, that business-domain layer is where ShipFlow makes the hard part explicit: not just "there is a table" or "there is an endpoint," but which business objects exist, what must stay true about them, and how they are translated into technical data objects for persistence, reads, writes, and exchanges.
+
+For UI-heavy projects, ShipFlow can also draft a sane open-source design-system default when the repo has none yet. Instead of improvising a button library from scratch, it can steer the project toward widely used choices like MUI, Ant Design, Chakra UI, Vuetify, Angular Material, or Skeleton, depending on the stack and product shape.
+
 ## 🚀 Agent Flow
 
 In your project, scaffold ShipFlow:
@@ -114,7 +147,17 @@ For the exact Claude / Codex / Gemini / Kiro commands, plus debug commands like 
 
 That is the core idea: define the finished-state checks in executable terms, lock them, and let the agent implement against them.
 
+For stateful systems, those checks are not limited to UI, API, and database output. ShipFlow can also lock the business domain itself: the domain objects, their identities and references, their invariants and access patterns, and the required data-engineering translation into technical data objects such as canonical storage models, read models, write models, and API exchange models.
+
 On a new project, that boundary includes the verification environment itself. ShipFlow can draft technical starters that pin the initial runtime and declared stack, so Node, package manager, and dependency-spec drift become explicit pack changes instead of ambient machine-state surprises.
+
+For modern UI work, that boundary can also include visual contracts. ShipFlow can generate Playwright-powered visual checks, lock approved baselines under `vp/ui/_baselines/`, and produce `expected` / `actual` / `diff` evidence when a regression shows up. Approving a new intended look is explicit with:
+
+```bash
+shipflow approve-visual
+```
+
+For backend work, ShipFlow can recognize a pure REST service, including services that persist data or fan out across multiple upstream APIs, and keep API, database, and technical checks in scope together instead of pretending a single endpoint check is enough.
 
 Why believe it? Because ShipFlow locks the verification pack and generated artifacts before implementation, and the loop ends on verification, not on a claim that the work is “done”.
 

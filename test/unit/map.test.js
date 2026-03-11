@@ -54,6 +54,24 @@ describe("buildMap", () => {
     });
   });
 
+  it("infers a stateful fullstack web archetype and baseline bundle from repo signals", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), `
+        app.get("/calculator", handler);
+        app.post("/api/calculate", handler);
+        const sql = "SELECT * FROM calculation_history";
+      `);
+
+      const result = buildMap(tmpDir);
+      assert.equal(result.project.app_archetype, "fullstack-web-stateful");
+      assert.deepEqual(result.project.verification_bundle.required_types, ["ui", "behavior", "domain", "api", "database", "technical"]);
+      assert.deepEqual(result.project.verification_bundle.missing_required_types, ["ui", "behavior", "domain", "api", "database", "technical"]);
+      assert.ok(result.coverage.gaps.some(gap => gap.includes("baseline bundle")));
+      assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("runtime and dependency")));
+    });
+  });
+
   it("uses configured srcDir when present", () => {
     withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "frontend"), { recursive: true });
@@ -89,6 +107,50 @@ describe("buildMap", () => {
       assert.ok(result.ambiguities.some(item => item.includes("no concrete routes")));
       assert.ok(result.recommendations.some(rec => rec.type === "api" && rec.summary.includes("requested endpoints")));
       assert.ok(result.recommendations.some(rec => rec.type === "technical" && rec.summary.includes("requested technical scope")));
+    });
+  });
+
+  it("infers a CLI/TUI archetype from a greenfield request", () => {
+    withTmpDir(tmpDir => {
+      const result = buildMap(tmpDir, "CLI todo app with sqlite history");
+      assert.equal(result.request.app_archetype, "cli-tui-stateful");
+      assert.deepEqual(result.request.verification_bundle.required_types, ["behavior", "domain", "database", "technical"]);
+      assert.deepEqual(result.request.verification_bundle.missing_required_types, ["behavior", "domain", "database", "technical"]);
+      assert.ok(result.request.gaps.some(gap => gap.includes("baseline bundle")));
+      assert.ok(result.recommendations.some(rec => rec.type === "database"));
+    });
+  });
+
+  it("infers a REST backend service archetype for API-only services with persistence and upstream fan-out", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "service.js"), `
+        app.post("/quotes", async (req, res) => {
+          const pricing = await fetch("https://pricing.example.com/v1/quote");
+          const risk = await axios.post("https://risk.example.com/check");
+          const sql = "INSERT INTO quote_history";
+          return res.json({ ok: true });
+        });
+      `);
+
+      const result = buildMap(tmpDir);
+      assert.equal(result.project.app_archetype, "rest-service");
+      assert.deepEqual(result.project.verification_bundle.required_types, ["behavior", "domain", "api", "database", "technical"]);
+      assert.ok(result.project.verification_bundle.label.includes("REST backend service"));
+      assert.ok(result.detected.api_endpoints.includes("POST /quotes"));
+      assert.deepEqual(result.detected.external_api_hosts, ["pricing.example.com", "risk.example.com"]);
+      assert.ok(result.coverage.gaps.some(gap => gap.includes("baseline bundle")));
+      assert.ok(result.ambiguities.some(item => item.includes("Multiple upstream API hosts")));
+      assert.ok(result.recommendations.some(rec => rec.type === "api" && rec.summary.includes("upstream failure handling")));
+    });
+  });
+
+  it("infers a request-only REST backend service archetype without forcing database coverage", () => {
+    withTmpDir(tmpDir => {
+      const result = buildMap(tmpDir, "REST service that aggregates multiple partner APIs behind one backend endpoint");
+      assert.equal(result.request.app_archetype, "rest-service");
+      assert.deepEqual(result.request.verification_bundle.required_types, ["behavior", "domain", "api", "technical"]);
+      assert.ok(result.request.gaps.some(gap => gap.includes("baseline bundle")));
     });
   });
 
