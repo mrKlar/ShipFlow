@@ -28,6 +28,12 @@ if command -v claude &>/dev/null; then
   claude plugin uninstall shipflow@shipflow 2>/dev/null || true
   claude plugin marketplace remove shipflow 2>/dev/null || true
   info "Plugin removed"
+  if find "$HOME/.claude/agents" -maxdepth 1 -type f -name 'shipflow-*.md' 2>/dev/null | grep -q .; then
+    find "$HOME/.claude/agents" -maxdepth 1 -type f -name 'shipflow-*.md' -delete
+    info "Native subagents removed"
+  else
+    skip "No Claude subagents found"
+  fi
 else
   skip "Claude Code not found"
 fi
@@ -35,8 +41,8 @@ fi
 # --- 2. Codex CLI ---
 step "2/5" "Codex CLI"
 
-if find "$HOME/.agents/skills" -maxdepth 1 -type d -name 'shipflow-*' 2>/dev/null | grep -q .; then
-  find "$HOME/.agents/skills" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} +
+if find "$HOME/.codex/skills" -maxdepth 1 -type d -name 'shipflow-*' 2>/dev/null | grep -q .; then
+  find "$HOME/.codex/skills" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} +
   info "Skills removed"
 else
   skip "No Codex skills found"
@@ -104,6 +110,13 @@ if find "$HOME/.kiro/skills" -maxdepth 1 -type d -name 'shipflow-*' 2>/dev/null 
   info "Skills removed"
 else
   skip "No Kiro skills found"
+fi
+
+if find "$HOME/.kiro/agents" -maxdepth 1 -type f -name 'shipflow-*.json' 2>/dev/null | grep -q .; then
+  find "$HOME/.kiro/agents" -maxdepth 1 -type f -name 'shipflow-*.json' -delete
+  info "Custom agents removed"
+else
+  skip "No Kiro custom agents found"
 fi
 
 if [ -f "$HOME/.kiro/steering/shipflow.md" ]; then

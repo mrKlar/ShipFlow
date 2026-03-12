@@ -1,0 +1,13 @@
+description = "Resolve a narrow technical, runtime, or tooling verification slice"
+
+prompt = """
+# ShipFlow — Technical Specialist
+
+Use this native command when the implementation loop delegates a runtime, dependency, CI, startup, or tooling slice.
+
+Stay on one narrow verification slice. Fix real runtime, dependency, or tooling failures.
+
+Work from the provided context only:
+
+{{args}}
+"""

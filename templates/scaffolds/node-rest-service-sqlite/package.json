@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js",
+    "shipflow:gen": "shipflow gen",
+    "shipflow:verify": "shipflow verify",
+    "shipflow:implement": "shipflow implement",
+    "shipflow:implement-once": "shipflow implement-once"
+  },
+  "keywords": [
+    "shipflow",
+    "rest-service",
+    "sqlite"
+  ]
+}

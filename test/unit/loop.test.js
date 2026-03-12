@@ -245,7 +245,7 @@ describe("run", () => {
             fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
             fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
           },
-          impl: async () => {},
+          impl: async () => ({ written: ["src/server.js"], strategyPlan: null, specialists: [] }),
           syncProjectDependencies: () => ({ ok: false, actions: [], issues: ["npm install failed"] }),
         },
       });
@@ -254,6 +254,102 @@ describe("run", () => {
       assert.equal(evidence.stage, "install");
       assert.equal(evidence.install_ok, false);
       assert.equal(evidence.iterations, 1);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("applies the deterministic scaffold and syncs dependencies before doctor and implementation", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-scaffold-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          provider: "command",
+          maxIterations: 1,
+          context: "Build a browser app with a GraphQL API and SQLite storage.",
+          scaffold: {
+            enabled: true,
+            preset: "node-web-graphql-sqlite",
+          },
+        },
+      }, null, 2));
+
+      const order = [];
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => {
+            order.push("bootstrap");
+            return { ok: true, actions: [], issues: [] };
+          },
+          applyProjectScaffold: () => {
+            order.push("scaffold");
+            return {
+              ok: true,
+              skipped: false,
+              actions: ["Created src/server.js."],
+              issues: [],
+              applied: true,
+              preset: "node-web-graphql-sqlite",
+            };
+          },
+          syncProjectDependencies: () => {
+            order.push("install");
+            return { ok: true, actions: [], issues: [], fingerprint: "scaffold-fp" };
+          },
+          buildDoctor: () => {
+            order.push("doctor");
+            return { ok: true, issues: [] };
+          },
+          runLint: () => {
+            order.push("lint");
+            return { ok: true, issues: [] };
+          },
+          gen: async () => {
+            order.push("gen");
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async () => {
+            order.push("impl");
+            return { written: [], strategyPlan: null, specialists: [] };
+          },
+          verify: async ({ cwd }) => {
+            order.push("verify");
+            fs.mkdirSync(path.join(cwd, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(cwd, "evidence", "run.json"), JSON.stringify({
+              ok: true,
+              passed: 1,
+              failed: 0,
+              groups: [{ kind: "ui", label: "UI", ok: true, failed: 0 }],
+            }, null, 2));
+            return { exitCode: 0, output: "Summary: 1 passed, 0 failed" };
+          },
+        },
+      });
+
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 0);
+      assert.deepEqual(order, ["bootstrap", "scaffold", "install", "doctor", "lint", "gen", "impl", "verify"]);
+      assert.equal(evidence.scaffold_ok, true);
+      assert.equal(evidence.scaffold_applied, true);
+      assert.equal(evidence.scaffold_preset, "node-web-graphql-sqlite");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -440,6 +536,253 @@ describe("run", () => {
       assert.equal(evidence.stage, "draft");
       assert.equal(evidence.iterations, 0);
       assert.equal(evidence.ok, false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("forces a changed strategy after stalled verification rounds", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-stall-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          provider: "command",
+          maxIterations: 3,
+          maxDurationMs: 60000,
+          stagnationThreshold: 1,
+          srcDir: "src",
+          team: {
+            enabled: true,
+            maxSpecialistsPerIteration: 2,
+            memoHistory: 4,
+            roles: ["architecture", "ui", "api", "database", "security", "technical"],
+          },
+        },
+      }, null, 2));
+
+      const orchestrationCalls = [];
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          runLint: () => ({ ok: true, issues: [] }),
+          gen: async () => {
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async ({ orchestration }) => {
+            orchestrationCalls.push(orchestration);
+            return {
+              written: ["src/server.js"],
+              strategyPlan: {
+                summary: "Keep pushing the API failure.",
+                approach: `attempt-${orchestrationCalls.length}`,
+                changed_approach: orchestration.mustChangeStrategy,
+                root_causes: ["API still failing"],
+                assignments: [{ role: "api", goal: "Fix API", why_now: "API is still red", focus_types: ["api"] }],
+              },
+              specialists: [{ role: "api", written_files: ["src/server.js"] }],
+            };
+          },
+          syncProjectDependencies: () => ({ ok: true, actions: [], issues: [], fingerprint: "stall" }),
+          verify: async ({ cwd }) => {
+            fs.mkdirSync(path.join(cwd, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(cwd, "evidence", "run.json"), JSON.stringify({
+              ok: false,
+              passed: 1,
+              failed: 1,
+              groups: [{ kind: "api", label: "API", ok: false, failed: 1 }],
+            }, null, 2));
+            return { exitCode: 1, output: "Summary: 1 passed, 1 failed\nAPI: FAIL" };
+          },
+        },
+      });
+
+      const thread = JSON.parse(fs.readFileSync(path.join(tmpDir, ".shipflow", "implement-thread.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(orchestrationCalls.length, 3);
+      assert.equal(orchestrationCalls[0].mustChangeStrategy, false);
+      assert.equal(orchestrationCalls[1].mustChangeStrategy, false);
+      assert.equal(orchestrationCalls[2].mustChangeStrategy, true);
+      assert.equal(thread.stagnation_streak, 2);
+      assert.equal(thread.attempts.length, 3);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("stops when the overall implementation duration budget is exhausted", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-budget-"));
+    let currentTime = 0;
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          provider: "command",
+          maxIterations: 10,
+          maxDurationMs: 1000,
+          stagnationThreshold: 2,
+          srcDir: "src",
+        },
+      }, null, 2));
+
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          now: () => currentTime,
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          runLint: () => ({ ok: true, issues: [] }),
+          gen: async () => {
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async () => {
+            currentTime = 400;
+            return { written: ["src/server.js"], strategyPlan: null, specialists: [] };
+          },
+          syncProjectDependencies: () => ({ ok: true, actions: [], issues: [], fingerprint: "budget" }),
+          verify: async ({ cwd }) => {
+            currentTime = 1500;
+            fs.mkdirSync(path.join(cwd, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(cwd, "evidence", "run.json"), JSON.stringify({
+              ok: false,
+              passed: 1,
+              failed: 1,
+              groups: [{ kind: "ui", label: "UI", ok: false, failed: 1 }],
+            }, null, 2));
+            return { exitCode: 1, output: "Summary: 1 passed, 1 failed\nUI: FAIL" };
+          },
+        },
+      });
+
+      const evidence = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(evidence.stage, "budget");
+      assert.equal(evidence.iterations, 1);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("continues the global loop when specialists return blocker reports without writing files", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-blocked-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        impl: {
+          provider: "command",
+          maxIterations: 1,
+          maxDurationMs: 60000,
+          stagnationThreshold: 2,
+          srcDir: "src",
+        },
+      }, null, 2));
+
+      let installCalls = 0;
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: [], issues: [] }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          runLint: () => ({ ok: true, issues: [] }),
+          gen: async () => {
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async () => ({
+            written: [],
+            strategyPlan: {
+              summary: "Return blocked.",
+              approach: "Blocked-first",
+              changed_approach: false,
+              root_causes: ["No simple slice-level fix"],
+              assignments: [{ role: "architecture", goal: "Diagnose", why_now: "Need strategy", focus_types: ["technical"] }],
+            },
+            specialists: [{
+              role: "architecture",
+              status: "blocked",
+              written_files: [],
+              blocker_report: {
+                summary: "The architecture slice exhausted the straightforward ideas and needs a reordered plan.",
+                exhausted_simple_paths: true,
+                tried: ["checked the existing server skeleton"],
+                blockers: ["The next logical step belongs to the API slice"],
+                handoff_role: "api",
+                suggested_next_step: "Lead with the API slice next round.",
+              },
+            }],
+          }),
+          syncProjectDependencies: () => {
+            installCalls += 1;
+            return { ok: true, actions: [], issues: [], fingerprint: "blocked" };
+          },
+          verify: async ({ cwd }) => {
+            fs.mkdirSync(path.join(cwd, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(cwd, "evidence", "run.json"), JSON.stringify({
+              ok: false,
+              passed: 0,
+              failed: 1,
+              groups: [{ kind: "ui", label: "UI", ok: false, failed: 1 }],
+            }, null, 2));
+            return { exitCode: 1, output: "Summary: 0 passed, 1 failed\nUI: FAIL" };
+          },
+        },
+      });
+
+      const thread = JSON.parse(fs.readFileSync(path.join(tmpDir, ".shipflow", "implement-thread.json"), "utf-8"));
+      assert.equal(exitCode, 1);
+      assert.equal(installCalls, 0);
+      assert.equal(thread.attempts.length, 1);
+      assert.equal(thread.attempts[0].specialists[0].status, "blocked");
+      assert.equal(thread.attempts[0].specialists[0].handoff_role, "api");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -132,11 +132,11 @@ describe("claudeAllowedToolsForResponseFormat", () => {
   it("keeps Claude in read-only repo inspection mode for structured outputs", () => {
     assert.deepEqual(
       claudeAllowedToolsForResponseFormat("files"),
-      ["Read", "Glob", "Grep", "LS"],
+      ["Read", "Glob", "Grep", "LS", "Task"],
     );
     assert.deepEqual(
       claudeAllowedToolsForResponseFormat("json"),
-      ["Read", "Glob", "Grep", "LS"],
+      ["Read", "Glob", "Grep", "LS", "Task"],
     );
   });
 
@@ -158,7 +158,7 @@ describe("buildClaudeCliArgs", () => {
       "--output-format",
       "text",
       "--tools",
-      "Read,Glob,Grep,LS",
+      "Read,Glob,Grep,LS,Task",
       "--model",
       "sonnet",
     ]);

@@ -1,0 +1,17 @@
+description = "Diagnose the current ShipFlow verify state and choose the next narrow specialist slices"
+
+prompt = """
+# ShipFlow — Strategy Lead
+
+Use this command when you need to decide what the next implementation iteration should attack.
+
+Stay focused on:
+- evidence diagnosis
+- root-cause identification
+- choosing the smallest specialist set that can unlock new passing checks
+
+Rules:
+- do not write code in this role
+- keep assignments narrow and verification-slice specific
+- pick a materially different approach when the loop is stagnating
+"""

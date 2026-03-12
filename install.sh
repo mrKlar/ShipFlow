@@ -108,6 +108,14 @@ FOUND=()
 if command -v claude &>/dev/null; then
   info "Claude Code found"
   FOUND+=("claude")
+  CLAUDE_AGENTS="$HOME/.claude/agents"
+  mkdir -p "$CLAUDE_AGENTS"
+  find "$CLAUDE_AGENTS" -maxdepth 1 -type f -name 'shipflow-*.md' -delete 2>/dev/null || true
+  for agent_file in "$INSTALL_DIR"/claude-agents/shipflow-*.md; do
+    [ -f "$agent_file" ] || continue
+    cp "$agent_file" "$CLAUDE_AGENTS/"
+  done
+  info "Native subagents installed: ~/.claude/agents/shipflow-*.md"
   rm -rf "$HOME/.claude/plugins/cache/shipflow" 2>/dev/null || true
   claude plugin marketplace remove shipflow 2>/dev/null || true
   claude plugin marketplace add "$INSTALL_DIR" 2>/dev/null || true
@@ -151,15 +159,15 @@ if command -v codex &>/dev/null; then
     info "Instructions created: ~/.codex/instructions.md"
   fi
 
-  # Install skills (global: ~/.agents/skills/)
-  CODEX_SKILLS="$HOME/.agents/skills"
+  # Install native skills (global: ~/.codex/skills/)
+  CODEX_SKILLS="$HOME/.codex/skills"
   mkdir -p "$CODEX_SKILLS"
   find "$CODEX_SKILLS" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} + 2>/dev/null || true
   for skill_dir in "$INSTALL_DIR"/codex-skills/shipflow-*; do
     [ -d "$skill_dir" ] || continue
     cp -r "$skill_dir" "$CODEX_SKILLS/"
   done
-  info "Skills installed: \$shipflow-draft, \$shipflow-implement, plus native debug skills"
+  info "Native skills installed: ~/.codex/skills/shipflow-*"
 else
   skip "Codex CLI not found"
 fi
@@ -171,7 +179,7 @@ if command -v gemini &>/dev/null; then
 
   # Install extension
   gemini extensions install "$INSTALL_DIR/gemini-extension" --consent 2>/dev/null || true
-  info "Extension installed: /shipflow:draft, /shipflow:implement, plus native debug commands"
+  info "Extension installed: /shipflow:draft, /shipflow:implement, /shipflow:strategy-lead, and native specialist commands"
 
   # Merge hooks into settings.json
   GEMINI_SETTINGS="$HOME/.gemini/settings.json"
@@ -248,7 +256,7 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   info "Kiro CLI found"
   FOUND+=("kiro")
 
-  # Install skills (global: ~/.kiro/skills/)
+  # Install native skills (global: ~/.kiro/skills/)
   KIRO_SKILLS="$HOME/.kiro/skills"
   mkdir -p "$KIRO_SKILLS"
   find "$KIRO_SKILLS" -maxdepth 1 -type d -name 'shipflow-*' -exec rm -rf {} + 2>/dev/null || true
@@ -256,7 +264,16 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
     [ -d "$skill_dir" ] || continue
     cp -r "$skill_dir" "$KIRO_SKILLS/"
   done
-  info "Skills installed: shipflow-draft, shipflow-implement, plus native debug skills"
+  info "Native skills installed: ~/.kiro/skills/shipflow-*"
+
+  KIRO_AGENTS="$HOME/.kiro/agents"
+  mkdir -p "$KIRO_AGENTS"
+  find "$KIRO_AGENTS" -maxdepth 1 -type f -name 'shipflow-*.md' -delete 2>/dev/null || true
+  for agent_file in "$INSTALL_DIR"/kiro-agents/shipflow-*.md; do
+    [ -f "$agent_file" ] || continue
+    cp "$agent_file" "$KIRO_AGENTS/"
+  done
+  info "Native custom agents installed: ~/.kiro/agents/shipflow-*.md"
 
   # Global steering context
   KIRO_STEERING="$HOME/.kiro/steering"
@@ -272,14 +289,29 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
       const settings = JSON.parse(fs.readFileSync('$KIRO_SETTINGS', 'utf-8'));
       if (!settings.hooks) settings.hooks = {};
       if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
+      if (!Array.isArray(settings.availableAgents)) settings.availableAgents = [];
+      if (!Array.isArray(settings.trustedAgents)) settings.trustedAgents = [];
       const required = [
         { matcher: 'write_file|replace', command: '$KIRO_GUARD_CMD' },
         { matcher: 'execute_bash|shell', command: '$KIRO_GUARD_CMD' }
+      ];
+      const requiredAgents = [
+        'shipflow-strategy-lead',
+        'shipflow-architecture-specialist',
+        'shipflow-ui-specialist',
+        'shipflow-api-specialist',
+        'shipflow-database-specialist',
+        'shipflow-security-specialist',
+        'shipflow-technical-specialist'
       ];
       for (const spec of required) {
         if (!settings.hooks.PreToolUse.some(h => h && h.matcher === spec.matcher && h.command === spec.command)) {
           settings.hooks.PreToolUse.push(spec);
         }
+      }
+      for (const agent of requiredAgents) {
+        if (!settings.availableAgents.includes(agent)) settings.availableAgents.push(agent);
+        if (!settings.trustedAgents.includes(agent)) settings.trustedAgents.push(agent);
       }
       fs.writeFileSync('$KIRO_SETTINGS', JSON.stringify(settings, null, 2) + '\n');
     "
@@ -287,6 +319,24 @@ if command -v kiro-cli &>/dev/null || command -v kiro &>/dev/null; then
   else
     cat > "$KIRO_SETTINGS" << EOJSON
 {
+  "availableAgents": [
+    "shipflow-strategy-lead",
+    "shipflow-architecture-specialist",
+    "shipflow-ui-specialist",
+    "shipflow-api-specialist",
+    "shipflow-database-specialist",
+    "shipflow-security-specialist",
+    "shipflow-technical-specialist"
+  ],
+  "trustedAgents": [
+    "shipflow-strategy-lead",
+    "shipflow-architecture-specialist",
+    "shipflow-ui-specialist",
+    "shipflow-api-specialist",
+    "shipflow-database-specialist",
+    "shipflow-security-specialist",
+    "shipflow-technical-specialist"
+  ],
   "hooks": {
     "PreToolUse": [
       {
@@ -321,10 +371,10 @@ if [ ${#FOUND[@]} -gt 0 ]; then
   printf "${B}Configured platforms:${R}\n"
   for p in "${FOUND[@]}"; do
     case "$p" in
-      claude) printf "  ${C}Claude Code${R}  — plugin (restart Claude Code)\n" ;;
-      codex)  printf "  ${C}Codex CLI${R}    — skills + rules + instructions\n" ;;
-      gemini) printf "  ${C}Gemini CLI${R}   — extension + hooks\n" ;;
-      kiro)   printf "  ${C}Kiro CLI${R}     — skills + steering\n" ;;
+      claude) printf "  ${C}Claude Code${R}  — plugin + native subagents (restart Claude Code)\n" ;;
+      codex)  printf "  ${C}Codex CLI${R}    — native skills + rules + instructions\n" ;;
+      gemini) printf "  ${C}Gemini CLI${R}   — extension + native specialist commands + hooks\n" ;;
+      kiro)   printf "  ${C}Kiro CLI${R}     — native skills + custom agents + steering\n" ;;
     esac
   done
   echo ""
@@ -357,7 +407,7 @@ if [[ " ${FOUND[*]:-} " == *" gemini "* ]]; then
 fi
 
 if [[ " ${FOUND[*]:-} " == *" kiro "* ]]; then
-  printf "  ${D}# Kiro CLI (skills auto-activate):${R}\n"
+  printf "  ${D}# Kiro CLI (custom agents + skills):${R}\n"
   echo "  \"let's draft ShipFlow verifications for a todo app\""
   echo "  \"run shipflow implement once the draft is ready\""
   echo ""

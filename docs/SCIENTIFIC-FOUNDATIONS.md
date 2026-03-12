@@ -31,6 +31,13 @@ ShipFlow is not merely a testing tool; it is a concrete implementation of severa
 - **Theoretical Root:** Research by Sumit Gulwani (Programming by Example) and the concept of **Counterexample-Guided Abstraction Refinement (CEGAR)**.
 - **Analysis:** ShipFlow implements a modern variant of synthesis. After the pack-definition phase, the `Implement -> Verify -> Fix` cycle becomes a physical implementation of a refinement loop. The AI does not "guess" the code; it converges on the implementation that satisfies the locked constraints in the Verification Pack.
 
+### 3.5. Bounded Multi-Agent Decomposition
+
+**Principle:** Hard implementation problems are solved faster and more reliably when planning and repair are decomposed into bounded specialist contexts instead of one continuously growing conversation.
+
+- **Theoretical Root:** This aligns with **hierarchical planning**, **blackboard systems**, and Herbert Simon's idea of **bounded rationality**: a system performs better when each participant reasons over the smallest context that still contains the decision.
+- **Analysis:** ShipFlow's implementation loop now operationalizes that idea. A strategy lead reads the compact thread and current evidence, chooses only the needed specialist slices, and delegates narrow subproblems to UI, API, database, security, technical, or architecture specialists. The continuity artifact is not a gigantic transcript; it is `evidence/implement-history.json` plus `.shipflow/implement-thread.json`. That makes the search process more stable, keeps detail local, and gives ShipFlow an explicit response to stagnation: change strategy when the last one is not producing new green checks.
+
 ### 4. Correctness by Construction (CxC)
 
 **Principle:** Ensuring the software is correct by design rather than attempting to fix bugs after the fact.

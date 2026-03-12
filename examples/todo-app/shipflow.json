@@ -8,6 +8,10 @@
     "maxTokens": 16384,
     "maxIterations": 5,
     "srcDir": "src",
+    "scaffold": {
+      "enabled": true,
+      "preset": "node-web-rest-sqlite"
+    },
     "context": "Build a Node.js todo app with a browser UI at /, a REST API under /api/todos, and SQLite storage in ./test.db. The web UI should let users add, complete, and filter todos. Prefer a simple Node.js server with HTML and vanilla client-side JavaScript. Use Node's built-in node:sqlite support for persistence when available, and avoid native SQLite addons such as better-sqlite3 or sqlite3 npm packages."
   }
 }

@@ -18,6 +18,7 @@ ShipFlow installs as a Claude Code plugin providing the standard flow plus nativ
 | `/shipflow:status` | Sonnet 4.6 | Inspect pack, artifact, and evidence state |
 
 Install the global plugin with `./install.sh`. Then run `shipflow init --claude` inside each project that should use ShipFlow.
+The installer also places native ShipFlow subagents under `~/.claude/agents`.
 
 For projects with visual UI contracts, baseline approval stays explicit and outside the slash-command flow:
 
@@ -27,6 +28,20 @@ shipflow approve-visual
 
 That keeps visual truth reviewed and locked, instead of letting the implementation loop silently bless a changed UI.
 
+## Native Subagents
+
+Claude Code uses native subagents through the `Task` tool during implementation.
+
+- `shipflow-strategy-lead` handles orchestration and strategy changes
+- `shipflow-architecture-specialist`
+- `shipflow-ui-specialist`
+- `shipflow-api-specialist`
+- `shipflow-database-specialist`
+- `shipflow-security-specialist`
+- `shipflow-technical-specialist`
+
+ShipFlow keeps each Task delegation small: one verification slice, one evidence target, one concrete problem to solve.
+
 ## How the Loop Works
 
 ```
@@ -34,15 +49,14 @@ That keeps visual truth reviewed and locked, instead of letting the implementati
                             ↓
 /shipflow:implement     → AI runs the standard implementation loop
                             ↓
-                    ┌───────────────────────────┐
-                    │ 1. shipflow implement     │
-                    │ 2. doctor                 │
-                    │ 3. lint                   │
-                    │ 4. gen                    │
-                    │ 5. write code under src/  │
-                    │ 6. verify                 │
-                    │ 7. retry until green      │
-                    └───────────────────────────┘
+                    ┌────────────────────────────────────┐
+                    │ 1. doctor / lint / gen            │
+                    │ 2. strategy lead reads evidence   │
+                    │ 3. specialist subagents work      │
+                    │ 4. verify                         │
+                    │ 5. update thread + history        │
+                    │ 6. retry until green or budget    │
+                    └────────────────────────────────────┘
                     Stop hook enforces final verify
 ```
 
@@ -72,3 +86,5 @@ When `shipflow init --claude` is run inside a project, it creates `.claude/hooks
 | `CLAUDE.md` | Workflow instructions for the AI |
 | `.claude/hooks.json` | Anti-cheat hooks |
 | `vp/ui/_fixtures/` | Fixture directory scaffold |
+
+The global installer also adds the ShipFlow subagents to `~/.claude/agents`, which is where the implementation loop expects them.

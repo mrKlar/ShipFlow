@@ -1,0 +1,17 @@
+{
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
+  },
+  "impl": {
+    "provider": "auto",
+    "maxTokens": 16384,
+    "maxIterations": 5,
+    "srcDir": "src",
+    "scaffold": {
+      "enabled": true,
+      "preset": "node-web-graphql-sqlite"
+    },
+    "context": "Build a Node.js tic-tac-toe app with a browser UI at /, a GraphQL API at /graphql, and SQLite score history in ./test.db. The UI must render a playable 3x3 board, announce the winner, and list completed-game history. Persist completed games through the GraphQL API. Prefer a simple Node.js server with HTML and vanilla client-side JavaScript. Use Node's built-in node:sqlite support for persistence when available, and avoid native SQLite addons such as better-sqlite3 or sqlite3 npm packages."
+  }
+}

@@ -1,0 +1,7 @@
+Build a Vue.js movie-comments app with an Ant Design Vue design system, a GraphQL API, and SQLite storage.
+
+Required capabilities:
+- show a small movie catalog with poster images, titles, release years, and synopsis snippets
+- let users select a movie and post comments about it
+- expose GraphQL at /graphql for reading movie details and creating comments
+- persist movie comments in SQLite at ./test.db

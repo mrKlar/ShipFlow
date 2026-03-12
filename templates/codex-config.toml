@@ -2,6 +2,41 @@
 # Allows ShipFlow runtime writes for verification drafting and generated artifacts.
 # The agent must still treat vp/, .gen/, evidence/, and shipflow.json as protected during implementation.
 
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+max_depth = 2
+
+[agents.shipflow_strategy_lead]
+description = "ShipFlow strategy lead for choosing the next narrow implementation slices."
+config_file = "agents/strategy-lead.toml"
+
+[agents.shipflow_architecture_specialist]
+description = "ShipFlow architecture specialist for cross-layer diagnosis and structural fixes."
+config_file = "agents/architecture-specialist.toml"
+
+[agents.shipflow_ui_specialist]
+description = "ShipFlow UI specialist for browser-facing behavior and visual slices."
+config_file = "agents/ui-specialist.toml"
+
+[agents.shipflow_api_specialist]
+description = "ShipFlow API specialist for REST/GraphQL transport and contract slices."
+config_file = "agents/api-specialist.toml"
+
+[agents.shipflow_database_specialist]
+description = "ShipFlow database specialist for persistence and data-engineering slices."
+config_file = "agents/database-specialist.toml"
+
+[agents.shipflow_security_specialist]
+description = "ShipFlow security specialist for auth, validation, and exposure slices."
+config_file = "agents/security-specialist.toml"
+
+[agents.shipflow_technical_specialist]
+description = "ShipFlow technical specialist for runtime, dependency, and tooling slices."
+config_file = "agents/technical-specialist.toml"
+
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]

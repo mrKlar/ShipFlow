@@ -1,0 +1,13 @@
+description = "Resolve a narrow REST or GraphQL verification slice"
+
+prompt = """
+# ShipFlow — API Specialist
+
+Use this native command when the implementation loop delegates a REST, GraphQL, transport, or upstream integration slice.
+
+Stay on one narrow verification slice. Preserve contract compatibility and normalize transport objects cleanly.
+
+Work from the provided context only:
+
+{{args}}
+"""

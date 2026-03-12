@@ -10,10 +10,10 @@
 
 </div>
 
-ShipFlow is a framework for AI coding agents. You do not hand the agent a long spec and hope it interprets it correctly. You define what must be observably true when the work is done, ShipFlow turns that into executable verification, locks the boundary, and drives implementation until the checks pass.
+ShipFlow is a framework for AI coding agents. You do not hand the agent a long spec and hope it interprets it correctly. You define what must be observably true when the work is done, ShipFlow turns that into executable verification, locks the boundary, installs a deterministic project foundation when needed, and drives implementation until the checks pass.
 
 ```text
-Define outcomes  ->  Draft the pack  ->  Generate tests/runners  ->  Implement until green
+Define outcomes  ->  Draft the pack  ->  Generate tests/runners  ->  Scaffold the foundation  ->  Implement until green
 ```
 
 The code is disposable. The verification pack is the durable artifact.
@@ -48,12 +48,48 @@ ShipFlow also understands the shape of the product it is drafting for. It can pr
 1. Define what must be true when the work is done.
 2. Turn that into a verification pack under `vp/`.
 3. Let ShipFlow generate real tests and runners.
-4. Let the agent implement until verification is green.
+4. Let ShipFlow install a deterministic project foundation for the supported stack when the repo is still empty or a preset is declared.
+5. Let ShipFlow drive implementation until verification is green.
 
 That boundary can go beyond UI and API output.
 - For stateful systems, ShipFlow can lock the business domain itself and the required data-engineering translation into technical data objects.
 - For UI-heavy systems, ShipFlow can lock approved visual baselines and produce `expected`, `actual`, and `diff` artifacts.
 - For backend services, ShipFlow can keep API, database, and technical reality in scope together, including DB-backed and multi-API REST services.
+- For greenfield work, ShipFlow can take the unstable "pick the stack, wire the scripts, create the folders, install the base libraries" work away from the LLM entirely.
+
+## Deterministic Foundations
+
+Before the specialists start coding, ShipFlow can apply a deterministic scaffold for supported product shapes. That means the agent does not have to re-decide the same fragile setup details on every run.
+
+- stable package scripts and base dependencies
+- stable directory structure and entrypoints
+- stable browser/server shell for the supported stack
+- a foundation the LLM can build on instead of re-inventing
+
+Current presets include:
+- Node web app + REST + SQLite
+- Node web app + GraphQL + SQLite
+- Node REST service + SQLite
+- Vue 3 + Ant Design Vue + GraphQL + SQLite
+
+The goal is simple: let the LLM spend its context on product logic, data modeling, and failing verifications, not on re-assembling the same boilerplate with slightly different mistakes.
+
+## Implementation Strategy
+
+`shipflow implement` is a bounded multi-agent loop, not one ever-growing agent context.
+
+1. ShipFlow bootstraps the verification runtime and applies a deterministic scaffold when configured or inferred.
+2. A strategy lead reads the latest evidence and compact thread state.
+3. ShipFlow activates only the specialists needed for that round: `architecture`, `ui`, `api`, `database`, `security`, `technical`.
+4. Each specialist gets a narrow verification slice and its own clean context.
+5. Verification runs again, the thread is updated, and stagnation is measured from real progress.
+6. If no new blocker checks pass, the next round must change strategy instead of repeating the same patch pattern.
+
+The installer wires that to the native surface of each CLI:
+- Claude Code: plugin + Task subagents
+- Codex CLI: native skills + separate specialist runs
+- Gemini CLI: extension commands + separate specialist runs
+- Kiro CLI: custom agents + skills + steering
 
 ## Install
 
@@ -61,7 +97,7 @@ That boundary can go beyond UI and API output.
 curl -fsSL https://raw.githubusercontent.com/mrKlar/ShipFlow/main/install.sh | bash
 ```
 
-The installer detects Claude Code, Codex CLI, Gemini CLI, and Kiro CLI and installs the native ShipFlow integration for each one it finds.
+The installer detects Claude Code, Codex CLI, Gemini CLI, and Kiro CLI and installs the native ShipFlow integration for each one it finds, including the multi-agent implementation surface for that CLI.
 
 ### Uninstall
 
@@ -95,7 +131,14 @@ Then use the normal flow:
 
 1. Draft and finalize the verification pack.
 2. Generate the runnable artifacts.
-3. Run the implementation loop.
+3. Optionally apply or review the deterministic scaffold.
+4. Run the multi-agent implementation loop.
+
+For deterministic project setup:
+
+```bash
+shipflow scaffold
+```
 
 For visual approvals:
 

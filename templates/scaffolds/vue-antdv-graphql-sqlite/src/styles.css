@@ -1,0 +1,66 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", sans-serif;
+  color: #102039;
+  background: #f6f8fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(22, 119, 255, 0.18), transparent 28%),
+    linear-gradient(180deg, #f6f8fb 0%, #eef3ff 100%);
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.layout-shell {
+  max-width: 78rem;
+  margin: 0 auto;
+  border-radius: 2rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 70px rgba(16, 32, 57, 0.12);
+}
+
+.layout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 2rem !important;
+  min-height: 0 !important;
+  background: linear-gradient(135deg, #102039 0%, #204c94 100%) !important;
+}
+
+.layout-header h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.layout-content {
+  padding: 2rem !important;
+}
+
+.status-copy {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  line-height: 1.7;
+}

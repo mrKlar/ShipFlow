@@ -139,19 +139,19 @@ function detectDeclaredHttpRoutes(glob) {
       const method = match[1].toUpperCase() === "ALL" ? "ANY" : match[1].toUpperCase();
       routes.push({ file, method, path: normalizeRoutePath(match[2]) });
     }
-    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
       routes.push({ file, method: match[2].toUpperCase(), path: normalizeRoutePath(match[1]) });
     }
-    for (const match of content.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+    for (const match of content.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       routes.push({ file, method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) });
     }
-    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
       routes.push({ file, method: match[2].toUpperCase(), path: normalizeRoutePath(match[1]) });
     }
-    for (const match of content.matchAll(/method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+    for (const match of content.matchAll(/method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       routes.push({ file, method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) });
     }
-    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       for (const method of methodsNear(match.index)) pushRoute(method, match[1]);
     }
     for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\.match\(\s*(\/\^[^\n]+?\/[gimuy]*)\s*\)/g)) {

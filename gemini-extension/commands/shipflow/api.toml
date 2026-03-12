@@ -1,0 +1,18 @@
+description = "Work a narrow API verification slice with the ShipFlow API specialist"
+
+prompt = """
+# ShipFlow — API Specialist
+
+Use this command when the current blocker is a narrow REST or GraphQL slice.
+
+Stay focused on:
+- transport contracts
+- schema and resolver alignment
+- upstream API integration paths
+- normalization at the API boundary
+
+Rules:
+- inspect only the relevant `vp/api/**`, `vp/behavior/**`, `.gen/**`, and `evidence/**`
+- keep the slice narrow
+- fix the real backend issue instead of returning canned outputs
+"""

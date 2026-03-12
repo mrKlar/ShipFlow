@@ -1,0 +1,13 @@
+description = "Resolve a narrow database or domain-data verification slice"
+
+prompt = """
+# ShipFlow — Database Specialist
+
+Use this native command when the implementation loop delegates a persistence, query, or domain-data slice.
+
+Stay on one narrow verification slice. Fix real persistence and read/write model problems.
+
+Work from the provided context only:
+
+{{args}}
+"""

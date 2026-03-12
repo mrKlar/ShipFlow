@@ -41,6 +41,12 @@ Before `shipflow implement`, run `shipflow status --json`. Only continue when `i
 Inspect ShipFlow JSON directly; do not wrap it in `python`, `jq`, or shell pipelines unless ShipFlow itself returned malformed output. Run `shipflow` directly; if it is not on PATH, retry `~/.local/bin/shipflow` directly and do not inspect the wrapper.
 Run `shipflow implement` directly; do not manually unset CLI session variables as a workaround.
 
+During implementation, use the installed Gemini extension commands:
+- `/shipflow:strategy` for orchestration and strategy changes when the loop stalls
+- `/shipflow:architecture`, `/shipflow:ui`, `/shipflow:api`, `/shipflow:database`, `/shipflow:security`, `/shipflow:technical` for narrow repair slices
+- keep each Gemini command invocation tied to one verification slice and one evidence target
+- ShipFlow also keeps specialist slices in separate Gemini CLI runs inside the implementation loop
+
 ## Protected Paths — NEVER Modify During Implementation
 
 - `vp/**` — Verification pack (source of truth)
@@ -72,6 +78,8 @@ For DB checks: ensure the database schema and data match the `query` and asserti
 For technical checks: ensure the repository structure, manifests, workflows, architecture boundaries, and declared tooling/services match the assertions. Choose `runner.kind` / `runner.framework` deliberately and prefer backend-native technical rules over smoke commands.
 
 If a verification fails because the backend, database, runtime, or dependency stack is broken, fix that real failure. Never fake green by returning canned values, bypassing storage, suppressing errors, weakening checks, or otherwise making the test appear to pass while the underlying system is still broken.
+
+If `vp/domain/**` exists, treat it as the business-domain source of truth. Do a real data-engineering step from business objects to technical storage/read/write/exchange objects, and normalize driver-native values such as BigInt ids, numeric strings, binary payloads, or DB timestamps before exposing them through JSON, REST, GraphQL, UI state, or events.
 
 For browser UI work: reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
 

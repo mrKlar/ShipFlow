@@ -36,6 +36,7 @@ Advanced / debug:
   shipflow doctor              Check local tools, runners, and AI CLI adapters
   shipflow gen                 Generate runnable tests from the verification pack
   shipflow approve-visual      Capture or refresh locked UI visual baselines
+  shipflow scaffold            Apply a deterministic project foundation for supported stacks
   shipflow verify              Run generated tests and write evidence
   shipflow status              Show pack, generated tests, and evidence
   shipflow implement-once      Single implementation pass without the retry loop
@@ -81,6 +82,12 @@ Exit codes:
   if (cmd === "approve-visual") {
     const { approveVisual } = await import("../lib/approve-visual.js");
     const { exitCode } = await approveVisual({ cwd: process.cwd(), input });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "scaffold") {
+    const { scaffold } = await import("../lib/scaffold.js");
+    const { exitCode } = scaffold({ cwd: process.cwd(), force: flags.has("--force") });
     process.exit(exitCode);
   }
 

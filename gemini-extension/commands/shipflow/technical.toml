@@ -1,0 +1,18 @@
+description = "Work a narrow runtime, dependency, tooling, or CI verification slice with the ShipFlow technical specialist"
+
+prompt = """
+# ShipFlow — Technical Specialist
+
+Use this command when the blocker is a narrow runtime, dependency, startup, build, or CI slice.
+
+Stay focused on:
+- runtime loading
+- dependency compatibility
+- startup and build wiring
+- technical verification gates
+
+Rules:
+- inspect only the relevant `vp/technical/**`, `.gen/**`, and `evidence/**`
+- fix the real runtime or tooling issue
+- do not paper over broken startup or dependency states
+"""

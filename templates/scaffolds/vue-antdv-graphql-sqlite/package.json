@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "start": "node src/server.js",
+    "server": "node src/server.js",
+    "client": "vite --host 127.0.0.1 --port 3000 --strictPort",
+    "build": "vite build",
+    "shipflow:gen": "shipflow gen",
+    "shipflow:verify": "shipflow verify",
+    "shipflow:implement": "shipflow implement",
+    "shipflow:implement-once": "shipflow implement-once"
+  },
+  "dependencies": {
+    "ant-design-vue": "^4.2.6",
+    "graphql": "^16.10.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.1.0"
+  },
+  "keywords": [
+    "shipflow",
+    "vue",
+    "ant-design-vue",
+    "graphql",
+    "sqlite"
+  ]
+}

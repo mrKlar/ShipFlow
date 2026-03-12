@@ -21,7 +21,7 @@ describe("todo example temp project", () => {
       assert.equal(manifest.outputs.db.count, 1);
       assert.equal(manifest.outputs.technical.count, 3);
 
-      const written = await impl({
+      const implementation = await impl({
         cwd: tmpDir,
         provider: "command",
         deps: {
@@ -29,7 +29,12 @@ describe("todo example temp project", () => {
         },
       });
 
+      const written = Array.isArray(implementation)
+        ? implementation
+        : implementation?.written;
+
       assert.deepEqual(written, ["src/server.js"]);
+      assert.equal(Array.isArray(implementation?.specialists), true);
 
       await assertTodoAppQuality(tmpDir);
     } finally {

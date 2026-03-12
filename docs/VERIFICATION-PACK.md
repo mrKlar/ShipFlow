@@ -62,10 +62,12 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
 6. Runs generated business-domain runners when `.gen/domain/*.runner.mjs` exist → `evidence/domain.json`
 7. Runs generated technical backend runners when `.gen/technical/*.runner.mjs` exist → `evidence/technical.json`
 8. Emits aggregate `evidence/run.json` with group summaries
-9. `shipflow implement` updates `evidence/implement.json` as it advances through bootstrap, generation, implementation, and verification
-10. `shipflow status` may also show recent implementation history when available
-11. Prints colored summary
-12. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
+9. `shipflow implement` updates `evidence/implement.json` as it advances through bootstrap, deterministic scaffold, dependency sync, strategy, specialist implementation rounds, and verification
+10. `shipflow implement` appends iteration history to `evidence/implement-history.json`
+11. `shipflow implement` keeps a compact continuity thread in `.shipflow/implement-thread.json`
+12. `shipflow status` may also show recent implementation history when available
+13. Prints colored summary
+14. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
 
 `shipflow approve-visual`:
 1. Reads the current UI pack
@@ -83,6 +85,8 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
    On stateful or integration-heavy repos, these starters can also include `vp/domain/*.yml` so the business-domain objects and required technical data objects are locked before implementation.
 5. Optionally writes starter files to `vp/` with `--write`
 
+The scaffold is a separate concern from the pack itself. `vp/` remains the source of truth for what must be true. The deterministic scaffold is just the scripted implementation foundation ShipFlow can apply before the LLM starts coding.
+
 The draft is archetype-aware. It can distinguish:
 - frontend web apps
 - fullstack web apps
@@ -90,6 +94,26 @@ The draft is archetype-aware. It can distinguish:
 - CLI / TUI apps
 
 That matters because ShipFlow proposes different baseline bundles for different realities. A REST backend service can now be drafted as a first-class product boundary, including database-backed services and services that fan out across multiple upstream APIs.
+
+## Implementation Orchestration
+
+Implementation is intentionally separated from verification-pack authoring.
+
+`shipflow implement` runs as a bounded orchestration loop:
+- ShipFlow can first apply a deterministic project scaffold from `shipflow.json` when the stack is supported and the repo still needs a foundation
+- a strategy lead diagnoses the latest evidence
+- only the needed specialist slices are activated
+- each specialist gets a narrow verification target and its own context
+- the loop measures real progress, not just file churn
+- when the run stalls, the next round must change strategy
+
+That scaffold can install a stable directory layout, base scripts, and foundation dependencies for supported stacks such as:
+- Node web app + REST + SQLite
+- Node web app + GraphQL + SQLite
+- Node REST service + SQLite
+- Vue + Ant Design Vue + GraphQL + SQLite
+
+This is why ShipFlow can keep working on hard cases for hours without pretending that one giant chat context is enough. The continuity artifact is the compact thread and the evidence, not a swollen conversational transcript.
 
 ## Anti-Cheat Invariants
 

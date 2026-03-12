@@ -40,8 +40,17 @@ describe("init", () => {
       assert.equal(config.draft.aiProvider, "auto");
       assert.equal(config.impl.provider, "auto");
       assert.equal(config.impl.historyLimit, 50);
+      assert.equal(config.impl.maxIterations, 50);
+      assert.equal(config.impl.maxDurationMs, 21600000);
+      assert.equal(config.impl.stagnationThreshold, 2);
       assert.equal(Object.prototype.hasOwnProperty.call(config.impl, "model"), false);
       assert.equal(config.impl.srcDir, "src");
+      assert.equal(config.impl.scaffold.enabled, true);
+      assert.equal(config.impl.scaffold.preset, "");
+      assert.equal(config.impl.scaffold.force, false);
+      assert.equal(config.impl.team.enabled, true);
+      assert.equal(config.impl.team.maxSpecialistsPerIteration, 4);
+      assert.deepEqual(config.impl.team.roles, ["architecture", "ui", "api", "database", "security", "technical"]);
     });
   });
 
@@ -78,6 +87,7 @@ describe("init", () => {
       const content = fs.readFileSync(path.join(tmpDir, "CLAUDE.md"), "utf-8");
       assert.ok(content.includes("ShipFlow"));
       assert.ok(content.includes("Never fake green"));
+      assert.match(content, /normalize driver-native values such as BigInt ids/i);
     });
   });
 
@@ -162,9 +172,13 @@ describe("init", () => {
       assert.ok(agents.includes("Never fake green"));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "config.toml")));
       const toml = fs.readFileSync(path.join(tmpDir, ".codex", "config.toml"), "utf-8");
+      assert.ok(toml.includes("multi_agent = true"));
+      assert.ok(toml.includes("[agents.shipflow_strategy_lead]"));
       assert.ok(toml.includes("sandbox_mode"));
       assert.ok(toml.includes("\"vp/\""));
       assert.ok(toml.includes("\".shipflow/\""));
+      assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "agents", "strategy-lead.toml")));
+      assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "agents", "ui-specialist.toml")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules")));
       const rules = fs.readFileSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules"), "utf-8");
       assert.ok(rules.includes('pattern=["cat", ["~/.local/bin/shipflow"'));
@@ -281,6 +295,8 @@ describe("init", () => {
       const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, ".kiro", "settings.json"), "utf-8"));
       assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "write_file|replace"));
       assert.ok(settings.hooks.PreToolUse.some(hook => hook.matcher === "execute_bash|shell"));
+      assert.ok(settings.availableAgents.includes("shipflow-strategy-lead"));
+      assert.ok(settings.trustedAgents.includes("shipflow-ui-specialist"));
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
     });
   });

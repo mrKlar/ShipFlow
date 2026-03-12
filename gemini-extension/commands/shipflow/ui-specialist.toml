@@ -1,0 +1,13 @@
+description = "Resolve a narrow UI or browser-facing verification slice"
+
+prompt = """
+# ShipFlow — UI Specialist
+
+Use this native command when the implementation loop delegates a UI, browser behavior, or visual contract slice.
+
+Stay on one narrow verification slice. Fix real UI or client-integration root causes and preserve shared components.
+
+Work from the provided context only:
+
+{{args}}
+"""

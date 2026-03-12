@@ -1,0 +1,13 @@
+description = "Resolve a narrow architecture or cross-layer verification slice"
+
+prompt = """
+# ShipFlow — Architecture Specialist
+
+Use this native command when the implementation loop delegates a cross-layer or structural fix.
+
+Stay on one narrow verification slice. Prefer minimal structural fixes that unblock the assigned checks.
+
+Work from the provided context only:
+
+{{args}}
+"""

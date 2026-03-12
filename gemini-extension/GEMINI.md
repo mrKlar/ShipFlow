@@ -104,3 +104,10 @@ shipflow draft --reject=vp/path.yml
 
 - `/shipflow:draft [description]` — Draft or refine the verification pack
 - `/shipflow:implement` — Run the standard implementation loop
+- `/shipflow:strategy` — Diagnose the current verify state and choose the next narrow specialist slices
+- `/shipflow:architecture` — Work a narrow cross-layer architecture slice
+- `/shipflow:ui` — Work a narrow UI or visual-contract slice
+- `/shipflow:api` — Work a narrow REST or GraphQL slice
+- `/shipflow:database` — Work a narrow persistence or data-engineering slice
+- `/shipflow:security` — Work a narrow security slice
+- `/shipflow:technical` — Work a narrow runtime, dependency, tooling, or CI slice

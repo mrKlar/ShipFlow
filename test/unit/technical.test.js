@@ -450,6 +450,46 @@ describe("genTechnicalArtifacts", () => {
     }
   });
 
+  it("detects GraphQL routes declared in a native node:http server via req.url", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-graphql-node-http-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "graphql.js"), [
+        'import { buildSchema } from "graphql";',
+        "export const schema = buildSchema(`type Query { ok: Boolean }`);",
+        "export function handleGraphQL() { return schema; }",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), [
+        'import { handleGraphQL } from "./graphql.js";',
+        "export function handler(req, res) {",
+        "  if (req.method === 'POST' && req.url === '/graphql') {",
+        "    return handleGraphQL(req, res);",
+        "  }",
+        "  return null;",
+        "}",
+        "",
+      ].join("\n"));
+
+      const [runner] = genTechnicalArtifacts({
+        ...base,
+        __file: "vp/technical/graphql-node-http.yml",
+        category: "framework",
+        runner: { kind: "custom", framework: "custom" },
+        assert: [
+          { graphql_surface_present: { files: "src/**/*", endpoint: "/graphql" } },
+        ],
+      });
+
+      const runnerFile = path.join(tmpDir, runner.name);
+      fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("detects REST routes declared through local path and method aliases", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-rest-node-alias-"));
     try {

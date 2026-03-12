@@ -1,0 +1,17 @@
+{
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
+  },
+  "impl": {
+    "provider": "auto",
+    "maxTokens": 16384,
+    "maxIterations": 5,
+    "srcDir": "src",
+    "scaffold": {
+      "enabled": true,
+      "preset": "vue-antdv-graphql-sqlite"
+    },
+    "context": "Build a Vue 3 movie-comments web app with an Ant Design Vue interface, a GraphQL API at /graphql, and SQLite persistence in ./test.db. The browser UI must show movie cards with poster images and metadata, let users select a movie, and let them post comments that appear immediately in the selected movie detail. Use Vue and ant-design-vue as real package dependencies, not CDN globals. Keep poster images local or data-URL based so the app does not depend on external network access. Use Node's built-in node:sqlite support for persistence when available, and avoid native SQLite addons such as better-sqlite3 or sqlite3 npm packages."
+  }
+}

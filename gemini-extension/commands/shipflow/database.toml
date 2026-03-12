@@ -1,0 +1,18 @@
+description = "Work a narrow database or data-engineering verification slice with the ShipFlow database specialist"
+
+prompt = """
+# ShipFlow — Database Specialist
+
+Use this command when the blocker is a narrow persistence, migration, query, or data-engineering slice.
+
+Stay focused on:
+- storage models
+- write and read paths
+- migrations and queries
+- business-to-technical data translation
+
+Rules:
+- inspect only the relevant `vp/db/**`, `vp/domain/**`, `.gen/**`, and `evidence/**`
+- normalize driver-native values before they cross transport boundaries
+- never fake database success while storage is broken
+"""

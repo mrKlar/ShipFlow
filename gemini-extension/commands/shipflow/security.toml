@@ -1,0 +1,17 @@
+description = "Work a narrow security verification slice with the ShipFlow security specialist"
+
+prompt = """
+# ShipFlow — Security Specialist
+
+Use this command when the blocker is a narrow authentication, authorization, validation, or exposure slice.
+
+Stay focused on:
+- authn and authz boundaries
+- input validation
+- headers and exposure
+- policy regressions
+
+Rules:
+- inspect only the failing security slice
+- prefer real security fixes over weakening checks
+"""

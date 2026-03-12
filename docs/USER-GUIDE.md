@@ -62,10 +62,10 @@ The installer:
 1. Installs `shipflow` as a global CLI command
 2. Auto-detects Claude Code, Codex CLI, Gemini CLI, Kiro CLI
 3. Installs native integrations for each detected platform:
-   - **Claude Code** — plugin
-   - **Codex CLI** — skills + exec policy rules + global instructions
-   - **Gemini CLI** — extension + BeforeTool write/shell guard hooks
-   - **Kiro CLI** — skills + steering context + project PreToolUse write/shell guards
+   - **Claude Code** — plugin + native subagents in `~/.claude/agents`
+   - **Codex CLI** — native skills in `~/.codex/skills` + exec policy rules + global instructions
+   - **Gemini CLI** — extension commands + BeforeTool write/shell guard hooks
+   - **Kiro CLI** — native custom agents in `~/.kiro/agents` + skills + steering context + write/shell guards
 
 Restart Claude Code after installing.
 
@@ -83,6 +83,7 @@ By default, `shipflow init` scaffolds the files for the currently detected CLI. 
 For the normal greenfield flow, `shipflow implement` bootstraps a local verification runtime under `.shipflow/runtime/` when possible, including JS packages such as `@playwright/test` or `@cucumber/cucumber`, a local Playwright browser runtime, and supported native backends such as `k6` or `opa`.
 Some system-level tools may still be required depending on your pack. SQLite checks can use `sqlite3` when it is installed, or fall back to Node's `node:sqlite` runtime on newer Node versions. PostgreSQL checks still require `psql`.
 On greenfield drafts, ShipFlow can also write technical starters that pin that initial verification environment into the pack, so runtime drift is reviewed as a pack change rather than discovered later as a flaky implementation failure.
+On the implementation side, ShipFlow can also apply a deterministic product scaffold before the LLM starts coding, so the agent is not rebuilding the same base stack from scratch on every run.
 
 ### Multi-platform
 
@@ -123,6 +124,46 @@ Useful fields:
 - `impl.writeRoots`: extra repo-level paths allowed during implementation, such as `.github/workflows` or `infra`.
 - `impl.context`: extra project context passed into implementation.
 - `impl.autoBootstrap`: whether ShipFlow should bootstrap its local verification runtime under `.shipflow/runtime/`.
+- `impl.scaffold.enabled`: whether ShipFlow may apply a deterministic project scaffold before implementation.
+- `impl.scaffold.preset`: explicit scaffold preset to apply.
+- `impl.scaffold.force`: whether the scaffold may overwrite existing matching foundation files.
+
+### Deterministic Project Scaffold
+
+ShipFlow can script the unstable foundation work before the LLM touches product logic:
+- package scripts
+- base dependencies
+- initial directory structure
+- entrypoints
+- a minimal server/UI shell for the supported stack
+
+That changes the shape of the implementation problem. Instead of spending tokens on boilerplate and dependency guesswork, the agent starts from a stable base and focuses on the pack.
+
+You can let ShipFlow infer the scaffold from `impl.context` on an empty repo, or declare it explicitly:
+
+```json
+{
+  "impl": {
+    "scaffold": {
+      "enabled": true,
+      "preset": "vue-antdv-graphql-sqlite"
+    }
+  }
+}
+```
+
+Manual command:
+
+```bash
+shipflow scaffold
+shipflow scaffold --force
+```
+
+Current presets:
+- `node-web-rest-sqlite`
+- `node-web-graphql-sqlite`
+- `node-rest-service-sqlite`
+- `vue-antdv-graphql-sqlite`
 
 ## Working With ShipFlow
 
@@ -153,6 +194,10 @@ Debug commands are also available:
 /shipflow:status
 ```
 
+Claude-specific native implementation surface:
+- `shipflow-strategy-lead` subagent for orchestration
+- `shipflow-architecture-specialist`, `shipflow-ui-specialist`, `shipflow-api-specialist`, `shipflow-database-specialist`, `shipflow-security-specialist`, `shipflow-technical-specialist` for narrow slices
+
 ### With Codex CLI
 
 Open your project and invoke the skills:
@@ -177,6 +222,10 @@ $shipflow-gen
 $shipflow-verify
 $shipflow-status
 ```
+
+Codex-specific native implementation surface:
+- `$shipflow-strategy-lead` for orchestration
+- `$shipflow-architecture-specialist`, `$shipflow-ui-specialist`, `$shipflow-api-specialist`, `$shipflow-database-specialist`, `$shipflow-security-specialist`, `$shipflow-technical-specialist` for narrow slices
 
 ### With Gemini CLI
 
@@ -203,9 +252,13 @@ Debug commands are also available:
 /shipflow:status
 ```
 
+Gemini-specific native implementation surface:
+- `/shipflow:strategy-lead` for orchestration
+- `/shipflow:architecture-specialist`, `/shipflow:ui-specialist`, `/shipflow:api-specialist`, `/shipflow:database-specialist`, `/shipflow:security-specialist`, `/shipflow:technical-specialist` for narrow slices
+
 ### With Kiro CLI
 
-Open your project. Skills auto-activate when your request matches:
+Open your project. Skills and custom agents are installed natively:
 
 ```
 "let's draft ShipFlow verifications for a todo app with login"
@@ -217,9 +270,67 @@ Review and iterate with the AI. Then:
 "run shipflow implement once the draft is ready"
 ```
 
+Kiro-specific native implementation surface:
+- `shipflow-strategy-lead` custom agent for orchestration
+- `shipflow-architecture-specialist`, `shipflow-ui-specialist`, `shipflow-api-specialist`, `shipflow-database-specialist`, `shipflow-security-specialist`, `shipflow-technical-specialist` for narrow slices
+
 ### Standard Loop
 
-`shipflow implement` is the standard loop. It validates the verification pack, generates tests, applies code changes, runs verification, and retries within the configured budget.
+`shipflow implement` is the standard loop. It validates the verification pack, bootstraps the verification runtime, applies a deterministic scaffold when configured or inferred, syncs dependencies when that scaffold changes the repo, generates tests, runs a bounded multi-agent implementation round, verifies, and retries within the configured budget.
+
+### Multi-Agent Implementation Strategy
+
+ShipFlow does not keep pouring more repo state into one bloated context window. The implementation loop behaves like a small engineering team with a compact memory.
+
+Per iteration:
+1. ShipFlow first locks down the runtime and, when needed, applies the deterministic project scaffold.
+2. A strategy lead reads the current evidence, recent history, and `.shipflow/implement-thread.json`.
+3. It chooses only the specialist slices needed for that round.
+4. Each specialist receives one narrow verification slice plus the smallest relevant evidence set.
+5. Verification runs again and ShipFlow records what improved, what stayed red, and whether the approach stalled.
+6. If the stagnation streak reaches the configured threshold, the next round must choose a materially different strategy.
+
+Default specialist roles:
+- `architecture`
+- `ui`
+- `api`
+- `database`
+- `security`
+- `technical`
+
+The native delegation surface depends on the CLI:
+
+| CLI | Native surface used by ShipFlow |
+|---|---|
+| Claude Code | `Task` + installed subagents in `~/.claude/agents` |
+| Codex CLI | installed skills in `~/.codex/skills` + separate Codex runs per slice |
+| Gemini CLI | installed extension commands such as `/shipflow:strategy-lead` + separate Gemini runs per slice |
+| Kiro CLI | installed custom agents in `~/.kiro/agents` + Kiro subagent delegation |
+
+The loop also keeps three continuity artifacts:
+- `evidence/implement.json` — current stage and latest implementation result
+- `evidence/implement-history.json` — per-iteration history and provider counts
+- `.shipflow/implement-thread.json` — compact memo, active strategy, and stagnation streak
+
+Relevant `shipflow.json` knobs:
+
+```json
+{
+  "impl": {
+    "maxIterations": 50,
+    "maxDurationMs": 21600000,
+    "stagnationThreshold": 2,
+    "team": {
+      "enabled": true,
+      "maxSpecialistsPerIteration": 4,
+      "memoHistory": 8,
+      "roles": ["architecture", "ui", "api", "database", "security", "technical"]
+    }
+  }
+}
+```
+
+Those defaults mean ShipFlow can keep working for hours on a hard case, but it still has to earn progress. When the loop is not making verifiable headway, it must change tactic instead of reissuing the same fix.
 
 ### Core Commands
 
@@ -232,6 +343,7 @@ shipflow map "<user request>"
 shipflow doctor
 shipflow lint
 shipflow gen
+shipflow scaffold
 shipflow approve-visual
 shipflow verify
 shipflow status

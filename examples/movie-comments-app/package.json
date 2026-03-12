@@ -1,0 +1,16 @@
+{
+  "name": "movie-comments-app-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "shipflow:gen": "shipflow gen",
+    "shipflow:verify": "shipflow verify",
+    "shipflow:implement": "shipflow implement",
+    "shipflow:implement-once": "shipflow implement-once",
+    "shipflow:live": "node ./run-live.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
+  }
+}

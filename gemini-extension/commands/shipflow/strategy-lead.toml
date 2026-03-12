@@ -1,0 +1,21 @@
+description = "Plan the next ShipFlow implementation round with the native strategy lead workflow"
+
+prompt = """
+# ShipFlow — Strategy Lead
+
+Use this native command when the implementation loop needs the next strategy rather than another broad coding pass.
+
+Keep the plan compact, verification-targeted, and evidence-driven. Change approach when the loop is stagnating.
+
+Available specialist commands:
+- `/shipflow:architecture-specialist`
+- `/shipflow:ui-specialist`
+- `/shipflow:api-specialist`
+- `/shipflow:database-specialist`
+- `/shipflow:security-specialist`
+- `/shipflow:technical-specialist`
+
+Work from the provided context only:
+
+{{args}}
+"""

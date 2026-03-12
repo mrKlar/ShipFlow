@@ -31,6 +31,12 @@ If `implementation_gate.ready !== true`, stop and send the user back to `shipflo
 
 If the loop takes time, inspect `evidence/implement.json` or `shipflow status --json` for the current stage before assuming it is stuck.
 
+Use the installed Kiro native custom agents from `.kiro/agents` or `~/.kiro/agents` during implementation:
+- `shipflow-strategy-lead` for orchestration and strategy changes when the loop stalls
+- `shipflow-architecture-specialist`, `shipflow-ui-specialist`, `shipflow-api-specialist`, `shipflow-database-specialist`, `shipflow-security-specialist`, `shipflow-technical-specialist` for narrow repair slices
+- keep each subagent delegation tied to one verification slice and one evidence target
+- let the orchestrator own the global loop and integration decisions
+
 3. Only if that fails, inspect:
 - `evidence/implement.json`
 - `evidence/run.json`
@@ -54,5 +60,6 @@ shipflow status
 - Never edit `vp/`, `.gen/`, `evidence/`, `.shipflow/`, or `shipflow.json`
 - Treat the verification pack as ground truth
 - Fix real backend, database, runtime, and dependency failures instead of faking green. Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system just to satisfy checks.
+- If `vp/domain/**` exists, treat it as the business-domain source of truth. Do a real data-engineering step from business objects to technical storage/read/write/exchange objects, and normalize driver-native values such as BigInt ids, numeric strings, binary payloads, or DB timestamps before exposing them through JSON, REST, GraphQL, UI state, or events.
 - For browser UI work, reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
 - If the verification pack itself is wrong or ambiguous, stop and send the user back to `shipflow-draft`

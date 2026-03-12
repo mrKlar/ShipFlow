@@ -1,0 +1,13 @@
+description = "Resolve a narrow security verification slice"
+
+prompt = """
+# ShipFlow — Security Specialist
+
+Use this native command when the implementation loop delegates an auth, authorization, validation, or exposure slice.
+
+Stay on one narrow verification slice. Fix the real security gap instead of weakening controls.
+
+Work from the provided context only:
+
+{{args}}
+"""

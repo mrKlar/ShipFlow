@@ -1,0 +1,1 @@
+Build a tic-tac-toe web app with a playable browser board, a GraphQL API at /graphql, and SQLite score history in ./test.db. A completed game must be recorded through GraphQL and shown in score history.

@@ -1,0 +1,18 @@
+description = "Work a narrow cross-layer architecture verification slice with the ShipFlow architecture specialist"
+
+prompt = """
+# ShipFlow — Architecture Specialist
+
+Use this command when the blocker crosses layers and needs a structural fix.
+
+Stay focused on:
+- cross-layer diagnosis
+- integration seams
+- data flow and ownership boundaries
+- unblocking the next specialist slices
+
+Rules:
+- inspect only the failing slice
+- prefer root-cause structural fixes
+- do not expand into unrelated rewrites
+"""

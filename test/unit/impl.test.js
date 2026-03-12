@@ -7,6 +7,8 @@ import {
   buildFileContentRepairPrompt,
   buildFileFormatRepairPrompt,
   buildPrompt,
+  buildSpecialistPrompt,
+  buildStrategyPrompt,
   impl,
   isAllowedImplPath,
   parseFiles,
@@ -127,6 +129,7 @@ describe("buildPrompt", () => {
       { provider: "claude" },
     );
     assert.ok(p.includes("Read These Verification Files First"));
+    assert.ok(p.includes(".shipflow/implement-thread.json"));
     assert.ok(p.includes("vp/ui/test.yml"));
     assert.ok(p.includes(".gen/manifest.json"));
     assert.ok(p.includes("Current Editable Files To Inspect"));
@@ -194,6 +197,15 @@ describe("buildPrompt", () => {
     assert.match(repoAware, /Only create a new local shared component library when the user explicitly asks/i);
   });
 
+  it("requires data-engineering normalization before transport boundaries", () => {
+    const embedded = buildPrompt(vpFiles, [], [], config, null, writePolicy);
+    assert.match(embedded, /transport-safe technical objects/i);
+    assert.match(embedded, /Normalize driver-native values such as BigInt row ids/i);
+    const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "codex" });
+    assert.match(repoAware, /transport-safe technical objects/i);
+    assert.match(repoAware, /before returning them through JSON, REST, GraphQL, UI state, or events/i);
+  });
+
   it("truncates long errors to 8000 chars", () => {
     const longError = "x".repeat(10000);
     const p = buildPrompt(vpFiles, [], [], config, longError, writePolicy);
@@ -224,6 +236,11 @@ describe("buildPrompt", () => {
     assert.ok(!p.includes("pnpm-lock.yaml"));
     assert.ok(!p.includes("yarn.lock"));
   });
+
+  it("treats .shipflow as a blocked internal path", () => {
+    const p = buildPrompt(vpFiles, [], [], config, null, { roots: ["src"], files: ["package.json"] });
+    assert.ok(p.includes(".shipflow/"));
+  });
 });
 
 describe("buildFileFormatRepairPrompt", () => {
@@ -247,6 +264,85 @@ describe("buildFileContentRepairPrompt", () => {
     assert.ok(repair.includes("included ShipFlow file blocks, but one or more file contents were invalid"));
     assert.ok(repair.includes("package.json: Expected property name"));
     assert.ok(repair.includes("*.json file you return must be valid JSON"));
+  });
+});
+
+describe("team prompts", () => {
+  it("builds a strategy prompt with stagnation guidance and compact memo", () => {
+    const prompt = buildStrategyPrompt({
+      teamConfig: {
+        roles: ["architecture", "ui", "api"],
+      },
+      provider: "codex",
+      memo: {
+        stagnation_streak: 2,
+        recent_attempts: [{ iteration: 1, verify: { failed: 2 } }],
+      },
+      orchestration: {
+        iteration: 3,
+        maxIterations: 50,
+        remainingDurationMs: 120000,
+        stagnationCount: 2,
+        mustChangeStrategy: true,
+      },
+      prompt: "Base implementation context",
+    });
+    assert.match(prompt, /strategy lead/i);
+    assert.match(prompt, /shipflow_strategy_lead/);
+    assert.match(prompt, /must choose a materially different approach/i);
+    assert.match(prompt, /come back when they have exhausted the straightforward ideas/i);
+    assert.match(prompt, /Compact implementation memo/i);
+    assert.match(prompt, /architecture/i);
+    assert.match(prompt, /Base implementation context/);
+  });
+
+  it("builds provider-native strategy prompts for Claude, Gemini, and Kiro", () => {
+    const base = {
+      teamConfig: { roles: ["architecture", "ui", "api"] },
+      memo: { recent_attempts: [] },
+      orchestration: { iteration: 1, maxIterations: 50, stagnationCount: 0, mustChangeStrategy: false },
+      prompt: "Base implementation context",
+    };
+    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /Task tool/i);
+    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /~\/\.claude\/agents/);
+    assert.match(buildStrategyPrompt({ ...base, provider: "gemini" }), /\/shipflow:strategy-lead/);
+    assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /subagent tool/i);
+    assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /~\/\.kiro\/agents/);
+  });
+
+  it("builds a specialist prompt that keeps the role focused and team-aware", () => {
+    const prompt = buildSpecialistPrompt("Base implementation prompt", {
+      role: "api",
+      goal: "Fix the GraphQL mutation flow",
+      why_now: "API checks are failing",
+      focus_types: ["api", "behavior_gherkin"],
+      instructions: ["Repair transport normalization", "Keep schema and resolver aligned"],
+    }, {
+      mustChangeStrategy: true,
+      memo: { recent_attempts: [{ iteration: 2 }] },
+    }, "codex");
+    assert.match(prompt, /API Specialist/);
+    assert.match(prompt, /shipflow_api_specialist/);
+    assert.match(prompt, /You are not alone in the codebase/i);
+    assert.match(prompt, /Fix the GraphQL mutation flow/);
+    assert.match(prompt, /must try a materially different fix path/i);
+    assert.match(prompt, /return early with a blocker report/i);
+    assert.match(prompt, /\"status\": \"blocked\"/i);
+    assert.match(prompt, /Base implementation prompt/);
+  });
+
+  it("builds provider-native specialist prompts for Gemini, Claude, and Kiro", () => {
+    const assignment = {
+      role: "ui",
+      goal: "Fix the visible todo filter",
+      focus_types: ["ui"],
+    };
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "gemini"), /\/shipflow:ui-specialist/);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "claude"), /Task tool/i);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "claude"), /shipflow-ui-specialist/);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "codex"), /shipflow_ui_specialist/);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "kiro"), /subagent tool/i);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "kiro"), /shipflow-ui-specialist/);
   });
 });
 
@@ -321,7 +417,7 @@ describe("resolveImplOptions", () => {
       assert.equal(options.provider, "codex");
       assert.equal(options.model, "gpt-5-codex");
       assert.equal(options.srcDir, "src");
-      assert.equal(options.timeoutMs, 600000);
+      assert.equal(options.timeoutMs, 3600000);
       assert.ok(options.writePolicy.roots.includes("src"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -408,12 +504,13 @@ assert:
       const policy = resolveWritePolicy(tmpDir, {
         impl: {
           srcDir: "src",
-          writeRoots: ["vp", ".gen", "evidence", "docs"],
+          writeRoots: ["vp", ".gen", "evidence", ".shipflow", "docs"],
         },
       });
       assert.equal(policy.roots.includes("vp"), false);
       assert.equal(policy.roots.includes(".gen"), false);
       assert.equal(policy.roots.includes("evidence"), false);
+      assert.equal(policy.roots.includes(".shipflow"), false);
       assert.equal(policy.roots.includes("docs"), true);
       assert.equal(policy.files.includes("vp/ui/example.yml"), false);
       assert.equal(policy.files.includes(".gen/manifest.json"), false);
@@ -436,24 +533,33 @@ describe("impl", () => {
 
       const prompts = [];
       let calls = 0;
-      const written = await impl({
+      const result = await impl({
         cwd: tmpDir,
         provider: "command",
         deps: {
-          generateWithProvider: async ({ prompt }) => {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
             prompts.push(prompt);
             calls += 1;
-            if (calls === 1) return "Plan: create src/server.js and package.json";
+            if (responseFormat === "json") {
+              return JSON.stringify({
+                summary: "Route UI work to the UI specialist.",
+                approach: "UI-first",
+                changed_approach: false,
+                root_causes: ["Missing page"],
+                assignments: [{ role: "ui", goal: "Create the home screen", why_now: "UI is missing", focus_types: ["ui"] }],
+              });
+            }
+            if (calls === 2) return "Plan: create src/server.js and package.json";
             return "--- FILE: src/server.js ---\nconsole.log('ok');\n--- END FILE ---";
           },
         },
       });
 
-      assert.equal(calls, 2);
-      assert.equal(written[0], "src/server.js");
+      assert.equal(calls, 3);
+      assert.equal(result.written[0], "src/server.js");
       assert.equal(fs.readFileSync(path.join(tmpDir, "src", "server.js"), "utf-8"), "console.log('ok');\n");
-      assert.ok(prompts[1].includes("Format Correction"));
-      assert.ok(prompts[1].includes("Previous invalid reply"));
+      assert.ok(prompts[2].includes("Specialist Return Correction"));
+      assert.ok(prompts[2].includes("Previous invalid reply"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -471,7 +577,7 @@ describe("impl", () => {
             generateWithProvider: async () => "Still just a plan.",
           },
         }),
-        /AI returned no files/,
+        /returned no files/,
       );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -484,14 +590,23 @@ describe("impl", () => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       const prompts = [];
       let calls = 0;
-      const written = await impl({
+      const result = await impl({
         cwd: tmpDir,
         provider: "command",
         deps: {
-          generateWithProvider: async ({ prompt }) => {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
             prompts.push(prompt);
             calls += 1;
-            if (calls === 1) {
+            if (responseFormat === "json") {
+              return JSON.stringify({
+                summary: "API and package metadata need to be written.",
+                approach: "Bootstrap package metadata first",
+                changed_approach: false,
+                root_causes: ["Missing package.json"],
+                assignments: [{ role: "technical", goal: "Write package.json and server entrypoint", why_now: "Runtime files are missing", focus_types: ["technical"] }],
+              });
+            }
+            if (calls === 2) {
               return [
                 "--- FILE: package.json ---",
                 "{",
@@ -514,11 +629,144 @@ describe("impl", () => {
         },
       });
 
-      assert.equal(calls, 2);
-      assert.deepEqual(written, ["package.json", "src/server.js"]);
+      assert.equal(calls, 3);
+      assert.deepEqual(result.written, ["package.json", "src/server.js"]);
       assert.equal(JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")).name, "fixed");
-      assert.ok(prompts[1].includes("Content Correction"));
-      assert.ok(prompts[1].includes("package.json:"));
+      assert.ok(prompts[2].includes("Content Correction"));
+      assert.ok(prompts[2].includes("package.json:"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("runs a strategy lead and multiple specialists in one iteration", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const requestedRoles = [];
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
+            if (responseFormat === "json") {
+              return JSON.stringify({
+                summary: "Split the work between API and UI.",
+                approach: "Parallel specialties",
+                changed_approach: false,
+                root_causes: ["Missing API", "Missing UI"],
+                assignments: [
+                  { role: "api", goal: "Create the HTTP handler", why_now: "API is missing", focus_types: ["api"] },
+                  { role: "ui", goal: "Render the home page", why_now: "UI is missing", focus_types: ["ui"] },
+                ],
+              });
+            }
+            if (/API Specialist/.test(prompt)) {
+              requestedRoles.push("api");
+              return "--- FILE: src/server.js ---\nconsole.log('api');\n--- END FILE ---";
+            }
+            requestedRoles.push("ui");
+            return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.deepEqual(requestedRoles, ["api", "ui"]);
+      assert.deepEqual(result.written, ["src/server.js", "src/app.js"]);
+      assert.equal(result.strategyPlan.approach, "Parallel specialties");
+      assert.deepEqual(result.specialists.map(item => item.role), ["api", "ui"]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts an early blocker report from a specialist and keeps writable results from others", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
+            if (responseFormat === "json") {
+              return JSON.stringify({
+                summary: "Split between UI and API.",
+                approach: "UI plus API handoff",
+                changed_approach: false,
+                root_causes: ["UI missing", "API root cause unclear"],
+                assignments: [
+                  { role: "api", goal: "Investigate API blocker", why_now: "Behavior is red", focus_types: ["api"] },
+                  { role: "ui", goal: "Render the home page", why_now: "UI is missing", focus_types: ["ui"] },
+                ],
+              });
+            }
+            if (/API Specialist/.test(prompt)) {
+              return JSON.stringify({
+                status: "blocked",
+                summary: "The API slice reached the point where schema work depends on the missing persistence contract.",
+                exhausted_simple_paths: true,
+                tried: ["checked the generated API contract", "looked for an existing persistence model"],
+                blockers: ["No persistence model exists yet for the mutation payload"],
+                handoff_role: "database",
+                suggested_next_step: "Ask the database specialist to define the write model first.",
+              });
+            }
+            return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.deepEqual(result.written, ["src/app.js"]);
+      assert.equal(result.specialists.length, 2);
+      assert.equal(result.specialists[0].status, "blocked");
+      assert.equal(result.specialists[0].blocker_report.handoff_role, "database");
+      assert.equal(result.specialists[1].status, "wrote");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("returns blocker reports instead of throwing when no specialist finds a simple safe fix", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ responseFormat }) => {
+            if (responseFormat === "json") {
+              return JSON.stringify({
+                summary: "Only architecture should look first.",
+                approach: "Return blocked",
+                changed_approach: false,
+                root_causes: ["No simple path"],
+                assignments: [{ role: "architecture", goal: "Diagnose the slice", why_now: "Need a handoff", focus_types: ["technical"] }],
+              });
+            }
+            return JSON.stringify({
+              status: "blocked",
+              summary: "The narrow slice exhausted the obvious fixes and needs an orchestrator strategy change.",
+              exhausted_simple_paths: true,
+              tried: ["checked the existing runtime entrypoints"],
+              blockers: ["The fix would require a broader rewrite than this slice owns"],
+              suggested_next_step: "Pick a different slice ordering and retry.",
+            });
+          },
+        },
+      });
+
+      assert.deepEqual(result.written, []);
+      assert.equal(result.specialists.length, 1);
+      assert.equal(result.specialists[0].status, "blocked");
+      assert.match(result.specialists[0].blocker_report.summary, /exhausted the obvious fixes/i);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

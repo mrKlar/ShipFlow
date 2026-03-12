@@ -54,7 +54,22 @@ describe("ShipFlow skill frontmatter", () => {
     const kiro = readSkill(path.join(repoRoot, "kiro-skills/shipflow-implement/SKILL.md"));
     assert.match(codex, /Fix real backend, database, runtime, and dependency failures/i);
     assert.match(codex, /Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system/i);
+    assert.match(codex, /normalize driver-native values such as BigInt ids/i);
     assert.match(kiro, /Fix real backend, database, runtime, and dependency failures/i);
     assert.match(kiro, /Never hardcode expected outputs, bypass storage, suppress errors, or stub around a broken system/i);
+    assert.match(kiro, /normalize driver-native values such as BigInt ids/i);
+  });
+
+  it("ships native strategy and specialist skill names for Codex and Kiro", () => {
+    const codexImplement = readSkill(path.join(repoRoot, "codex-skills/shipflow-implement/SKILL.md"));
+    const kiroImplement = readSkill(path.join(repoRoot, "kiro-skills/shipflow-implement/SKILL.md"));
+    const codexStrategy = readSkill(path.join(repoRoot, "codex-skills/shipflow-strategy-lead/SKILL.md"));
+    const kiroStrategy = readSkill(path.join(repoRoot, "kiro-skills/shipflow-strategy-lead/SKILL.md"));
+    assert.match(codexImplement, /shipflow_strategy_lead/);
+    assert.match(codexImplement, /shipflow_ui_specialist/);
+    assert.match(kiroImplement, /shipflow-strategy-lead/);
+    assert.match(kiroImplement, /shipflow-ui-specialist/);
+    assert.match(codexStrategy, /shipflow_api_specialist/);
+    assert.match(kiroStrategy, /shipflow-api-specialist/);
   });
 });

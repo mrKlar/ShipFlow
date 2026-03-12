@@ -1,0 +1,18 @@
+description = "Work a narrow UI or visual verification slice with the ShipFlow UI specialist"
+
+prompt = """
+# ShipFlow — UI Specialist
+
+Use this command when the blocker is a narrow UI, browser behavior, or visual contract slice.
+
+Stay focused on:
+- rendered DOM and interactions
+- client state
+- visual contracts
+- design-system usage
+
+Rules:
+- inspect only the relevant `vp/ui/**`, `vp/behavior/**`, `.gen/**`, and `evidence/**`
+- preserve the existing design-system direction
+- hand cross-layer backend blockers back to the orchestrator
+"""
