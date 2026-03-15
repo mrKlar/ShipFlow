@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  buildKiroCliArgs,
   buildClaudeCliArgs,
   claudeAllowedToolsForResponseFormat,
   claudeEffortForResponseFormat,
@@ -196,6 +197,33 @@ describe("buildClaudeCliArgs", () => {
       "shipflow-strategy-lead",
       "--model",
       "sonnet",
+    ]);
+  });
+});
+
+describe("buildKiroCliArgs", () => {
+  it("runs Kiro headless with native tool trust", () => {
+    const args = buildKiroCliArgs({ prompt: "fix it" });
+    assert.deepEqual(args, [
+      "chat",
+      "--no-interactive",
+      "--trust-all-tools",
+      "fix it",
+    ]);
+  });
+
+  it("selects a native Kiro agent when requested", () => {
+    const args = buildKiroCliArgs({
+      agent: "shipflow-api-specialist",
+      prompt: "repair the API slice",
+    });
+    assert.deepEqual(args, [
+      "chat",
+      "--no-interactive",
+      "--trust-all-tools",
+      "--agent",
+      "shipflow-api-specialist",
+      "repair the API slice",
     ]);
   });
 });

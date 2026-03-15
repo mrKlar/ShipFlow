@@ -432,6 +432,17 @@ describe("validateGeneratedFiles", () => {
       ["src/server.js: placeholder content is not allowed ([full file content as shown above])"],
     );
   });
+
+  it("flags JavaScript syntax errors before ShipFlow writes them", () => {
+    const issues = validateGeneratedFiles([
+      { path: "src/server.js", content: "db.exec(CREATE TABLE todos (id INTEGER));\n" },
+      { path: "src/public/app.js", content: "const url = /api/todos${filter};\n" },
+    ]);
+    assert.equal(issues.length, 2);
+    assert.match(issues[0], /^src\/server\.js: /);
+    assert.match(issues[1], /^src\/public\/app\.js: /);
+    assert.match(issues[0], /SyntaxError|invalid JavaScript syntax|missing \)/i);
+  });
 });
 
 describe("resolveImplOptions", () => {
@@ -663,20 +674,21 @@ describe("impl", () => {
     }
   });
 
-  it("throws after a correction retry still returns no file blocks", async () => {
+  it("returns a blocked specialist result after correction retries still return no file blocks", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
     try {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
-      await assert.rejects(
-        () => impl({
-          cwd: tmpDir,
-          provider: "command",
-          deps: {
-            generateWithProvider: async () => "Still just a plan.",
-          },
-        }),
-        /returned no files/,
-      );
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async () => "Still just a plan.",
+        },
+      });
+      assert.deepEqual(result.written, []);
+      assert.ok(result.specialists.length >= 1);
+      assert.ok(result.specialists.every(item => item.status === "blocked"));
+      assert.ok(result.specialists.some(item => /did not return valid file blocks/i.test(item.blocker_report.summary)));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -807,6 +819,59 @@ describe("impl", () => {
       assert.ok(prompts[2].includes("Content Correction"));
       assert.ok(prompts[2].includes("placeholder content is not allowed"));
       assert.ok(prompts[2].includes("[full file content as shown above]"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("retries when the provider returns JavaScript with syntax errors", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      let attempts = 0;
+      let strategyCalls = 0;
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ responseFormat, prompt }) => {
+            if (responseFormat === "json") {
+              strategyCalls += 1;
+              return JSON.stringify(strategyCalls === 1
+                ? {
+                    summary: "Fix the runtime entrypoint first.",
+                    approach: "technical bootstrap",
+                    changed_approach: false,
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "technical-bootstrap",
+                      role: "technical",
+                      goal: "Make src/server.js syntactically valid",
+                      why_now: "The server entrypoint is still red",
+                      focus_types: ["technical"],
+                    },
+                  }
+                : {
+                    summary: "Ready to verify after the syntax fix.",
+                    approach: "technical bootstrap",
+                    changed_approach: false,
+                    continue_iteration: false,
+                    stop_reason: "The syntax issue is fixed.",
+                  });
+            }
+            attempts += 1;
+            assert.match(prompt, /Technical Specialist/i);
+            if (attempts === 1) {
+              return "--- FILE: src/server.js ---\ndb.exec(CREATE TABLE todos (id INTEGER));\n--- END FILE ---";
+            }
+            return "--- FILE: src/server.js ---\nconst schema = `CREATE TABLE todos (id INTEGER)`;\ndb.exec(schema);\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.equal(attempts, 2);
+      assert.deepEqual(result.written, ["src/server.js"]);
+      assert.match(fs.readFileSync(path.join(tmpDir, "src", "server.js"), "utf-8"), /CREATE TABLE todos/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -1068,6 +1133,126 @@ describe("impl", () => {
       assert.equal(result.specialists[0].status, "blocked");
       assert.equal(result.specialists[0].blocker_report.handoff_role, "database");
       assert.equal(result.specialists[1].status, "wrote");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("normalizes Kiro-style strategy task variants instead of silently using the fallback task", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "api"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "api", "todos.yml"), "id: api-todos\ntitle: Todos API\nseverity: blocker\napp:\n  kind: api\nrunner:\n  kind: playwright\nassert:\n  - status: { url: /api/todos, code: 200 }\n");
+
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: (() => {
+            let strategyCalls = 0;
+            return async ({ responseFormat, prompt }) => {
+              if (responseFormat === "json") {
+                strategyCalls += 1;
+                return JSON.stringify(strategyCalls === 1
+                  ? {
+                      summary: "Repair the todos API first.",
+                      approach: "API-first",
+                      changed_approach: false,
+                      continue_iteration: true,
+                      nextTask: {
+                        taskId: "kiro-api-1",
+                        specialist: "API Specialist",
+                        goal: "Implement GET /api/todos",
+                        whyNow: "The API surface is still red",
+                        focusTypes: ["api"],
+                        targetGroups: ["api"],
+                        targetEvidence: ["evidence/api.json"],
+                        doneWhen: ["GET /api/todos returns 200"],
+                      },
+                    }
+                  : {
+                      summary: "Ready to verify after the API slice.",
+                      approach: "API-first",
+                      changed_approach: false,
+                      continue_iteration: false,
+                      stop_reason: "The API slice is complete.",
+                    });
+              }
+              assert.match(prompt, /API Specialist/i);
+              return "--- FILE: src/server.js ---\nconsole.log('api');\n--- END FILE ---";
+            };
+          })(),
+        },
+      });
+
+      assert.deepEqual(result.written, ["src/server.js"]);
+      assert.equal(result.strategyPlan.tasks[0].task_id, "kiro-api-1");
+      assert.equal(result.strategyPlan.tasks[0].role, "api");
+      assert.equal(result.strategyPlan.tasks[0].goal, "Implement GET /api/todos");
+      const events = readJsonLines(path.join(tmpDir, "evidence", "implement-log.jsonl"));
+      const planningCompleted = events.find(event => event.event === "planning.completed");
+      assert.equal(planningCompleted.data.next_task_id, "kiro-api-1");
+      assert.equal(planningCompleted.data.next_role, "api");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("normalizes fuzzy blocker handoff roles from specialist JSON replies", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "api"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "api", "todos.yml"), "id: api-todos\ntitle: Todos API\nseverity: blocker\napp:\n  kind: api\nrunner:\n  kind: playwright\nassert:\n  - status: { url: /api/todos, code: 200 }\n");
+
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: (() => {
+            let strategyCalls = 0;
+            return async ({ responseFormat }) => {
+              if (responseFormat === "json") {
+                strategyCalls += 1;
+                return JSON.stringify(strategyCalls === 1
+                  ? {
+                      summary: "Inspect the API slice first.",
+                      approach: "API-first",
+                      changed_approach: false,
+                      continue_iteration: true,
+                      next_task: {
+                        task_id: "api-diagnose",
+                        role: "api",
+                        goal: "Inspect the failing API slice",
+                        why_now: "API is red",
+                        focus_types: ["api"],
+                      },
+                    }
+                  : {
+                      summary: "Stop after the blocker report.",
+                      approach: "API-first",
+                      changed_approach: false,
+                      continue_iteration: false,
+                      stop_reason: "Need a database slice next.",
+                    });
+              }
+              return JSON.stringify({
+                status: "blocked",
+                summary: "The resolver contract depends on a persistence model that does not exist yet.",
+                exhausted_simple_paths: true,
+                tried: ["inspected the generated API contract"],
+                blockers: ["No durable write model exists for todos"],
+                handoff_role: "Database Specialist",
+                suggested_next_step: "Let the database specialist define the storage contract first.",
+              });
+            };
+          })(),
+        },
+      });
+
+      assert.equal(result.specialists[0].status, "blocked");
+      assert.equal(result.specialists[0].blocker_report.handoff_role, "database");
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
