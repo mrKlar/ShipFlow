@@ -79,27 +79,31 @@ System requirements for the committed pack:
 
 - `sqlite3`, or Node with `node:sqlite` support
 
-## Real live Claude cycle
+## Real live implementation cycle
 
-This example also includes a no-fake live harness that starts from a fresh temp project, installs ShipFlow into that project, runs `init -> draft -> review -> write -> implement`, and uses the real Claude CLI for implementation. The committed example directory stays clean; the live run happens in a temporary working copy:
+This example also includes a no-fake live harness that starts from a fresh temp project, installs ShipFlow into that project, runs `init -> draft -> review -> write -> implement`, and uses a real supported coding CLI for implementation. The committed example directory stays clean; the live run happens in a temporary working copy:
 
 ```bash
-npm run shipflow:claude-live
+npm run shipflow:live
 ```
 
 Useful flags:
 
 ```bash
-npm run shipflow:claude-live -- --keep
-npm run shipflow:claude-live -- --ai-draft
-npm run shipflow:claude-live -- --model=<model-id>
+npm run shipflow:live -- --provider=claude
+npm run shipflow:live -- --provider=codex
+npm run shipflow:live -- --provider=gemini
+npm run shipflow:live -- --provider=kiro
+npm run shipflow:live -- --provider=claude --keep
+npm run shipflow:live -- --provider=claude --ai-draft
+npm run shipflow:live -- --provider=claude --model=<model-id>
 ```
 
 Requirements for the live harness:
 
-- `claude`
+- one supported coding CLI: `claude`, `codex`, `gemini`, or `kiro`
 - `sqlite3`, or Node with `node:sqlite` support
 - `npm`
 - `npx`
 
-`--ai-draft` is optional. Without it, the draft phase uses ShipFlow's local proposal engine and the real Claude CLI handles implementation.
+`--ai-draft` is optional. Without it, the draft phase uses ShipFlow's local proposal engine and the selected coding CLI handles implementation.

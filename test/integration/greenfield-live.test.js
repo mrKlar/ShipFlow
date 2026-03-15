@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { buildTodoLiveArgs, todoLiveExampleDir } from "../support/todo-live.js";
 
 describe("greenfield live example", () => {
-  it("runs the real Claude todo example when explicitly enabled", {
+  it("runs the real provider-backed todo example when explicitly enabled", {
     timeout: 60 * 60 * 1000,
     skip: process.env.SHIPFLOW_RUN_LIVE_GREENFIELD !== "1",
   }, () => {

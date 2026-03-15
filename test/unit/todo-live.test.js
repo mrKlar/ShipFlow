@@ -49,7 +49,7 @@ describe("todo live support", () => {
       SHIPFLOW_LIVE_AI_DRAFT: "1",
       SHIPFLOW_LIVE_MODEL: "gpt-5-codex",
     });
-    assert.ok(args.some(value => value.endsWith("examples/todo-app/run-claude-live.mjs")));
+    assert.ok(args.some(value => value.endsWith("examples/todo-app/run-live.mjs")));
     assert.ok(args.includes("--provider=codex"));
     assert.ok(args.includes("--keep"));
     assert.ok(args.includes("--ai-draft"));

@@ -22,7 +22,7 @@ const keep = process.argv.includes("--keep");
 const aiDraft = process.argv.includes("--ai-draft");
 const modelArg = process.argv.find(arg => arg.startsWith("--model="));
 const providerArg = process.argv.find(arg => arg.startsWith("--provider="));
-const provider = (providerArg ? providerArg.slice("--provider=".length) : "claude").trim();
+const provider = (providerArg ? providerArg.slice("--provider=".length) : "auto").trim();
 const useWorkspaceCli = process.env.SHIPFLOW_USE_WORKSPACE_CLI !== "0";
 const platformFlagByProvider = {
   claude: "--claude",

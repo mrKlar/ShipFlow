@@ -27,7 +27,7 @@ const TODO_LIVE_PROVIDER_COMMANDS = {
 };
 
 export const todoLiveExampleDir = path.resolve(__dirname, "../../examples/todo-app");
-export const todoLiveRunnerPath = path.join(todoLiveExampleDir, "run-claude-live.mjs");
+export const todoLiveRunnerPath = path.join(todoLiveExampleDir, "run-live.mjs");
 
 export function commandExists(cmd) {
   const result = spawnSync("bash", ["-lc", `command -v ${cmd}`], { stdio: "pipe" });

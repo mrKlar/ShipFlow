@@ -8,7 +8,7 @@
     "shipflow:verify": "shipflow verify",
     "shipflow:implement": "shipflow implement",
     "shipflow:implement-once": "shipflow implement-once",
-    "shipflow:claude-live": "node ./run-claude-live.mjs"
+    "shipflow:live": "node ./run-live.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0"

@@ -12,7 +12,7 @@ function read(relPath) {
 describe("live example harnesses", () => {
   it("observe ShipFlow evidence instead of re-implementing hidden acceptance gates", () => {
     const files = [
-      "examples/todo-app/run-claude-live.mjs",
+      "examples/todo-app/run-live.mjs",
       "examples/tic-tac-toe-app/run-live.mjs",
       "examples/movie-comments-app/run-live.mjs",
     ];
