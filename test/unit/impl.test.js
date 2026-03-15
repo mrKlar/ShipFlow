@@ -540,6 +540,29 @@ assert:
     }
   });
 
+  it("derives writable scaffold files from the installed startup scaffold", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "scaffold-state.json"), JSON.stringify({
+        version: 1,
+        startup: {
+          kind: "preset",
+          id: "vue-antdv-graphql-sqlite",
+          version: "builtin",
+        },
+        components: [],
+      }));
+      const policy = resolveWritePolicy(tmpDir, { impl: { srcDir: "src" } });
+      assert.equal(isAllowedImplPath("scripts/dev.js", policy), true);
+      assert.equal(isAllowedImplPath("vite.config.js", policy), true);
+      assert.equal(isAllowedImplPath("src/App.vue", policy), true);
+      assert.equal(isAllowedImplPath("vp/ui/root-shell.yml", policy), false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it("never derives blocked write targets from config or technical checks", () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
     try {
