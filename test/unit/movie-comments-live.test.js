@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS,
   buildMovieCommentsLiveArgs,
+  buildMovieCommentsLiveEnv,
   movieCommentsLiveBaseUrl,
   movieCommentsLiveProviderCommand,
   normalizeMovieCommentsLiveProviders,
@@ -17,6 +18,9 @@ describe("movie-comments live support", () => {
     assert.deepEqual([...kinds].sort(), ["api", "behavior", "db", "domain", "technical", "ui"]);
     assert.equal(MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS.includes("vp/technical/framework-stack.yml"), true);
     assert.equal(MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS.includes("vp/ui/post-movie-comment.yml"), true);
+    assert.equal(MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS.includes("vp/ui/show-persisted-comment.yml"), true);
+    assert.equal(MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS.includes("vp/behavior/persist-movie-comments-after-restart.yml"), true);
+    assert.equal(MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS.includes("vp/api/get-movie-detail.yml"), true);
   });
 
   it("normalizes and de-duplicates requested providers", () => {
@@ -49,6 +53,18 @@ describe("movie-comments live support", () => {
     assert.ok(args.includes("--provider=codex"));
     assert.ok(args.includes("--keep"));
     assert.ok(args.includes("--model=gpt-5-codex"));
+  });
+
+  it("does not force SHIPFLOW_LIVE_MAX_ITERATIONS unless explicitly overridden", () => {
+    const inherited = buildMovieCommentsLiveEnv({ PATH: "/usr/bin" }, "/tmp/node");
+    assert.equal(Object.hasOwn(inherited, "SHIPFLOW_LIVE_MAX_ITERATIONS"), false);
+    assert.match(inherited.PATH, /^\/tmp:/);
+
+    const overridden = buildMovieCommentsLiveEnv({
+      PATH: "/usr/bin",
+      SHIPFLOW_LIVE_MAX_ITERATIONS: "7",
+    }, "/tmp/node");
+    assert.equal(overridden.SHIPFLOW_LIVE_MAX_ITERATIONS, "7");
   });
 
   it("builds isolated dev/runtime settings for parallel live runs", () => {

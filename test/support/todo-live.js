@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const TODO_LIVE_MINIMAL_VP_PATHS = [
   "vp/ui/filter-todos.yml",
   "vp/behavior/get-api-todos-flow.yml",
+  "vp/behavior/persist-todos-after-restart.yml",
   "vp/api/get-todos.yml",
   "vp/api/post-todos.yml",
   "vp/api/patch-todo-completed.yml",
@@ -70,6 +71,17 @@ export function buildTodoLiveArgs(provider, env = process.env) {
   if (env.SHIPFLOW_LIVE_AI_DRAFT === "1") args.push("--ai-draft");
   if (env.SHIPFLOW_LIVE_MODEL) args.push(`--model=${env.SHIPFLOW_LIVE_MODEL}`);
   return args;
+}
+
+export function buildTodoLiveEnv(env = process.env, nodeExecPath = process.execPath) {
+  const nextEnv = {
+    ...env,
+    PATH: [path.dirname(nodeExecPath), env.PATH || ""].filter(Boolean).join(path.delimiter),
+  };
+  const maxIterations = String(env.SHIPFLOW_LIVE_MAX_ITERATIONS || "").trim();
+  if (maxIterations) nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS = maxIterations;
+  else delete nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS;
+  return nextEnv;
 }
 
 export function todoLiveBaseUrl(port) {

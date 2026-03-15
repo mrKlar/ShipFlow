@@ -29,14 +29,14 @@ ShipFlow is not merely a testing tool; it is a concrete implementation of severa
 **Principle:** The automatic generation of a program that satisfies a given formal specification.
 
 - **Theoretical Root:** Research by Sumit Gulwani (Programming by Example) and the concept of **Counterexample-Guided Abstraction Refinement (CEGAR)**.
-- **Analysis:** ShipFlow implements a modern variant of synthesis. After the pack-definition phase, the `Implement -> Verify -> Fix` cycle becomes a physical implementation of a refinement loop. The AI does not "guess" the code; it converges on the implementation that satisfies the locked constraints in the Verification Pack.
+- **Analysis:** ShipFlow implements a modern variant of synthesis. After the pack-definition phase, the `Implement -> Verify -> Fix` cycle becomes a physical implementation of a refinement loop. The AI does not "guess" the code; it converges on the implementation that satisfies the locked constraints in the Verification Pack. Crucially, that loop is owned by ShipFlow itself, not by any individual execution backend. Playwright, Cucumber, k6, and technical/domain runners are subordinate proof engines inside one top-level control loop.
 
 ### 3.5. Bounded Multi-Agent Decomposition
 
 **Principle:** Hard implementation problems are solved faster and more reliably when planning and repair are decomposed into bounded specialist contexts instead of one continuously growing conversation.
 
 - **Theoretical Root:** This aligns with **hierarchical planning**, **blackboard systems**, and Herbert Simon's idea of **bounded rationality**: a system performs better when each participant reasons over the smallest context that still contains the decision.
-- **Analysis:** ShipFlow's implementation loop now operationalizes that idea. A strategy lead reads the compact thread and current evidence, chooses only the needed specialist slices, and delegates narrow subproblems to UI, API, database, security, technical, or architecture specialists. The continuity artifact is not a gigantic transcript; it is `evidence/implement-history.json` plus `.shipflow/implement-thread.json`. That makes the search process more stable, keeps detail local, and gives ShipFlow an explicit response to stagnation: change strategy when the last one is not producing new green checks.
+- **Analysis:** ShipFlow's implementation loop now operationalizes that idea as a nested control system. The outer loop is `implement -> verify -> retry until green`. Inside each implementation iteration, a strategy lead reads the compact thread and current evidence, chooses exactly one next micro-task, and delegates that narrow subproblem to a UI, API, database, security, technical, or architecture specialist. The specialist returns after a one-shot slice, then the orchestrator replans from the updated evidence. That keeps the context bounded, lets the same role be revisited later without bloating one conversation, and gives ShipFlow an explicit response to stagnation: change strategy when the last one is not producing new green checks. The continuity artifact is not a gigantic transcript; it is `evidence/implement-history.json` plus `.shipflow/implement-thread.json`. The same top-level orchestrator also owns the managed runtime and the final completion decision, so no specialist or runner can silently redefine "done."
 
 ### 4. Correctness by Construction (CxC)
 
@@ -44,6 +44,8 @@ ShipFlow is not merely a testing tool; it is a concrete implementation of severa
 
 - **Theoretical Root:** The **Correctness by Construction** approach championed by Hall & Chapman (2002) for high-integrity systems.
 - **Analysis:** ShipFlow utilizes **cryptographic locks** (SHA-256) and **execution guards** (Anti-Cheat system) to create an environment where the agent cannot silently change the pack constraints or generated artifacts during implementation. Success in `shipflow verify` serves as a "Proof of Work" for the generated artifact. This same logic now applies to approved UI baselines: a visual diff is treated as evidence, not as something the agent can quietly bless as "close enough."
+
+The same boundary discipline now applies to archetypes and scaffolds. If a startup foundation implies shell, runtime, protocol, architecture, or baseline security truth, that truth must be installed into `vp/` with the scaffold itself. ShipFlow does not rely on a second hidden acceptance layer outside the pack.
 
 ### 5. Source Code as a Disposable Artifact (Cattle vs. Pets)
 

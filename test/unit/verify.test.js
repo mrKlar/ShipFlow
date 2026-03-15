@@ -423,7 +423,7 @@ describe("verify", () => {
     }
   });
 
-  it("reuses a configured local web server for Cucumber behavior features when it is already reachable", async () => {
+  it("fails when a reachable local web server is not owned by ShipFlow", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-verify-"));
     const binDir = path.join(tmpDir, "bin");
     const previousPath = process.env.PATH;
@@ -442,7 +442,8 @@ describe("verify", () => {
         'import { defineConfig } from "@playwright/test";',
         `const baseURL = process.env.SHIPFLOW_BASE_URL || "http://127.0.0.1:${port}";`,
         'const webServerCommand = process.env.SHIPFLOW_WEB_SERVER_COMMAND || "node ./server.mjs";',
-        "const shouldStartWebServer = true || Boolean(process.env.SHIPFLOW_WEB_SERVER_COMMAND);",
+        'const hasExternalWebServer = process.env.SHIPFLOW_EXTERNAL_WEB_SERVER === "1";',
+        "const shouldStartWebServer = !hasExternalWebServer && (true || Boolean(process.env.SHIPFLOW_WEB_SERVER_COMMAND));",
         "export default defineConfig({ use: { baseURL } });",
         "",
       ].join("\n"));
@@ -472,10 +473,12 @@ describe("verify", () => {
       global.fetch = async () => ({ ok: true, status: 200 });
       const result = await verify({ cwd: tmpDir, capture: true });
 
-      assert.equal(result.exitCode, 0);
-      const behavior = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "behavior-gherkin.json"), "utf-8"));
-      assert.equal(behavior.ok, true);
-      assert.equal(behavior.passed, 1);
+      assert.equal(result.exitCode, 1);
+      const run = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "run.json"), "utf-8"));
+      assert.equal(run.ok, false);
+      assert.equal(run.failed, 1);
+      const runtimeLog = fs.readFileSync(path.join(tmpDir, "evidence", "artifacts", "managed-runtime.log"), "utf-8");
+      assert.match(runtimeLog, /not owned by ShipFlow/);
     } finally {
       global.fetch = previousFetch;
       process.env.PATH = previousPath;

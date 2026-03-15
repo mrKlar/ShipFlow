@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   TODO_LIVE_MINIMAL_VP_PATHS,
   buildTodoLiveArgs,
+  buildTodoLiveEnv,
   normalizeTodoLiveProviders,
   resolveTodoLiveProviders,
   rewriteTodoLiveBaseUrls,
@@ -16,6 +17,7 @@ describe("todo live support", () => {
     const kinds = new Set(TODO_LIVE_MINIMAL_VP_PATHS.map(item => item.split("/")[1]));
     assert.deepEqual([...kinds].sort(), ["api", "behavior", "db", "technical", "ui"]);
     assert.equal(TODO_LIVE_MINIMAL_VP_PATHS.includes("vp/api/patch-todo-completed.yml"), true);
+    assert.equal(TODO_LIVE_MINIMAL_VP_PATHS.includes("vp/behavior/persist-todos-after-restart.yml"), true);
     assert.equal(TODO_LIVE_MINIMAL_VP_PATHS.includes("vp/ui/add-todo.yml"), false);
     assert.equal(TODO_LIVE_MINIMAL_VP_PATHS.includes("vp/ui/complete-todo.yml"), false);
   });
@@ -52,6 +54,18 @@ describe("todo live support", () => {
     assert.ok(args.includes("--keep"));
     assert.ok(args.includes("--ai-draft"));
     assert.ok(args.includes("--model=gpt-5-codex"));
+  });
+
+  it("does not force SHIPFLOW_LIVE_MAX_ITERATIONS unless explicitly overridden", () => {
+    const inherited = buildTodoLiveEnv({ PATH: "/usr/bin" }, "/tmp/node");
+    assert.equal(Object.hasOwn(inherited, "SHIPFLOW_LIVE_MAX_ITERATIONS"), false);
+    assert.match(inherited.PATH, /^\/tmp:/);
+
+    const overridden = buildTodoLiveEnv({
+      PATH: "/usr/bin",
+      SHIPFLOW_LIVE_MAX_ITERATIONS: "7",
+    }, "/tmp/node");
+    assert.equal(overridden.SHIPFLOW_LIVE_MAX_ITERATIONS, "7");
   });
 
   it("builds isolated dev/runtime settings for parallel live runs", () => {

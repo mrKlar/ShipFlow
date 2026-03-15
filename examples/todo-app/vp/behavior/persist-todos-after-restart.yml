@@ -1,0 +1,66 @@
+id: behavior-persist-todos-after-restart
+feature: API behavior
+scenario: Todos persist after an application restart
+severity: blocker
+runner:
+  kind: gherkin
+  framework: cucumber
+executor:
+  kind: api
+  framework: playwright-request
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY,
+      title TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0
+    );
+    DELETE FROM todos;
+app:
+  kind: api
+  base_url: http://localhost:3000
+given:
+  - request:
+      method: POST
+      path: /api/todos
+      body_json:
+        title: Alpha
+        completed: false
+  - request:
+      method: POST
+      path: /api/todos
+      body_json:
+        title: Beta
+        completed: false
+  - request:
+      method: PATCH
+      path: /api/todos/1
+      body_json:
+        completed: true
+when:
+  - restart_app:
+      wait_for_ready_ms: 10000
+      wait_after_ms: 200
+  - request:
+      method: GET
+      path: /api/todos
+then:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_type:
+      path: $
+      type: array
+  - json_array_includes:
+      path: $
+      equals:
+        title: Alpha
+        completed: true
+  - json_array_includes:
+      path: $
+      equals:
+        title: Beta
+        completed: false

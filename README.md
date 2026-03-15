@@ -32,6 +32,11 @@ ShipFlow replaces that with a locked verification boundary:
 - cryptographic locks and runtime hooks to stop pack drift during implementation
 - an implementation loop that ends on verification, not on vibes
 
+ShipFlow owns the top-level workflow:
+- `shipflow implement` owns the retry loop
+- `shipflow verify` owns the final green/red verdict
+- generated runners only execute their slice; they do not decide global success
+
 ## What It Can Lock
 
 - Visual UI contracts: layout, placement, spacing, styles, tokens, approved baselines, and screenshot diffs.
@@ -51,6 +56,8 @@ ShipFlow also understands the shape of the product it is drafting for. It can pr
 4. Let ShipFlow install a deterministic project foundation for the supported stack when the repo is still empty or a preset is declared.
 5. Let ShipFlow drive implementation until verification is green.
 
+That orchestration is centralized on purpose. The loop, the managed local runtime, and the acceptance decision all live in ShipFlow itself. Playwright, Cucumber, k6, and the technical/domain backends are execution backends, not the owners of completion.
+
 That boundary can go beyond UI and API output.
 - For stateful systems, ShipFlow can lock the business domain itself and the required data-engineering translation into technical data objects.
 - For UI-heavy systems, ShipFlow can lock approved visual baselines and produce `expected`, `actual`, and `diff` artifacts.
@@ -66,6 +73,8 @@ Before the specialists start coding, ShipFlow can apply a deterministic scaffold
 - stable browser/server shell for the supported stack
 - a foundation the LLM can build on instead of re-inventing
 
+A startup scaffold is not just starter code. It also carries the archetype's base verification files under `vp/`, so the initial shell, protocol, runtime, architecture, and security expectations are part of the locked pack from day one. There is no separate hidden "universal quality gate" outside the pack.
+
 Current presets include:
 - Node web app + REST + SQLite
 - Node web app + GraphQL + SQLite
@@ -74,20 +83,60 @@ Current presets include:
 
 The goal is simple: let the LLM spend its context on product logic, data modeling, and failing verifications, not on re-assembling the same boilerplate with slightly different mistakes.
 
+ShipFlow also supports contributed scaffold plugins packaged as `.zip` archives. A scaffold plugin contains:
+- a manifest with LLM-facing summary and guidance
+- a template payload
+- an optional install script that ShipFlow runs inside the target repo
+- for `startup` plugins, the archetype's base verification files under `vp/`
+
+There are two plugin classes:
+- `startup`: one startup foundation, only for greenfield repos
+- `component`: additive slices such as an API, service, database, mobile shell, or TUI layer
+
+Commands:
+
+```bash
+shipflow scaffold-plugin install ./my-plugin.zip
+shipflow scaffold-plugin list
+shipflow scaffold --plugin=my-startup-plugin
+shipflow scaffold --component=graphql-api --component=sqlite-db
+```
+
+If your team already has a repeatable foundation for a stack, package it and contribute it. ShipFlow gets stronger when common project shapes move out of prompt folklore and into reusable scaffold plugins.
+
+- `startup` plugins give greenfield repos a real foundation on day one.
+- `startup` plugins must also ship the base checks that make that foundation real.
+- `component` plugins let existing repos grow in deterministic slices.
+- The fastest way to make ShipFlow better for a new stack is usually to contribute a scaffold plugin, not another prompt tweak.
+
+See [Scaffold Plugins](./docs/SCAFFOLD-PLUGINS.md) for the archive format, manifest contract, install-script contract, and contribution workflow.
+
 ## Implementation Strategy
 
 `shipflow implement` is a bounded multi-agent loop, not one ever-growing agent context.
 
+There are two loops:
+
+1. The outer ShipFlow loop: `implement -> verify -> retry until green or budget exhausted`.
+2. The inner planning loop inside each implementation iteration: `strategy lead -> one-shot specialist -> replan -> next one-shot specialist`.
+
+Per implementation iteration:
 1. ShipFlow bootstraps the verification runtime and applies a deterministic scaffold when configured or inferred.
 2. A strategy lead reads the latest evidence and compact thread state.
-3. ShipFlow activates only the specialists needed for that round: `architecture`, `ui`, `api`, `database`, `security`, `technical`.
-4. Each specialist gets a narrow verification slice and its own clean context.
-5. Verification runs again, the thread is updated, and stagnation is measured from real progress.
-6. If no new blocker checks pass, the next round must change strategy instead of repeating the same patch pattern.
+3. It selects exactly one next micro-task.
+4. ShipFlow invokes exactly one specialist for that micro-task: `architecture`, `ui`, `api`, `database`, `security`, or `technical`.
+5. That specialist works in its own clean context, returns after one narrow slice, and either writes files or reports a concrete blocker.
+6. The orchestrator replans from the new evidence and can choose the same specialist again later, but only for another one-shot slice.
+7. When the strategy lead says the current wave is ready, ShipFlow runs `verify`.
+8. If verification is still red, the outer loop starts another implementation iteration. If the run is stagnating, the next strategy must materially change approach.
+
+The important boundary is this: specialists and runner backends do not get to declare success. Only the ShipFlow loop does, after a full `verify` run writes a green `evidence/run.json`.
+
+ShipFlow also writes structured implementation logs while that loop runs, so the orchestrator and each specialist leave a persistent high-level execution trail instead of disappearing into one opaque chat transcript.
 
 The installer wires that to the native surface of each CLI:
 - Claude Code: plugin + Task subagents
-- Codex CLI: native skills + separate specialist runs
+- Codex CLI: native multi-agent roles + separate specialist runs
 - Gemini CLI: extension commands + separate specialist runs
 - Kiro CLI: custom agents + skills + steering
 
@@ -150,9 +199,10 @@ For exact agent commands and debug commands like `map`, `doctor`, `lint`, `gen`,
 
 ## Docs
 
-| User Guide | Verification Pack | Scientific Foundations |
-|---|---|---|
-| [How to write verifications, commands, and workflows](./docs/USER-GUIDE.md) | [Pack structure, generated outputs, and execution model](./docs/VERIFICATION-PACK.md) | [Why verification-first shipping exists](./docs/SCIENTIFIC-FOUNDATIONS.md) |
+- [User Guide](./docs/USER-GUIDE.md) — commands, workflows, and day-to-day usage
+- [Verification Pack](./docs/VERIFICATION-PACK.md) — pack structure, generated outputs, and execution model
+- [Scaffold Plugins](./docs/SCAFFOLD-PLUGINS.md) — how to author, package, install, and contribute scaffold plugins
+- [Scientific Foundations](./docs/SCIENTIFIC-FOUNDATIONS.md) — why verification-first shipping exists
 
 ## Requirements
 

@@ -6,7 +6,15 @@ import path from "node:path";
 import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
 import { countVerificationPack, buildImplementationReport, projectRunHints, summarizeImplementationHistory, writeImplementationHistory, run } from "../../lib/loop.js";
 import { impl as applyImpl } from "../../lib/impl.js";
-import { assertTodoAppQuality, createTempTodoExampleProject, todoExampleImplementationFileBlocks } from "../support/todo-example.js";
+import { createTempTodoExampleProject, todoExampleImplementationFileBlocks } from "../support/todo-example.js";
+
+function readJsonLines(file) {
+  return fs.readFileSync(file, "utf-8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map(line => JSON.parse(line));
+}
 
 describe("countVerificationPack", () => {
   it("counts verifications by type", () => {
@@ -207,6 +215,84 @@ describe("run", () => {
       assert.equal(evidence.stage, "bootstrap");
       assert.equal(evidence.bootstrap_ok, false);
       assert.equal(evidence.iterations, 0);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes structured orchestrator logs for the full implementation loop", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-run-logs-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - visible:",
+        "      testid: home",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.0.0" },
+      }));
+
+      const exitCode = await run({
+        cwd: tmpDir,
+        deps: {
+          collectStatus: () => ({ implementation_gate: { ready: true, blocking_reasons: [] } }),
+          bootstrapVerificationRuntime: () => ({ ok: true, actions: ["Bootstrapped runtime"], issues: [] }),
+          applyProjectScaffold: () => ({ ok: true, skipped: true, actions: [], issues: [], applied: false, preset: null }),
+          syncProjectDependencies: () => ({ ok: true, actions: ["Dependencies already in sync"], issues: [], fingerprint: "fp-1" }),
+          buildDoctor: () => ({ ok: true, issues: [] }),
+          runLint: () => ({ ok: true, issues: [] }),
+          gen: async () => {
+            fs.mkdirSync(path.join(tmpDir, ".gen"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, ".gen", "manifest.json"), JSON.stringify({ outputs: {} }));
+          },
+          impl: async () => ({
+            written: ["src/server.js"],
+            strategyPlan: {
+              approach: "API-first",
+              changed_approach: false,
+            },
+            specialists: [
+              { role: "api", status: "wrote", written_files: ["src/server.js"] },
+            ],
+          }),
+          verify: async () => {
+            fs.mkdirSync(path.join(tmpDir, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, "evidence", "run.json"), JSON.stringify({
+              ok: true,
+              passed: 1,
+              failed: 0,
+              groups: [{ kind: "ui", label: "UI", ok: true, passed: 1 }],
+            }, null, 2));
+            return { exitCode: 0, output: "1 passed" };
+          },
+        },
+      });
+
+      assert.equal(exitCode, 0);
+      const events = readJsonLines(path.join(tmpDir, "evidence", "implement-log.jsonl"));
+      assert.deepEqual(events.map(event => event.step), events.map((_, index) => index + 1));
+      assert.ok(events.some(event => event.event === "run.started"));
+      assert.ok(events.some(event => event.event === "stage.started" && event.stage === "bootstrap"));
+      assert.ok(events.some(event => event.event === "stage.completed" && event.stage === "gen"));
+      assert.ok(events.some(event => event.event === "iteration.started" && event.iteration === 1));
+      assert.ok(events.some(event => event.event === "delegation.round_completed" && event.iteration === 1));
+      assert.ok(events.some(event => event.event === "stage.completed" && event.stage === "verify"));
+      assert.ok(events.some(event => event.event === "run.passed"));
+
+      const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, "evidence", "implement-log-manifest.json"), "utf-8"));
+      assert.equal(manifest.last_step, events.length);
+      assert.ok(manifest.actors.some(actor => actor.actor_id === "orchestrator"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -568,7 +654,7 @@ describe("run", () => {
           srcDir: "src",
           team: {
             enabled: true,
-            maxSpecialistsPerIteration: 2,
+            maxTasksPerIteration: 2,
             memoHistory: 4,
             roles: ["architecture", "ui", "api", "database", "security", "technical"],
           },
@@ -788,7 +874,7 @@ describe("run", () => {
     }
   });
 
-  it("completes a temporary todo example project and records a green quality-gated report", async () => {
+  it("completes a temporary todo example project and records a green verification report", async () => {
     const tmpDir = createTempTodoExampleProject();
     try {
       const exitCode = await run({
@@ -808,8 +894,19 @@ describe("run", () => {
             },
           }),
           verify: async ({ cwd }) => {
-            await assertTodoAppQuality(cwd);
-            return { exitCode: 0, output: "todo quality checks passed" };
+            fs.mkdirSync(path.join(cwd, "evidence"), { recursive: true });
+            fs.writeFileSync(path.join(cwd, "evidence", "run.json"), JSON.stringify({
+              ok: true,
+              passed: 9,
+              failed: 0,
+              groups: [
+                { kind: "ui", label: "UI", ok: true, failed: 0 },
+                { kind: "api", label: "API", ok: true, failed: 0 },
+                { kind: "db", label: "Database", ok: true, failed: 0 },
+                { kind: "technical", label: "Technical", ok: true, failed: 0 },
+              ],
+            }, null, 2));
+            return { exitCode: 0, output: "todo verification checks passed" };
           },
         },
       });
@@ -821,7 +918,10 @@ describe("run", () => {
       assert.equal(evidence.stage, "verify");
       assert.equal(evidence.iterations, 1);
       assert.equal(evidence.vp_counts.ui, 3);
-      assert.equal(evidence.generated_counts.ui, 3);
+      assert.equal(evidence.generated_counts.ui, 4);
+      assert.equal(evidence.generated_counts.api, 4);
+      assert.equal(evidence.generated_counts.technical, 4);
+      assert.equal(evidence.generated_counts.security, 1);
       assert.equal(history.summary.total_runs, 1);
       assert.equal(history.summary.passed_runs, 1);
       assert.equal(history.summary.first_pass_rate, 1);

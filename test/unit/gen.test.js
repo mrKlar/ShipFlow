@@ -198,12 +198,13 @@ describe("genPlaywrightTest", () => {
     const code = genPlaywrightTest(check);
     assert.ok(code.includes('import { test, expect } from "@playwright/test"'));
     assert.ok(code.includes('"test-1: Basic test"'));
-    assert.ok(code.includes('await page.goto("http://localhost:3000")'));
+    assert.ok(code.includes('const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";'));
+    assert.ok(code.includes("await page.goto(shipflowBaseUrl);"));
     assert.ok(code.includes('[mutation guard]'));
     assert.ok(code.includes("mutationGuardPasses"));
     assert.ok(code.includes('evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())'));
     assert.ok(code.includes('=== "OK"'));
-    assert.ok(code.includes('await page.goto("http://localhost:3000/page")'));
+    assert.ok(code.includes('await page.goto(shipflowBaseUrl + "/page")'));
     assert.ok(code.includes('.click()'));
     assert.ok(code.includes('toHaveText("OK")'));
   });
@@ -235,11 +236,11 @@ describe("genPlaywrightTest", () => {
     ]);
     const code = genPlaywrightTest(withSetup, fixturesMap);
     assert.ok(code.includes("// setup: auth"));
-    assert.ok(code.includes('goto("http://localhost:3000/login")'));
+    assert.ok(code.includes('goto(shipflowBaseUrl + "/login")'));
     assert.ok(code.includes('.fill("a@b.com")'));
     // Setup steps appear before the check's own flow
     const setupIdx = code.indexOf("// setup: auth");
-    const openIdx = code.indexOf('goto("http://localhost:3000/page")');
+    const openIdx = code.indexOf('goto(shipflowBaseUrl + "/page")');
     assert.ok(setupIdx < openIdx);
   });
 

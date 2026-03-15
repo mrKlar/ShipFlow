@@ -335,6 +335,7 @@ describe("buildDraft", () => {
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/complete-todo.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/ui/filter-todos.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml"));
+      assert.ok(result.proposals.some(proposal => proposal.path === "vp/behavior/persist-todos-after-restart.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/get-todos.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/post-todos.yml"));
       assert.ok(result.proposals.some(proposal => proposal.path === "vp/api/patch-todo-completed.yml"));
@@ -343,6 +344,7 @@ describe("buildDraft", () => {
       const addTodo = result.proposals.find(proposal => proposal.path === "vp/ui/add-todo.yml");
       const filterTodo = result.proposals.find(proposal => proposal.path === "vp/ui/filter-todos.yml");
       const behavior = result.proposals.find(proposal => proposal.path === "vp/behavior/get-api-todos-flow.yml");
+      const persistAfterRestart = result.proposals.find(proposal => proposal.path === "vp/behavior/persist-todos-after-restart.yml");
       const listTodos = result.proposals.find(proposal => proposal.path === "vp/api/get-todos.yml");
       const createTodo = result.proposals.find(proposal => proposal.path === "vp/api/post-todos.yml");
       const completeTodo = result.proposals.find(proposal => proposal.path === "vp/api/patch-todo-completed.yml");
@@ -359,6 +361,9 @@ describe("buildDraft", () => {
       ]);
       assert.equal(behavior.data.severity, "blocker");
       assert.equal(behavior.data.state.connection, "./test.db");
+      assert.equal(persistAfterRestart.data.when[0].restart_app.wait_for_ready_ms, 10000);
+      assert.ok(persistAfterRestart.data.then.some(item => item.json_array_includes?.equals?.title === "Alpha"));
+      assert.ok(persistAfterRestart.data.then.some(item => item.json_array_includes?.equals?.title === "Beta"));
       assert.equal(listTodos.data.request.path, "/api/todos?filter=active");
       assert.equal(listTodos.data.state.kind, "sqlite");
       assert.match(listTodos.data.state.reset_sql, /INSERT INTO todos \(id, title, completed\) VALUES \(1, 'Task one', 1\);/);
@@ -758,7 +763,7 @@ describe("draft", () => {
       assert.equal(options.provider, "local");
       assert.equal(options.aiProvider, "gemini");
       assert.equal(options.model, "gemini-2.5-pro");
-      assert.equal(options.timeoutMs, 600000);
+      assert.equal(options.timeoutMs, 3600000);
     });
   });
 

@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
 import {
   buildTodoLiveArgs,
+  buildTodoLiveEnv,
   resolveTodoLiveProviders,
   todoLiveExampleDir,
 } from "../support/todo-live.js";
@@ -15,11 +15,7 @@ function runTodoLiveProvider(provider, env = process.env) {
     const stderr = [];
     const child = spawn(process.execPath, buildTodoLiveArgs(provider, env), {
       cwd: todoLiveExampleDir,
-      env: {
-        ...env,
-        SHIPFLOW_LIVE_MAX_ITERATIONS: env.SHIPFLOW_LIVE_MAX_ITERATIONS || "1",
-        PATH: [path.dirname(process.execPath), env.PATH || ""].filter(Boolean).join(path.delimiter),
-      },
+      env: buildTodoLiveEnv(env, process.execPath),
       stdio: ["ignore", "pipe", "pipe"],
     });
 

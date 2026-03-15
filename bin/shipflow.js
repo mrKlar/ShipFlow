@@ -37,6 +37,7 @@ Advanced / debug:
   shipflow gen                 Generate runnable tests from the verification pack
   shipflow approve-visual      Capture or refresh locked UI visual baselines
   shipflow scaffold            Apply a deterministic project foundation for supported stacks
+  shipflow scaffold-plugin     Install or list scaffold plugins packaged as zip archives
   shipflow verify              Run generated tests and write evidence
   shipflow status              Show pack, generated tests, and evidence
   shipflow implement-once      Single implementation pass without the retry loop
@@ -59,6 +60,10 @@ Flags:
   --update-existing    Allow accepted draft proposals to replace existing vp files
   --provider=<name>    Override provider for shipflow draft/implement
   --model=<id>         Override model for shipflow draft/implement
+  --preset=<id>        Override the built-in startup scaffold preset
+  --plugin=<id>        Override the startup scaffold plugin to apply
+  --component=<id>     Add one or more component scaffold plugins
+  --force              Allow scaffold/application overwrite where supported
 
 Exit codes:
   0    Success (all tests pass)
@@ -87,7 +92,20 @@ Exit codes:
 
   if (cmd === "scaffold") {
     const { scaffold } = await import("../lib/scaffold.js");
-    const { exitCode } = scaffold({ cwd: process.cwd(), force: flags.has("--force") });
+    const componentFlags = optionValues("component");
+    const { exitCode } = scaffold({
+      cwd: process.cwd(),
+      force: flags.has("--force"),
+      preset: optionValue("preset"),
+      plugin: optionValue("plugin"),
+      components: componentFlags.length > 0 ? componentFlags : undefined,
+    });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "scaffold-plugin") {
+    const { scaffoldPlugin } = await import("../lib/scaffold.js");
+    const { exitCode } = scaffoldPlugin({ cwd: process.cwd(), input });
     process.exit(exitCode);
   }
 

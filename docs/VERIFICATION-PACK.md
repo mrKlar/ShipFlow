@@ -37,6 +37,8 @@ Business-domain verifications compile to `.gen/domain/*.runner.mjs`.
 Performance verifications compile to `.gen/k6/*.js`.
 Technical verifications compile to `.gen/technical/*.runner.mjs`, with optional framework-specific config companions when `runner.framework` selects a specialized backend such as `dependency-cruiser`, `tsarch`, `madge`, or `eslint-plugin-boundaries`.
 
+Those outputs are execution backends, not workflow owners. ShipFlow still owns the retry loop, the managed local runtime, and the final green/red decision through `shipflow implement` and `shipflow verify`.
+
 The business-domain layer is where ShipFlow makes stateful and integration-heavy systems explicit before implementation:
 - business objects
 - identities
@@ -55,19 +57,24 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
 
 `shipflow verify`:
 1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
-2. Evaluates OPA policies (if `vp/policy/*.rego` exist) → `evidence/policy.json`
-3. Runs generated Playwright tests per verification type and writes `evidence/*.json`
-4. Writes `expected`, `actual`, `diff`, and metrics artifacts under `evidence/visual/` when UI visual contracts are present
-5. Runs k6 NFR scripts when `.gen/k6/*.js` exist. Missing `k6` after ShipFlow bootstrap is a verification failure, not a skip → `evidence/load.json`
-6. Runs generated business-domain runners when `.gen/domain/*.runner.mjs` exist → `evidence/domain.json`
-7. Runs generated technical backend runners when `.gen/technical/*.runner.mjs` exist → `evidence/technical.json`
-8. Emits aggregate `evidence/run.json` with group summaries
-9. `shipflow implement` updates `evidence/implement.json` as it advances through bootstrap, deterministic scaffold, dependency sync, strategy, specialist implementation rounds, and verification
-10. `shipflow implement` appends iteration history to `evidence/implement-history.json`
-11. `shipflow implement` keeps a compact continuity thread in `.shipflow/implement-thread.json`
-12. `shipflow status` may also show recent implementation history when available
-13. Prints colored summary
-14. Exits 0 if all pass, 1 if tests fail, 3 if policy denies
+2. Starts and manages the local runtime when the generated artifact set requires one
+3. Evaluates OPA policies (if `vp/policy/*.rego` exist) → `evidence/policy.json`
+4. Runs generated verification backends per type and writes `evidence/*.json`
+5. Writes `expected`, `actual`, `diff`, and metrics artifacts under `evidence/visual/` when UI visual contracts are present
+6. Runs k6 NFR scripts when `.gen/k6/*.js` exist. Missing `k6` after ShipFlow bootstrap is a verification failure, not a skip → `evidence/load.json`
+7. Runs generated business-domain runners when `.gen/domain/*.runner.mjs` exist → `evidence/domain.json`
+8. Runs generated technical backend runners when `.gen/technical/*.runner.mjs` exist → `evidence/technical.json`
+9. Emits aggregate `evidence/run.json` with group summaries
+10. `shipflow implement` updates `evidence/implement.json` as it advances through bootstrap, deterministic scaffold, dependency sync, strategy, one-shot specialist slices, and verification
+11. `shipflow implement` appends iteration history to `evidence/implement-history.json`
+12. `shipflow implement` appends structured loop events to `evidence/implement-log.jsonl`
+13. `shipflow implement` writes `evidence/implement-log-manifest.json` and per-agent streams under `evidence/agents/*.jsonl`
+14. `shipflow implement` keeps a compact continuity thread in `.shipflow/implement-thread.json`
+15. `shipflow status` may also show recent implementation history when available
+16. Prints colored summary
+17. Exits 0 only when all blocker verifications pass, 1 if tests fail, 3 if policy denies
+
+That aggregate `evidence/run.json` is the only acceptance verdict ShipFlow uses for completion. Live harnesses and example scripts should observe it, not maintain a second private notion of "good enough."
 
 `shipflow approve-visual`:
 1. Reads the current UI pack
@@ -87,6 +94,23 @@ The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` 
 
 The scaffold is a separate concern from the pack itself. `vp/` remains the source of truth for what must be true. The deterministic scaffold is just the scripted implementation foundation ShipFlow can apply before the LLM starts coding.
 
+That foundation can come from:
+- a built-in preset
+- a contributed scaffold plugin archive installed into `.shipflow/scaffold-plugins/`
+
+Scaffold plugins are zip packages with a manifest, a template payload, and an optional install script. ShipFlow supports:
+- `startup` plugins: one startup foundation, greenfield only
+- `component` plugins: additive slices such as APIs, services, databases, mobile shells, or TUIs
+
+Applied foundations and component scaffolds are recorded in `.shipflow/scaffold-state.json`, which ShipFlow feeds back into the implementation prompt so the agent extends the installed foundation rather than rebuilding it.
+For the packaging format and contribution workflow, see [Scaffold Plugins](./SCAFFOLD-PLUGINS.md).
+
+For startup scaffolds, the separation is precise:
+- the scaffold installs the deterministic code foundation
+- the same startup scaffold also installs the archetype's base verification files into `vp/`
+
+That is how ShipFlow avoids hidden acceptance logic. There is no separate universal pack and no benchmark-only quality gate outside `vp/`. Archetype-level truths belong in the startup scaffold's verification files; app-specific truths belong in the repo's own pack authoring.
+
 The draft is archetype-aware. It can distinguish:
 - frontend web apps
 - fullstack web apps
@@ -102,10 +126,23 @@ Implementation is intentionally separated from verification-pack authoring.
 `shipflow implement` runs as a bounded orchestration loop:
 - ShipFlow can first apply a deterministic project scaffold from `shipflow.json` when the stack is supported and the repo still needs a foundation
 - a strategy lead diagnoses the latest evidence
-- only the needed specialist slices are activated
-- each specialist gets a narrow verification target and its own context
-- the loop measures real progress, not just file churn
-- when the run stalls, the next round must change strategy
+- it chooses exactly one next micro-task at a time
+- one specialist gets one narrow verification target and its own clean context
+- that specialist returns after the one-shot slice is done or after exhausting the straightforward ideas in that slice
+- the orchestrator replans from the new evidence and may choose another one-shot slice
+- ShipFlow then runs `verify` and measures real progress, not just file churn
+- when the run stalls, the next implementation iteration must change strategy
+
+This orchestration sits above the runner layer. Playwright, Cucumber, k6, and the technical/domain backends do not own retries, acceptance, or runtime lifecycle. They execute slices. ShipFlow decides whether to continue, retry, or stop.
+
+In other words, there are two loops:
+- the outer ShipFlow loop: `implement -> verify -> retry until green`
+- the inner implementation loop: `strategy lead -> one-shot specialist -> replan -> next one-shot specialist`
+
+It is also observable at the ShipFlow layer itself through:
+- `evidence/implement-log.jsonl`
+- `evidence/implement-log-manifest.json`
+- `evidence/agents/*.jsonl`
 
 That scaffold can install a stable directory layout, base scripts, and foundation dependencies for supported stacks such as:
 - Node web app + REST + SQLite

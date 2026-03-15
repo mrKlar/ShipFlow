@@ -218,6 +218,8 @@ describe("genApiTest", () => {
     assert.ok(code.includes("MUTATION_REQUEST_SPECS"));
     assert.ok(code.includes("MUTATION_STRATEGIES"));
     assert.ok(code.includes("sendShipFlowRequest"));
+    assert.ok(code.includes('const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;'));
+    assert.ok(code.includes("options.timeout = shipflowApiTimeoutMs;"));
     assert.ok(code.includes('"path":"/api/users"'));
     assert.ok(code.includes("toBe(200)"));
     assert.ok(code.includes("[mutation guard]"));

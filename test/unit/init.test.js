@@ -49,7 +49,7 @@ describe("init", () => {
       assert.equal(config.impl.scaffold.preset, "");
       assert.equal(config.impl.scaffold.force, false);
       assert.equal(config.impl.team.enabled, true);
-      assert.equal(config.impl.team.maxSpecialistsPerIteration, 4);
+      assert.equal(config.impl.team.maxTasksPerIteration, 6);
       assert.deepEqual(config.impl.team.roles, ["architecture", "ui", "api", "database", "security", "technical"]);
     });
   });
@@ -179,6 +179,10 @@ describe("init", () => {
       assert.ok(toml.includes("\".shipflow/\""));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "agents", "strategy-lead.toml")));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "agents", "ui-specialist.toml")));
+      const strategyAgent = fs.readFileSync(path.join(tmpDir, ".codex", "agents", "strategy-lead.toml"), "utf-8");
+      const uiAgent = fs.readFileSync(path.join(tmpDir, ".codex", "agents", "ui-specialist.toml"), "utf-8");
+      assert.ok(strategyAgent.includes('sandbox_mode = "read-only"'));
+      assert.ok(uiAgent.includes('sandbox_mode = "workspace-write"'));
       assert.ok(fs.existsSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules")));
       const rules = fs.readFileSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules"), "utf-8");
       assert.ok(rules.includes('pattern=["cat", ["~/.local/bin/shipflow"'));

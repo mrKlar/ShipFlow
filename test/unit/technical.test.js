@@ -223,6 +223,12 @@ describe("technicalAssertExpr", () => {
     assert.ok(code.includes("runCommand"));
     assert.ok(code.includes("stdout.includes"));
   });
+
+  it("generates glob text assertions", () => {
+    const code = technicalAssertExpr({ glob_contains_text: { glob: "src/**/*.js", text: "node:sqlite" } });
+    assert.ok(code.includes("globFiles"));
+    assert.ok(code.includes("node:sqlite"));
+  });
 });
 
 describe("genTechnicalArtifacts", () => {
@@ -234,6 +240,7 @@ describe("genTechnicalArtifacts", () => {
       assert: [
         { path_exists: { path: ".github/workflows/ci.yml" } },
         { github_action_uses: { workflow: ".github/workflows/ci.yml", action: "actions/checkout@v4" } },
+        { glob_contains_text: { glob: "src/**/*.js", text: "node:sqlite" } },
         { script_present: { name: "build" } },
       ],
     });
@@ -243,6 +250,7 @@ describe("genTechnicalArtifacts", () => {
     assert.ok(artifacts[0].content.includes("runFrameworkBackend"));
     assert.ok(artifacts[0].content.includes("runGenericAssertions"));
     assert.ok(artifacts[0].content.includes("actions/checkout@v4"));
+    assert.ok(artifacts[0].content.includes("glob_contains_text"));
     assert.ok(artifacts[0].content.includes("packageScript"));
   });
 
@@ -478,6 +486,81 @@ describe("genTechnicalArtifacts", () => {
         runner: { kind: "custom", framework: "custom" },
         assert: [
           { graphql_surface_present: { files: "src/**/*", endpoint: "/graphql" } },
+        ],
+      });
+
+      const runnerFile = path.join(tmpDir, runner.name);
+      fs.writeFileSync(runnerFile, runner.content, { mode: 0o755 });
+      const result = await runGeneratedRunner(runnerFile, tmpDir);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("detects GraphQL routes declared with req.method and url.pathname checks", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-technical-graphql-node-pathname-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src", "public"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "src", "graphql.js"), [
+        'import { buildSchema } from "graphql";',
+        "export const schema = buildSchema(`type Query { ok: Boolean }`);",
+        "export async function executeGraphQL() {",
+        "  return { data: { ok: true } };",
+        "}",
+        "",
+      ].join("\n"));
+      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), [
+        "import fs from \"node:fs\";",
+        "import path from \"node:path\";",
+        "import http from \"node:http\";",
+        "import { fileURLToPath } from \"node:url\";",
+        'import { executeGraphQL } from "./graphql.js";',
+        "",
+        "const __dirname = path.dirname(fileURLToPath(import.meta.url));",
+        "const publicDir = path.join(__dirname, \"public\");",
+        "",
+        "function json(res, status, body) {",
+        "  res.writeHead(status, { \"content-type\": \"application/json; charset=utf-8\" });",
+        "  res.end(JSON.stringify(body));",
+        "}",
+        "",
+        "function servePublic(res, requestPath) {",
+        "  const filePath = path.join(publicDir, requestPath === \"/\" ? \"index.html\" : requestPath);",
+        "  if (!fs.existsSync(filePath)) return false;",
+        "  res.writeHead(200, { \"content-type\": \"text/html; charset=utf-8\" });",
+        "  res.end(fs.readFileSync(filePath));",
+        "  return true;",
+        "}",
+        "",
+        "http.createServer(async (req, res) => {",
+        "  const url = new URL(req.url || \"/\", \"http://127.0.0.1\");",
+        "",
+        "  if (req.method === \"GET\" && url.pathname === \"/health\") {",
+        "    return json(res, 200, { ok: true });",
+        "  }",
+        "",
+        "  if (req.method === \"POST\" && url.pathname === \"/graphql\") {",
+        "    return json(res, 200, await executeGraphQL());",
+        "  }",
+        "",
+        "  if (url.pathname === \"/graphql\") {",
+        "    return json(res, 405, { errors: [{ message: \"Only POST requests are supported for /graphql\" }] });",
+        "  }",
+        "",
+        "  if (req.method === \"GET\" && servePublic(res, url.pathname)) return;",
+        "  return json(res, 404, { error: \"Not found\" });",
+        "});",
+        "",
+      ].join("\n"));
+
+      const [runner] = genTechnicalArtifacts({
+        ...base,
+        __file: "vp/technical/graphql-node-pathname.yml",
+        category: "framework",
+        runner: { kind: "custom", framework: "custom" },
+        assert: [
+          { graphql_surface_present: { files: "**/*", endpoint: "/graphql" } },
         ],
       });
 

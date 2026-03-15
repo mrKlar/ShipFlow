@@ -1,9 +1,14 @@
 import http from "node:http";
 
 const port = Number.parseInt(process.env.PORT || "3001", 10);
+const SECURITY_HEADERS = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "no-referrer",
+};
 
 function json(res, status, body) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(status, { ...SECURITY_HEADERS, "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
 

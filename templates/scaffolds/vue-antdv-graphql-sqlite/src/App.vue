@@ -1,6 +1,6 @@
 <template>
   <a-config-provider>
-    <div class="app-shell">
+    <div class="app-shell" data-testid="app-shell">
       <a-layout class="layout-shell">
         <a-layout-header class="layout-header">
           <div>

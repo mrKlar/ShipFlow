@@ -6,9 +6,14 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 const port = Number.parseInt(process.env.PORT || "3000", 10);
+const SECURITY_HEADERS = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "no-referrer",
+};
 
 function json(res, status, body) {
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  res.writeHead(status, { ...SECURITY_HEADERS, "content-type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
 
@@ -33,7 +38,7 @@ function publicFilePath(requestPath) {
 function servePublic(res, requestPath) {
   const target = publicFilePath(requestPath);
   if (!target || !fs.existsSync(target) || !fs.statSync(target).isFile()) return false;
-  res.writeHead(200, { "content-type": mimeType(target) });
+  res.writeHead(200, { ...SECURITY_HEADERS, "content-type": mimeType(target) });
   res.end(fs.readFileSync(target));
   return true;
 }
@@ -56,7 +61,7 @@ const server = http.createServer((req, res) => {
 
   if (req.method === "GET" && servePublic(res, url.pathname)) return;
 
-  res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+  res.writeHead(404, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8" });
   res.end("Not found");
 });
 

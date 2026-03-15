@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   TICTACTOE_LIVE_REQUIRED_VP_PATHS,
   buildTictactoeLiveArgs,
+  buildTictactoeLiveEnv,
   normalizeTictactoeLiveProviders,
   resolveTictactoeLiveProviders,
   rewriteTicTacToeBaseUrls,
@@ -16,7 +17,10 @@ describe("tic-tac-toe live support", () => {
     const kinds = new Set(TICTACTOE_LIVE_REQUIRED_VP_PATHS.map(item => item.split("/")[1]));
     assert.deepEqual([...kinds].sort(), ["api", "behavior", "db", "domain", "technical", "ui"]);
     assert.equal(TICTACTOE_LIVE_REQUIRED_VP_PATHS.includes("vp/api/record-completed-game.yml"), true);
+    assert.equal(TICTACTOE_LIVE_REQUIRED_VP_PATHS.includes("vp/api/get-score-history.yml"), true);
+    assert.equal(TICTACTOE_LIVE_REQUIRED_VP_PATHS.includes("vp/behavior/persist-score-history-after-restart.yml"), true);
     assert.equal(TICTACTOE_LIVE_REQUIRED_VP_PATHS.includes("vp/domain/completed-game.yml"), true);
+    assert.equal(TICTACTOE_LIVE_REQUIRED_VP_PATHS.includes("vp/ui/show-score-history.yml"), true);
   });
 
   it("normalizes and de-duplicates requested providers", () => {
@@ -49,6 +53,18 @@ describe("tic-tac-toe live support", () => {
     assert.ok(args.includes("--provider=codex"));
     assert.ok(args.includes("--keep"));
     assert.ok(args.includes("--model=gpt-5-codex"));
+  });
+
+  it("does not force SHIPFLOW_LIVE_MAX_ITERATIONS unless explicitly overridden", () => {
+    const inherited = buildTictactoeLiveEnv({ PATH: "/usr/bin" }, "/tmp/node");
+    assert.equal(Object.hasOwn(inherited, "SHIPFLOW_LIVE_MAX_ITERATIONS"), false);
+    assert.match(inherited.PATH, /^\/tmp:/);
+
+    const overridden = buildTictactoeLiveEnv({
+      PATH: "/usr/bin",
+      SHIPFLOW_LIVE_MAX_ITERATIONS: "7",
+    }, "/tmp/node");
+    assert.equal(overridden.SHIPFLOW_LIVE_MAX_ITERATIONS, "7");
   });
 
   it("builds isolated dev/runtime settings for parallel live runs", () => {

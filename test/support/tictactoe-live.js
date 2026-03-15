@@ -6,9 +6,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const TICTACTOE_LIVE_REQUIRED_VP_PATHS = [
   "vp/ui/play-winning-game.yml",
+  "vp/ui/show-score-history.yml",
   "vp/behavior/query-score-history.yml",
+  "vp/behavior/persist-score-history-after-restart.yml",
   "vp/domain/completed-game.yml",
   "vp/api/record-completed-game.yml",
+  "vp/api/get-score-history.yml",
   "vp/db/score-history.yml",
   "vp/technical/framework-stack.yml",
   "vp/technical/api-protocol.yml",
@@ -68,6 +71,17 @@ export function buildTictactoeLiveArgs(provider, env = process.env) {
   if (env.SHIPFLOW_LIVE_KEEP === "1") args.push("--keep");
   if (env.SHIPFLOW_LIVE_MODEL) args.push(`--model=${env.SHIPFLOW_LIVE_MODEL}`);
   return args;
+}
+
+export function buildTictactoeLiveEnv(env = process.env, nodeExecPath = process.execPath) {
+  const nextEnv = {
+    ...env,
+    PATH: [path.dirname(nodeExecPath), env.PATH || ""].filter(Boolean).join(path.delimiter),
+  };
+  const maxIterations = String(env.SHIPFLOW_LIVE_MAX_ITERATIONS || "").trim();
+  if (maxIterations) nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS = maxIterations;
+  else delete nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS;
+  return nextEnv;
 }
 
 export function tictactoeLiveBaseUrl(port) {

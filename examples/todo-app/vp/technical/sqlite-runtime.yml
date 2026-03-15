@@ -11,6 +11,9 @@ app:
 assert:
   - path_exists:
       path: package.json
+  - glob_contains_text:
+      glob: src/**/*.js
+      text: node:sqlite
   - dependency_absent:
       name: better-sqlite3
       section: all

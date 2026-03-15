@@ -5,12 +5,26 @@ import path from "node:path";
 import { gen } from "../../lib/gen.js";
 import { impl } from "../../lib/impl.js";
 import { runLint } from "../../lib/lint.js";
-import { assertTodoAppQuality, createTempTodoExampleProject, todoExampleImplementationFileBlocks } from "../support/todo-example.js";
+import { createTempTodoExampleProject, todoExampleImplementationFileBlocks } from "../support/todo-example.js";
 
 describe("todo example temp project", () => {
-  it("implements the canonical todo app in a temporary directory and passes the quality gate", async () => {
+  it("implements the canonical todo app in a temporary directory", async () => {
     const tmpDir = createTempTodoExampleProject();
     try {
+      for (const rel of [
+        "vp/ui/add-todo.yml",
+        "vp/ui/complete-todo.yml",
+        "vp/ui/filter-todos.yml",
+        "vp/api/post-todos.yml",
+        "vp/api/get-todos.yml",
+        "vp/api/patch-todo-completed.yml",
+        "vp/behavior/get-api-todos-flow.yml",
+        "vp/behavior/persist-todos-after-restart.yml",
+        "vp/db/todos-state.yml",
+      ]) {
+        assert.equal(fs.existsSync(path.join(tmpDir, rel)), true, `${rel} should be part of the example pack`);
+      }
+
       const lint = runLint(tmpDir);
       assert.equal(lint.ok, true);
 
@@ -35,8 +49,7 @@ describe("todo example temp project", () => {
 
       assert.deepEqual(written, ["src/server.js"]);
       assert.equal(Array.isArray(implementation?.specialists), true);
-
-      await assertTodoAppQuality(tmpDir);
+      assert.equal(fs.existsSync(path.join(tmpDir, "src", "server.js")), true);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

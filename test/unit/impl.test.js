@@ -18,6 +18,14 @@ import {
   validateGeneratedFiles,
 } from "../../lib/impl.js";
 
+function readJsonLines(file) {
+  return fs.readFileSync(file, "utf-8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map(line => JSON.parse(line));
+}
+
 describe("parseFiles", () => {
   it("parses single file", () => {
     const text = `Some intro text.
@@ -162,6 +170,42 @@ describe("buildPrompt", () => {
     assert.ok(p.includes("Node.js app"));
   });
 
+  it("includes applied scaffold summaries so the LLM extends the installed foundation", () => {
+    const p = buildPrompt(vpFiles, [], [], config, null, writePolicy, {
+      scaffoldState: {
+        startup: {
+          id: "vue-antdv-graphql-sqlite",
+          description: "Vue + Ant Design Vue foundation",
+          base_verification_files: [
+            "vp/ui/root-shell.yml",
+            "vp/api/health.yml",
+          ],
+          llm: {
+            summary: "Vue and Ant Design Vue are already installed.",
+            guidance: ["Reuse the design-system foundation."],
+          },
+        },
+        components: [{
+          id: "graphql-api-component",
+          component_kinds: ["api", "service"],
+          description: "GraphQL API component",
+          base_verification_files: ["vp/api/comments-health.yml"],
+          llm: {
+            summary: "A GraphQL transport component is already installed.",
+            guidance: ["Extend the existing GraphQL transport."],
+          },
+        }],
+      },
+    });
+    assert.match(p, /Deterministic Foundation Already Installed/);
+    assert.match(p, /vue-antdv-graphql-sqlite/);
+    assert.match(p, /Reuse the design-system foundation/);
+    assert.match(p, /base verification files: vp\/ui\/root-shell\.yml, vp\/api\/health\.yml/);
+    assert.match(p, /graphql-api-component/);
+    assert.match(p, /added verification files: vp\/api\/comments-health\.yml/);
+    assert.match(p, /Extend the existing GraphQL transport/);
+  });
+
   it("includes current source code", () => {
     const srcFiles = [{ path: "src/server.js", content: "const x = 1;" }];
     const p = buildPrompt(vpFiles, [], srcFiles, config, null, writePolicy);
@@ -291,6 +335,8 @@ describe("team prompts", () => {
     assert.match(prompt, /shipflow_strategy_lead/);
     assert.match(prompt, /must choose a materially different approach/i);
     assert.match(prompt, /come back when they have exhausted the straightforward ideas/i);
+    assert.match(prompt, /Do not spend specialist tasks on ShipFlow internals/i);
+    assert.match(prompt, /Do not invent meta maintenance work/i);
     assert.match(prompt, /Compact implementation memo/i);
     assert.match(prompt, /architecture/i);
     assert.match(prompt, /Base implementation context/);
@@ -303,8 +349,10 @@ describe("team prompts", () => {
       orchestration: { iteration: 1, maxIterations: 50, stagnationCount: 0, mustChangeStrategy: false },
       prompt: "Base implementation context",
     };
-    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /Task tool/i);
+    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /shipflow-strategy-lead/);
     assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /~\/\.claude\/agents/);
+    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /This strategy step is orchestration only/i);
+    assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /Do not open a Task/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "gemini" }), /\/shipflow:strategy-lead/);
     assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /subagent tool/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /~\/\.kiro\/agents/);
@@ -372,6 +420,16 @@ describe("validateGeneratedFiles", () => {
     assert.deepEqual(
       validateGeneratedFiles([{ path: "package.json", content: "{\n  \"name\": \"ok\"\n}\n" }]),
       [],
+    );
+  });
+
+  it("flags placeholder-only file contents before ShipFlow writes them", () => {
+    assert.deepEqual(
+      validateGeneratedFiles([
+        { path: "src/server.js", content: "[full file content as shown above]\n" },
+        { path: "src/app.js", content: "console.log('ok');\n" },
+      ]),
+      ["src/server.js: placeholder content is not allowed ([full file content as shown above])"],
     );
   });
 });
@@ -533,6 +591,7 @@ describe("impl", () => {
 
       const prompts = [];
       let calls = 0;
+      let strategyCalls = 0;
       const result = await impl({
         cwd: tmpDir,
         provider: "command",
@@ -541,13 +600,29 @@ describe("impl", () => {
             prompts.push(prompt);
             calls += 1;
             if (responseFormat === "json") {
-              return JSON.stringify({
-                summary: "Route UI work to the UI specialist.",
-                approach: "UI-first",
-                changed_approach: false,
-                root_causes: ["Missing page"],
-                assignments: [{ role: "ui", goal: "Create the home screen", why_now: "UI is missing", focus_types: ["ui"] }],
-              });
+              strategyCalls += 1;
+              return JSON.stringify(strategyCalls === 1
+                ? {
+                    summary: "Route UI work to the UI specialist.",
+                    approach: "UI-first",
+                    changed_approach: false,
+                    root_causes: ["Missing page"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "ui-home",
+                      role: "ui",
+                      goal: "Create the home screen",
+                      why_now: "UI is missing",
+                      focus_types: ["ui"],
+                    },
+                  }
+                : {
+                    summary: "The UI slice is done.",
+                    approach: "UI-first",
+                    changed_approach: false,
+                    continue_iteration: false,
+                    stop_reason: "Ready to verify after the UI micro-task.",
+                  });
             }
             if (calls === 2) return "Plan: create src/server.js and package.json";
             return "--- FILE: src/server.js ---\nconsole.log('ok');\n--- END FILE ---";
@@ -555,7 +630,7 @@ describe("impl", () => {
         },
       });
 
-      assert.equal(calls, 3);
+      assert.equal(calls, 4);
       assert.equal(result.written[0], "src/server.js");
       assert.equal(fs.readFileSync(path.join(tmpDir, "src", "server.js"), "utf-8"), "console.log('ok');\n");
       assert.ok(prompts[2].includes("Specialist Return Correction"));
@@ -590,6 +665,7 @@ describe("impl", () => {
       fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
       const prompts = [];
       let calls = 0;
+      let strategyCalls = 0;
       const result = await impl({
         cwd: tmpDir,
         provider: "command",
@@ -598,13 +674,29 @@ describe("impl", () => {
             prompts.push(prompt);
             calls += 1;
             if (responseFormat === "json") {
-              return JSON.stringify({
-                summary: "API and package metadata need to be written.",
-                approach: "Bootstrap package metadata first",
-                changed_approach: false,
-                root_causes: ["Missing package.json"],
-                assignments: [{ role: "technical", goal: "Write package.json and server entrypoint", why_now: "Runtime files are missing", focus_types: ["technical"] }],
-              });
+              strategyCalls += 1;
+              return JSON.stringify(strategyCalls === 1
+                ? {
+                    summary: "API and package metadata need to be written.",
+                    approach: "Bootstrap package metadata first",
+                    changed_approach: false,
+                    root_causes: ["Missing package.json"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "technical-bootstrap",
+                      role: "technical",
+                      goal: "Write package.json and server entrypoint",
+                      why_now: "Runtime files are missing",
+                      focus_types: ["technical"],
+                    },
+                  }
+                : {
+                    summary: "Technical bootstrap is done.",
+                    approach: "Bootstrap package metadata first",
+                    changed_approach: false,
+                    continue_iteration: false,
+                    stop_reason: "Ready to verify after the technical bootstrap task.",
+                  });
             }
             if (calls === 2) {
               return [
@@ -629,11 +721,69 @@ describe("impl", () => {
         },
       });
 
-      assert.equal(calls, 3);
+      assert.equal(calls, 4);
       assert.deepEqual(result.written, ["package.json", "src/server.js"]);
       assert.equal(JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")).name, "fixed");
       assert.ok(prompts[2].includes("Content Correction"));
       assert.ok(prompts[2].includes("package.json:"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("retries when the provider returns placeholder file content", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      const prompts = [];
+      let calls = 0;
+      let strategyCalls = 0;
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
+            prompts.push(prompt);
+            calls += 1;
+            if (responseFormat === "json") {
+              strategyCalls += 1;
+              return JSON.stringify(strategyCalls === 1
+                ? {
+                    summary: "Repair the server entrypoint.",
+                    approach: "Technical bootstrap first",
+                    changed_approach: false,
+                    root_causes: ["Missing or invalid server entrypoint"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "technical-server-entrypoint",
+                      role: "technical",
+                      goal: "Write the server entrypoint",
+                      why_now: "The runtime entrypoint is invalid",
+                      focus_types: ["technical"],
+                    },
+                  }
+                : {
+                    summary: "Ready to verify after the technical slice.",
+                    approach: "Technical bootstrap first",
+                    changed_approach: false,
+                    continue_iteration: false,
+                    stop_reason: "The server entrypoint is now valid.",
+                  });
+            }
+            if (calls === 2) {
+              return "--- FILE: src/server.js ---\n[full file content as shown above]\n--- END FILE ---";
+            }
+            return "--- FILE: src/server.js ---\nconsole.log('ok');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.equal(calls, 4);
+      assert.deepEqual(result.written, ["src/server.js"]);
+      assert.equal(fs.readFileSync(path.join(tmpDir, "src", "server.js"), "utf-8"), "console.log('ok');\n");
+      assert.ok(prompts[2].includes("Content Correction"));
+      assert.ok(prompts[2].includes("placeholder content is not allowed"));
+      assert.ok(prompts[2].includes("[full file content as shown above]"));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -647,21 +797,52 @@ describe("impl", () => {
       fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
 
       const requestedRoles = [];
+      let strategyCalls = 0;
       const result = await impl({
         cwd: tmpDir,
         provider: "command",
         deps: {
           generateWithProvider: async ({ prompt, responseFormat }) => {
             if (responseFormat === "json") {
+              strategyCalls += 1;
+              if (strategyCalls === 1) {
+                return JSON.stringify({
+                  summary: "Start with the API.",
+                  approach: "Sequential micro-tasks",
+                  changed_approach: false,
+                  root_causes: ["Missing API", "Missing UI"],
+                  continue_iteration: true,
+                  next_task: {
+                    task_id: "api-http",
+                    role: "api",
+                    goal: "Create the HTTP handler",
+                    why_now: "API is missing",
+                    focus_types: ["api"],
+                  },
+                });
+              }
+              if (strategyCalls === 2) {
+                return JSON.stringify({
+                  summary: "Then render the UI.",
+                  approach: "Sequential micro-tasks",
+                  changed_approach: false,
+                  root_causes: ["Missing API", "Missing UI"],
+                  continue_iteration: true,
+                  next_task: {
+                    task_id: "ui-home",
+                    role: "ui",
+                    goal: "Render the home page",
+                    why_now: "UI is missing",
+                    focus_types: ["ui"],
+                  },
+                });
+              }
               return JSON.stringify({
-                summary: "Split the work between API and UI.",
-                approach: "Parallel specialties",
+                summary: "Ready to verify.",
+                approach: "Sequential micro-tasks",
                 changed_approach: false,
-                root_causes: ["Missing API", "Missing UI"],
-                assignments: [
-                  { role: "api", goal: "Create the HTTP handler", why_now: "API is missing", focus_types: ["api"] },
-                  { role: "ui", goal: "Render the home page", why_now: "UI is missing", focus_types: ["ui"] },
-                ],
+                continue_iteration: false,
+                stop_reason: "API and UI tasks are complete.",
               });
             }
             if (/API Specialist/.test(prompt)) {
@@ -676,8 +857,111 @@ describe("impl", () => {
 
       assert.deepEqual(requestedRoles, ["api", "ui"]);
       assert.deepEqual(result.written, ["src/server.js", "src/app.js"]);
-      assert.equal(result.strategyPlan.approach, "Parallel specialties");
+      assert.equal(result.strategyPlan.approach, "Sequential micro-tasks");
+      assert.deepEqual(result.strategyPlan.tasks.map(item => item.role), ["api", "ui"]);
       assert.deepEqual(result.specialists.map(item => item.role), ["api", "ui"]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes structured orchestrator, strategy, and specialist logs to evidence", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      await impl({
+        cwd: tmpDir,
+        provider: "command",
+        orchestration: {
+          iteration: 1,
+          maxIterations: 5,
+          remainingDurationMs: 1000,
+        },
+        deps: {
+          generateWithProvider: (() => {
+            let strategyCalls = 0;
+            return async ({ prompt, responseFormat }) => {
+              if (responseFormat === "json") {
+                strategyCalls += 1;
+                return JSON.stringify(strategyCalls === 1
+                  ? {
+                      summary: "Send the home screen work to UI.",
+                      approach: "UI-first",
+                      changed_approach: false,
+                      root_causes: ["Missing home UI"],
+                      continue_iteration: true,
+                      next_task: {
+                        task_id: "ui-home",
+                        role: "ui",
+                        goal: "Render the home page",
+                        why_now: "UI is red",
+                        focus_types: ["ui"],
+                      },
+                    }
+                  : {
+                      summary: "Ready to verify.",
+                      approach: "UI-first",
+                      changed_approach: false,
+                      continue_iteration: false,
+                      stop_reason: "Ready to verify after the UI slice.",
+                    });
+              }
+              assert.match(prompt, /UI Specialist/i);
+              return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+            };
+          })(),
+        },
+      });
+
+      const events = readJsonLines(path.join(tmpDir, "evidence", "implement-log.jsonl"));
+      assert.deepEqual(events.map(event => event.step), events.map((_, index) => index + 1));
+      assert.ok(events.some(event => event.event === "planning.started"));
+      assert.ok(events.some(event => event.event === "strategy.started"));
+      assert.ok(events.some(event => event.event === "planning.completed"));
+      assert.ok(events.some(event => event.event === "delegation.started" && event.data?.role === "ui"));
+      assert.ok(events.some(event => event.event === "specialist.started" && event.actor_id === "ui"));
+      assert.ok(events.some(event => event.event === "specialist.completed" && event.actor_id === "ui"));
+      assert.ok(events.some(event => event.event === "round.completed"));
+
+      const orchestratorEvents = readJsonLines(path.join(tmpDir, "evidence", "agents", "orchestrator.jsonl"));
+      const strategyEvents = readJsonLines(path.join(tmpDir, "evidence", "agents", "strategy-lead.jsonl"));
+      const uiEvents = readJsonLines(path.join(tmpDir, "evidence", "agents", "ui.jsonl"));
+      assert.ok(orchestratorEvents.length >= 4);
+      assert.ok(strategyEvents.some(event => event.event === "strategy.completed"));
+      assert.ok(uiEvents.some(event => event.event === "specialist.completed"));
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("routes Claude strategy and specialist calls through native agent ids", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const seenAgents = [];
+      await impl({
+        cwd: tmpDir,
+        provider: "claude",
+        orchestration: {
+          iteration: 1,
+          maxIterations: 5,
+          remainingDurationMs: 1000,
+        },
+        deps: {
+          generateWithProvider: async ({ responseFormat, options }) => {
+            seenAgents.push({ responseFormat, agent: options?.agent || null });
+            return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.deepEqual(seenAgents, [{ responseFormat: "files", agent: "shipflow-ui-specialist" }]);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -694,18 +978,50 @@ describe("impl", () => {
         cwd: tmpDir,
         provider: "command",
         deps: {
-          generateWithProvider: async ({ prompt, responseFormat }) => {
+          generateWithProvider: (() => {
+            let strategyCalls = 0;
+            return async ({ prompt, responseFormat }) => {
             if (responseFormat === "json") {
-              return JSON.stringify({
-                summary: "Split between UI and API.",
-                approach: "UI plus API handoff",
-                changed_approach: false,
-                root_causes: ["UI missing", "API root cause unclear"],
-                assignments: [
-                  { role: "api", goal: "Investigate API blocker", why_now: "Behavior is red", focus_types: ["api"] },
-                  { role: "ui", goal: "Render the home page", why_now: "UI is missing", focus_types: ["ui"] },
-                ],
-              });
+                strategyCalls += 1;
+                if (strategyCalls === 1) {
+                  return JSON.stringify({
+                    summary: "Investigate the API blocker first.",
+                    approach: "API then UI",
+                    changed_approach: false,
+                    root_causes: ["UI missing", "API root cause unclear"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "api-investigate",
+                      role: "api",
+                      goal: "Investigate API blocker",
+                      why_now: "Behavior is red",
+                      focus_types: ["api"],
+                    },
+                  });
+                }
+                if (strategyCalls === 2) {
+                  return JSON.stringify({
+                    summary: "Now render the UI.",
+                    approach: "API then UI",
+                    changed_approach: false,
+                    root_causes: ["UI missing", "API root cause unclear"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "ui-home",
+                      role: "ui",
+                      goal: "Render the home page",
+                      why_now: "UI is missing",
+                      focus_types: ["ui"],
+                    },
+                  });
+                }
+                return JSON.stringify({
+                  summary: "Ready to verify.",
+                  approach: "API then UI",
+                  changed_approach: false,
+                  continue_iteration: false,
+                  stop_reason: "Both API and UI micro-tasks have returned.",
+                });
             }
             if (/API Specialist/.test(prompt)) {
               return JSON.stringify({
@@ -719,7 +1035,8 @@ describe("impl", () => {
               });
             }
             return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
-          },
+            };
+          })(),
         },
       });
 
@@ -741,15 +1058,33 @@ describe("impl", () => {
         cwd: tmpDir,
         provider: "command",
         deps: {
-          generateWithProvider: async ({ responseFormat }) => {
+          generateWithProvider: (() => {
+            let strategyCalls = 0;
+            return async ({ responseFormat }) => {
             if (responseFormat === "json") {
-              return JSON.stringify({
-                summary: "Only architecture should look first.",
-                approach: "Return blocked",
-                changed_approach: false,
-                root_causes: ["No simple path"],
-                assignments: [{ role: "architecture", goal: "Diagnose the slice", why_now: "Need a handoff", focus_types: ["technical"] }],
-              });
+                strategyCalls += 1;
+                return JSON.stringify(strategyCalls === 1
+                  ? {
+                      summary: "Only architecture should look first.",
+                      approach: "Return blocked",
+                      changed_approach: false,
+                      root_causes: ["No simple path"],
+                      continue_iteration: true,
+                      next_task: {
+                        task_id: "architecture-diagnose",
+                        role: "architecture",
+                        goal: "Diagnose the slice",
+                        why_now: "Need a handoff",
+                        focus_types: ["technical"],
+                      },
+                    }
+                  : {
+                      summary: "No small safe follow-up slice exists before verify.",
+                      approach: "Return blocked",
+                      changed_approach: false,
+                      continue_iteration: false,
+                      stop_reason: "Verify and let the outer loop decide the next strategy change.",
+                    });
             }
             return JSON.stringify({
               status: "blocked",
@@ -759,7 +1094,8 @@ describe("impl", () => {
               blockers: ["The fix would require a broader rewrite than this slice owns"],
               suggested_next_step: "Pick a different slice ordering and retry.",
             });
-          },
+            };
+          })(),
         },
       });
 

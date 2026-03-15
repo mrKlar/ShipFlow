@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
 import {
   buildMovieCommentsLiveArgs,
+  buildMovieCommentsLiveEnv,
   movieCommentsLiveExampleDir,
   resolveMovieCommentsLiveProviders,
 } from "../support/movie-comments-live.js";
@@ -15,11 +15,7 @@ function runMovieCommentsLiveProvider(provider, env = process.env) {
     const stderr = [];
     const child = spawn(process.execPath, buildMovieCommentsLiveArgs(provider, env), {
       cwd: movieCommentsLiveExampleDir,
-      env: {
-        ...env,
-        SHIPFLOW_LIVE_MAX_ITERATIONS: env.SHIPFLOW_LIVE_MAX_ITERATIONS || "1",
-        PATH: [path.dirname(process.execPath), env.PATH || ""].filter(Boolean).join(path.delimiter),
-      },
+      env: buildMovieCommentsLiveEnv(env, process.execPath),
       stdio: ["ignore", "pipe", "pipe"],
     });
 

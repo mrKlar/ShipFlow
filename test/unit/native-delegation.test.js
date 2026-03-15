@@ -97,4 +97,22 @@ describe("native delegation assets", () => {
     assert.ok(fs.existsSync(path.join(repoRoot, "templates", "codex-agents", "strategy-lead.toml")));
     assert.ok(fs.existsSync(path.join(repoRoot, "templates", "codex-agents", "api-specialist.toml")));
   });
+
+  it("ships Codex strategy and specialist sandboxes with the intended write model", () => {
+    const strategy = fs.readFileSync(path.join(repoRoot, "templates", "codex-agents", "strategy-lead.toml"), "utf-8");
+    assert.match(strategy, /sandbox_mode = "read-only"/);
+
+    for (const name of [
+      "architecture-specialist.toml",
+      "ui-specialist.toml",
+      "api-specialist.toml",
+      "database-specialist.toml",
+      "security-specialist.toml",
+      "technical-specialist.toml",
+    ]) {
+      const source = fs.readFileSync(path.join(repoRoot, "templates", "codex-agents", name), "utf-8");
+      assert.match(source, /sandbox_mode = "workspace-write"/, `${name} should be writable`);
+      assert.doesNotMatch(source, /sandbox_mode = "read-only"/, `${name} should not be read-only`);
+    }
+  });
 });

@@ -69,6 +69,20 @@ describe("BehaviorCheck schema", () => {
     assert.equal(resolveBehaviorExecutor(parsed).framework, "playwright-request");
   });
 
+  it("accepts restart_app in API behavior checks", () => {
+    const parsed = BehaviorCheck.parse({
+      id: "api-restart",
+      feature: "Checkout API",
+      scenario: "Restart keeps the service reachable",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [{ request: { method: "GET", path: "/health" } }],
+      when: [{ restart_app: { wait_for_ready_ms: 5000 } }, { request: { method: "GET", path: "/health" } }],
+      then: [{ status: 200 }],
+    });
+    assert.equal(parsed.when[0].restart_app.wait_for_ready_ms, 5000);
+  });
+
   it("accepts valid TUI behavior checks", () => {
     const parsed = BehaviorCheck.parse({
       id: "cli-help",
@@ -124,7 +138,8 @@ describe("genBehaviorTest", () => {
     assert.ok(code.includes("// When"));
     assert.ok(code.includes("// Then"));
     assert.ok(code.includes('[mutation guard]'));
-    assert.ok(code.includes('goto("http://localhost:3000/calc")'));
+    assert.ok(code.includes('const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";'));
+    assert.ok(code.includes('goto(shipflowBaseUrl + "/calc")'));
   });
 
   it("injects sqlite state reset into web behavior tests", () => {
@@ -159,7 +174,7 @@ describe("genBehaviorTest", () => {
       }],
     ]));
     assert.ok(code.includes("// setup: auth"));
-    assert.ok(code.includes('goto("http://localhost:3000/login")'));
+    assert.ok(code.includes('goto(shipflowBaseUrl + "/login")'));
   });
 
   it("generates API behavior tests with request execution helpers", () => {
@@ -192,6 +207,21 @@ describe("genBehaviorTest", () => {
     assert.ok(code.includes("mutatedVariants"));
     assert.ok(code.includes("toBeGreaterThan(0)"));
     assert.ok(!code.includes("const mutatedVariants = undefined;"));
+  });
+
+  it("generates Playwright behavior runtime controls for restart_app", () => {
+    const code = genBehaviorTest({
+      id: "api-restart",
+      feature: "Checkout API",
+      scenario: "Restart keeps the service reachable",
+      severity: "blocker",
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [{ request: { method: "GET", path: "/health" } }],
+      when: [{ restart_app: { wait_for_ready_ms: 5000 } }, { request: { method: "GET", path: "/health" } }],
+      then: [{ status: 200 }],
+    });
+    assert.ok(code.includes('SHIPFLOW_MANAGED_SERVER_PID'));
+    assert.ok(code.includes('restartBehaviorManagedRuntime(step.restart_app)'));
   });
 
   it("injects sqlite state reset into API behavior tests", () => {
@@ -323,9 +353,32 @@ describe("Gherkin/Cucumber behavior generation", () => {
       then: [{ status: 201 }],
     });
     assert.ok(code.includes('@cucumber/cucumber'));
+    assert.ok(code.includes("setDefaultTimeout(shipflowCucumberTimeoutMs);"));
+    assert.ok(code.includes('const shipflowCucumberTimeoutMs = Number.parseInt(process.env.SHIPFLOW_CUCUMBER_TIMEOUT_MS || "", 10) || 30000;'));
+    assert.ok(code.includes('const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;'));
+    assert.ok(code.includes("options.timeout = shipflowApiTimeoutMs;"));
     assert.ok(code.includes('request as playwrightRequest'));
     assert.ok(code.includes('runApiBehaviorStep'));
     assert.ok(code.includes('runBehaviorMutationGuard'));
+  });
+
+  it("generates Cucumber step definitions that can restart the managed runtime", () => {
+    const code = genBehaviorSteps({
+      id: "api-restart",
+      feature: "Checkout API",
+      scenario: "Restart keeps the service reachable",
+      severity: "blocker",
+      runner: { kind: "gherkin", framework: "cucumber" },
+      app: { kind: "api", base_url: "http://localhost:3000" },
+      given: [{ request: { method: "GET", path: "/health" } }],
+      when: [{ restart_app: { wait_for_ready_ms: 5000 } }, { request: { method: "GET", path: "/health" } }],
+      then: [{ status: 200 }],
+    });
+    assert.ok(code.includes('import fs from "node:fs"'));
+    assert.ok(code.includes('SHIPFLOW_MANAGED_SERVER_PID_FILE'));
+    assert.ok(code.includes('restartBehaviorApp(world, scenario, item.restart_app)'));
+    assert.ok(code.includes('stdio: ["ignore", "ignore", "ignore"]'));
+    assert.ok(code.includes("child.unref();"));
   });
 
   it("generates Cucumber step definitions for TUI behavior", () => {

@@ -6,9 +6,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const MOVIE_COMMENTS_LIVE_REQUIRED_VP_PATHS = [
   "vp/ui/post-movie-comment.yml",
+  "vp/ui/show-persisted-comment.yml",
   "vp/behavior/query-movie-comments.yml",
+  "vp/behavior/persist-movie-comments-after-restart.yml",
   "vp/domain/movie.yml",
   "vp/api/add-movie-comment.yml",
+  "vp/api/get-movie-detail.yml",
   "vp/db/movie-comments.yml",
   "vp/technical/framework-stack.yml",
   "vp/technical/api-protocol.yml",
@@ -68,6 +71,17 @@ export function buildMovieCommentsLiveArgs(provider, env = process.env) {
   if (env.SHIPFLOW_LIVE_KEEP === "1") args.push("--keep");
   if (env.SHIPFLOW_LIVE_MODEL) args.push(`--model=${env.SHIPFLOW_LIVE_MODEL}`);
   return args;
+}
+
+export function buildMovieCommentsLiveEnv(env = process.env, nodeExecPath = process.execPath) {
+  const nextEnv = {
+    ...env,
+    PATH: [path.dirname(nodeExecPath), env.PATH || ""].filter(Boolean).join(path.delimiter),
+  };
+  const maxIterations = String(env.SHIPFLOW_LIVE_MAX_ITERATIONS || "").trim();
+  if (maxIterations) nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS = maxIterations;
+  else delete nextEnv.SHIPFLOW_LIVE_MAX_ITERATIONS;
+  return nextEnv;
 }
 
 export function movieCommentsLiveBaseUrl(port) {

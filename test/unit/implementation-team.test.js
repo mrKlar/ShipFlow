@@ -4,7 +4,7 @@ import {
   buildImplementationMemo,
   compareVerificationProgress,
   createImplementationThread,
-  fallbackStrategyAssignments,
+  fallbackStrategyDecision,
   normalizeImplementationBudget,
   normalizeImplementationTeam,
   recordImplementationAttempt,
@@ -22,7 +22,7 @@ describe("implementation team defaults", () => {
   it("normalizes team defaults", () => {
     const team = normalizeImplementationTeam({});
     assert.equal(team.enabled, true);
-    assert.equal(team.maxSpecialistsPerIteration, 4);
+    assert.equal(team.maxTasksPerIteration, 6);
     assert.equal(team.memoHistory, 8);
     assert.deepEqual(team.roles, ["architecture", "ui", "api", "database", "security", "technical"]);
   });
@@ -87,7 +87,11 @@ describe("implementation thread", () => {
       model: "test",
       team,
       budget: normalizeImplementationBudget({}),
+      runId: "impl-test-run",
+      lastEventSeq: 7,
     });
+    assert.equal(thread.run_id, "impl-test-run");
+    assert.equal(thread.last_event_seq, 7);
 
     thread = recordImplementationAttempt(thread, {
       iteration: 1,
@@ -97,9 +101,9 @@ describe("implementation thread", () => {
         approach: "API-first",
         changed_approach: false,
         root_causes: ["Missing handler"],
-        assignments: [{ role: "api", goal: "Wire API" }],
+        tasks: [{ task_id: "api-1", role: "api", goal: "Wire API" }],
       },
-      specialists: [{ role: "api", written_files: ["src/server.js"] }],
+      specialists: [{ task_id: "api-1", role: "api", goal: "Wire API", written_files: ["src/server.js"] }],
       verify_run: {
         ok: false,
         passed: 2,
@@ -117,9 +121,9 @@ describe("implementation thread", () => {
         approach: "API-first",
         changed_approach: false,
         root_causes: ["Missing handler"],
-        assignments: [{ role: "api", goal: "Wire API" }],
+        tasks: [{ task_id: "api-2", role: "api", goal: "Wire API" }],
       },
-      specialists: [{ role: "api", written_files: ["src/server.js"] }],
+      specialists: [{ task_id: "api-2", role: "api", goal: "Wire API", written_files: ["src/server.js"] }],
       verify_run: {
         ok: false,
         passed: 2,
@@ -133,12 +137,13 @@ describe("implementation thread", () => {
     assert.equal(memo.stagnation_streak, 1);
     assert.equal(memo.recent_attempts.length, 2);
     assert.equal(memo.last_strategy.approach, "API-first");
+    assert.equal(memo.last_strategy.tasks[0].task_id, "api-2");
   });
 });
 
-describe("fallbackStrategyAssignments", () => {
-  it("routes failing groups to the matching specialist roles", () => {
-    const plan = fallbackStrategyAssignments({
+describe("fallbackStrategyDecision", () => {
+  it("chooses the next one-shot task from the matching failing specialist role", () => {
+    const decision = fallbackStrategyDecision({
       run: {
         failing_groups: [
           { kind: "ui", label: "UI" },
@@ -148,8 +153,9 @@ describe("fallbackStrategyAssignments", () => {
       },
       team: normalizeImplementationTeam({}),
     });
-    assert.equal(plan.assignments[0].role, "architecture");
-    assert.ok(plan.assignments.some(item => item.role === "ui"));
-    assert.ok(plan.assignments.some(item => item.role === "api"));
+    assert.equal(decision.continue_iteration, true);
+    assert.equal(decision.next_task.role, "architecture");
+    assert.ok(decision.tasks.some(item => item.role === "ui"));
+    assert.ok(decision.tasks.some(item => item.role === "api"));
   });
 });

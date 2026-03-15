@@ -6,6 +6,8 @@ ShipFlow is a verification-first shipping framework. You define what must be obs
 
 The verification pack records required checks and constraints, not a prose description of the app. It is the durable artifact. The implementation is disposable.
 
+ShipFlow also owns the top-level execution model. The loop, the managed local runtime, and the final success condition belong to ShipFlow itself. Playwright, Cucumber, k6, and the technical/domain backends are execution backends for individual verification slices, not the owners of the overall workflow.
+
 ```
 vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/domain/*.runner.mjs + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
 ```
@@ -63,7 +65,7 @@ The installer:
 2. Auto-detects Claude Code, Codex CLI, Gemini CLI, Kiro CLI
 3. Installs native integrations for each detected platform:
    - **Claude Code** — plugin + native subagents in `~/.claude/agents`
-   - **Codex CLI** — native skills in `~/.codex/skills` + exec policy rules + global instructions
+   - **Codex CLI** — native multi-agent roles in `.codex/agents` + config in `.codex/config.toml` + supporting skills / exec policy rules / global instructions
    - **Gemini CLI** — extension commands + BeforeTool write/shell guard hooks
    - **Kiro CLI** — native custom agents in `~/.kiro/agents` + skills + steering context + write/shell guards
 
@@ -130,7 +132,7 @@ Useful fields:
 
 ### Deterministic Project Scaffold
 
-ShipFlow can script the unstable foundation work before the LLM touches product logic:
+ShipFlow can script a stable foundation before the LLM touches product logic:
 - package scripts
 - base dependencies
 - initial directory structure
@@ -138,6 +140,8 @@ ShipFlow can script the unstable foundation work before the LLM touches product 
 - a minimal server/UI shell for the supported stack
 
 That changes the shape of the implementation problem. Instead of spending tokens on boilerplate and dependency guesswork, the agent starts from a stable base and focuses on the pack.
+
+For ShipFlow, that foundation is not just code. A startup scaffold is expected to install the archetype's base verification files under `vp/` as part of the initial foundation. If a stack needs shell, protocol, runtime, architecture, or baseline security checks, those checks belong in the scaffolded pack from the start. ShipFlow does not rely on a separate hidden quality gate outside `vp/`.
 
 You can let ShipFlow infer the scaffold from `impl.context` on an empty repo, or declare it explicitly:
 
@@ -164,6 +168,56 @@ Current presets:
 - `node-web-graphql-sqlite`
 - `node-rest-service-sqlite`
 - `vue-antdv-graphql-sqlite`
+
+### Scaffold Plugins
+
+Built-in presets cover the common stacks. Scaffold plugins let you package the foundations your team already trusts and reuse them across repos.
+
+ShipFlow supports two plugin types:
+- `startup`: a startup foundation that can run only on a greenfield repo
+- `component`: an additive scaffold slice such as `api`, `service`, `database`, `mobile`, `tui`, `ui`, or `worker`
+
+Install a plugin into the current repo:
+
+```bash
+shipflow scaffold-plugin install ./my-plugin.zip
+shipflow scaffold-plugin list
+```
+
+Apply a startup plugin:
+
+```bash
+shipflow scaffold --plugin=my-startup-plugin
+```
+
+Apply component plugins:
+
+```bash
+shipflow scaffold --component=graphql-api --component=sqlite-db
+```
+
+You can also declare them in `shipflow.json`:
+
+```json
+{
+  "impl": {
+    "scaffold": {
+      "enabled": true,
+      "plugin": "my-startup-plugin",
+      "components": [
+        "graphql-api",
+        { "plugin": "sqlite-db" }
+      ]
+    }
+  }
+}
+```
+
+When a startup or component scaffold is applied, ShipFlow records it in `.shipflow/scaffold-state.json` and feeds the manifest summary/guidance back into the implementation prompt. That way the orchestrator and specialists know what foundation already exists and extend it instead of rebuilding it.
+
+Startup plugins have one extra responsibility: they define the base verification boundary for that archetype. In practice that means a startup plugin should ship `vp/*.yml` files for the truths that are universal to that foundation. Those files become the initial locked pack. App-specific behavior still belongs in the repo's own verification authoring, but archetype-level truths travel with the scaffold plugin itself.
+
+For the archive layout, manifest fields, install-script contract, and contribution workflow, use the dedicated guide: [Scaffold Plugins](./SCAFFOLD-PLUGINS.md).
 
 ## Working With ShipFlow
 
@@ -278,17 +332,36 @@ Kiro-specific native implementation surface:
 
 `shipflow implement` is the standard loop. It validates the verification pack, bootstraps the verification runtime, applies a deterministic scaffold when configured or inferred, syncs dependencies when that scaffold changes the repo, generates tests, runs a bounded multi-agent implementation round, verifies, and retries within the configured budget.
 
+The success rule is simple: the run is done only when ShipFlow's own verification phase turns fully green. No specialist, subagent, or runner backend can declare completion on its own.
+
 ### Multi-Agent Implementation Strategy
 
 ShipFlow does not keep pouring more repo state into one bloated context window. The implementation loop behaves like a small engineering team with a compact memory.
 
-Per iteration:
+There are two nested loops:
+
+1. The outer ShipFlow loop: `implement -> verify -> retry until green or budget exhausted`.
+2. The inner implementation loop inside each iteration: `strategy lead -> one-shot specialist -> replan -> next one-shot specialist`.
+
+Per implementation iteration:
 1. ShipFlow first locks down the runtime and, when needed, applies the deterministic project scaffold.
 2. A strategy lead reads the current evidence, recent history, and `.shipflow/implement-thread.json`.
-3. It chooses only the specialist slices needed for that round.
-4. Each specialist receives one narrow verification slice plus the smallest relevant evidence set.
-5. Verification runs again and ShipFlow records what improved, what stayed red, and whether the approach stalled.
-6. If the stagnation streak reaches the configured threshold, the next round must choose a materially different strategy.
+3. It chooses exactly one next micro-task, not a whole batch plan.
+4. Exactly one specialist receives that narrow verification slice plus the smallest relevant evidence set.
+5. The specialist works in a clean context, writes the smallest useful change it can, and returns immediately when the slice is done or when it has exhausted the straightforward ideas in that slice.
+6. The orchestrator replans from the updated workspace and evidence. It may call the same specialist again later, but only for another one-shot slice.
+7. When the strategy lead says the current wave is ready, ShipFlow runs `verify`.
+8. ShipFlow records what improved, what stayed red, and whether the approach stalled.
+9. If the stagnation streak reaches the configured threshold, the next implementation iteration must choose a materially different strategy.
+
+That orchestration sits above the runner layer. A specialist may work on a Playwright-backed UI slice, a Cucumber-backed behavior slice, or a technical runner slice, but the decision to continue, retry, or stop belongs to the ShipFlow loop, not to those tools.
+
+ShipFlow also persists the loop as structured logs:
+- `evidence/implement-log.jsonl` — global append-only event stream
+- `evidence/implement-log-manifest.json` — current run metadata
+- `evidence/agents/*.jsonl` — per-agent high-level events
+
+Those logs are produced by the orchestrator and specialists themselves, so external scripts can follow progress without inventing a second control flow.
 
 Default specialist roles:
 - `architecture`
@@ -303,7 +376,7 @@ The native delegation surface depends on the CLI:
 | CLI | Native surface used by ShipFlow |
 |---|---|
 | Claude Code | `Task` + installed subagents in `~/.claude/agents` |
-| Codex CLI | installed skills in `~/.codex/skills` + separate Codex runs per slice |
+| Codex CLI | native multi-agent roles in `.codex/agents` / `.codex/config.toml` + separate Codex runs per slice |
 | Gemini CLI | installed extension commands such as `/shipflow:strategy-lead` + separate Gemini runs per slice |
 | Kiro CLI | installed custom agents in `~/.kiro/agents` + Kiro subagent delegation |
 
@@ -311,6 +384,11 @@ The loop also keeps three continuity artifacts:
 - `evidence/implement.json` — current stage and latest implementation result
 - `evidence/implement-history.json` — per-iteration history and provider counts
 - `.shipflow/implement-thread.json` — compact memo, active strategy, and stagnation streak
+
+And three structured log artifacts:
+- `evidence/implement-log.jsonl`
+- `evidence/implement-log-manifest.json`
+- `evidence/agents/*.jsonl`
 
 Relevant `shipflow.json` knobs:
 
@@ -322,7 +400,7 @@ Relevant `shipflow.json` knobs:
     "stagnationThreshold": 2,
     "team": {
       "enabled": true,
-      "maxSpecialistsPerIteration": 4,
+      "maxTasksPerIteration": 6,
       "memoHistory": 8,
       "roles": ["architecture", "ui", "api", "database", "security", "technical"]
     }
@@ -331,6 +409,12 @@ Relevant `shipflow.json` knobs:
 ```
 
 Those defaults mean ShipFlow can keep working for hours on a hard case, but it still has to earn progress. When the loop is not making verifiable headway, it must change tactic instead of reissuing the same fix.
+
+The practical effect of the one-shot model is important:
+- ShipFlow does not hand the same broad plan to every specialist.
+- Specialists are not expected to grind forever inside one huge context.
+- The strategy lead decides the next smallest useful slice after every return.
+- The continuity artifact is the compact thread plus structured evidence, not an ever-growing chat transcript.
 
 ### Core Commands
 
@@ -344,6 +428,8 @@ shipflow doctor
 shipflow lint
 shipflow gen
 shipflow scaffold
+shipflow scaffold-plugin install ./my-plugin.zip
+shipflow scaffold-plugin list
 shipflow approve-visual
 shipflow verify
 shipflow status
@@ -536,6 +622,8 @@ That writes locked baselines under `vp/ui/_baselines/<check-id>/`. During `shipf
 Given/When/Then scenario checks. Web scenarios can reuse UI-style flow steps and assertions, API scenarios can issue request steps, and TUI scenarios can drive stdin/stdout flows.
 Default execution is surface-specific: Playwright browser for web, Playwright request for API behavior, and a node PTY harness for TUI behavior. You can also target Gherkin/Cucumber generation and execution.
 
+Behavior checks can also express application lifecycle transitions directly. Use `restart_app` when the product truth includes "do something, restart, then re-check". That lifecycle is handled by ShipFlow's managed runtime layer, not by whichever runner backend happens to execute the scenario.
+
 ```yaml
 id: checkout
 feature: Shopping Cart
@@ -581,6 +669,33 @@ then:
   - json_type: { path: "$", type: object }
 ```
 
+Lifecycle example:
+
+```yaml
+id: todos-persist-after-restart
+feature: Todo API
+scenario: Todos persist after restart
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+given:
+  - request:
+      method: POST
+      path: /api/todos
+      body_json: { title: "Alpha", completed: false }
+when:
+  - restart_app: { wait_for_ready_ms: 10000, wait_after_ms: 200 }
+  - request:
+      method: GET
+      path: /api/todos
+then:
+  - status: 200
+  - json_array_includes:
+      path: $
+      equals: { title: "Alpha", completed: false }
+```
+
 TUI behavior example:
 
 ```yaml
@@ -599,6 +714,7 @@ then:
 ```
 
 When `runner.kind: gherkin` or `runner.framework: cucumber` is selected, ShipFlow generates `.feature` files plus Cucumber step definitions under `.gen/cucumber/` and executes them with `npx cucumber-js`.
+That choice changes the generated artifact shape, not the ownership of the lifecycle. ShipFlow still owns the managed runtime, retry loop, and final verdict.
 
 ### Fixtures — `vp/ui/_fixtures/*.yml`
 
@@ -968,16 +1084,20 @@ shipflow verify
 ```
 
 1. Validates the cryptographic lock (`vp/` and `.gen/` unchanged since `gen`)
-2. Evaluates OPA policies (if present)
-3. Runs generated Playwright tests and writes per-type evidence files
-4. Writes visual diff artifacts under `evidence/visual/` when UI visual contracts are present
-5. Runs generated business-domain runners when present and writes `evidence/domain.json`
-6. Runs generated technical backend runners when present and writes `evidence/technical.json`
-7. Runs k6 NFR scripts when present. Missing `k6` after bootstrap is treated as a verification failure and writes `evidence/load.json`
-8. Writes aggregate `evidence/run.json`
-9. Exits 0 if all tests pass
+2. Starts and manages the local runtime when the generated artifact set requires one
+3. Evaluates OPA policies (if present)
+4. Runs generated verification backends and writes per-type evidence files
+5. Writes visual diff artifacts under `evidence/visual/` when UI visual contracts are present
+6. Runs generated business-domain runners when present and writes `evidence/domain.json`
+7. Runs generated technical backend runners when present and writes `evidence/technical.json`
+8. Runs k6 NFR scripts when present. Missing `k6` after bootstrap is treated as a verification failure and writes `evidence/load.json`
+9. Writes aggregate `evidence/run.json`
+10. Exits 0 only when all blocker verifications pass
+
+That aggregate `evidence/run.json` is the acceptance verdict ShipFlow uses for completion. Example runners, benchmarks, and CLI harnesses should observe it, not re-implement their own hidden success rules.
 
 `shipflow implement` also writes `evidence/implement.json` as it moves through the loop, so you can inspect the current stage while it is running and the latest result afterward.
+Structured loop telemetry is written to `evidence/implement-log.jsonl`, `evidence/implement-log-manifest.json`, and `evidence/agents/*.jsonl`.
 If recent implementation history is available, `shipflow status` can summarize it, but that is secondary to the normal draft and implement flow.
 By default, implementation writes are allowed under the configured `srcDir`. When `vp/technical/*.yml` references repo-level files such as `package.json`, `.github/workflows/*.yml`, or infrastructure paths, ShipFlow also allows those targets automatically. For extra cases, set `impl.writeRoots` in `shipflow.json`.
 

@@ -10,6 +10,8 @@ import {
   claudePermissionModeForResponseFormat,
   cliProviderChildEnv,
   codexEffortForResponseFormat,
+  codexSandboxModeForResponseFormat,
+  DEFAULT_PROVIDER_MAX_BUFFER_BYTES,
   normalizeProviderText,
   providerReady,
   resolveAutoProvider,
@@ -128,6 +130,17 @@ describe("codexEffortForResponseFormat", () => {
   });
 });
 
+describe("codexSandboxModeForResponseFormat", () => {
+  it("uses workspace-write for file-generation slices", () => {
+    assert.equal(codexSandboxModeForResponseFormat("files"), "workspace-write");
+  });
+
+  it("keeps read-only sandboxes for planning and review slices", () => {
+    assert.equal(codexSandboxModeForResponseFormat("text"), "read-only");
+    assert.equal(codexSandboxModeForResponseFormat("json"), "read-only");
+  });
+});
+
 describe("claudeAllowedToolsForResponseFormat", () => {
   it("keeps Claude in read-only repo inspection mode for structured outputs", () => {
     assert.deepEqual(
@@ -136,7 +149,7 @@ describe("claudeAllowedToolsForResponseFormat", () => {
     );
     assert.deepEqual(
       claudeAllowedToolsForResponseFormat("json"),
-      ["Read", "Glob", "Grep", "LS", "Task"],
+      [],
     );
   });
 
@@ -157,8 +170,30 @@ describe("buildClaudeCliArgs", () => {
       "low",
       "--output-format",
       "text",
-      "--tools",
+      "--allowedTools",
       "Read,Glob,Grep,LS,Task",
+      "--model",
+      "sonnet",
+    ]);
+  });
+
+  it("selects a native Claude agent when requested", () => {
+    const args = buildClaudeCliArgs({
+      model: "sonnet",
+      responseFormat: "json",
+      agent: "shipflow-strategy-lead",
+    });
+    assert.deepEqual(args, [
+      "-p",
+      "--no-session-persistence",
+      "--permission-mode",
+      "plan",
+      "--effort",
+      "medium",
+      "--output-format",
+      "text",
+      "--agent",
+      "shipflow-strategy-lead",
       "--model",
       "sonnet",
     ]);
@@ -185,5 +220,11 @@ describe("normalizeProviderText", () => {
       normalizeProviderText(raw, "files"),
       "--- FILE: src/x.txt ---\nok\n--- END FILE ---",
     );
+  });
+});
+
+describe("provider command buffering", () => {
+  it("uses an explicit provider buffer larger than Node's default spawnSync limit", () => {
+    assert.ok(DEFAULT_PROVIDER_MAX_BUFFER_BYTES >= 16 * 1024 * 1024);
   });
 });
