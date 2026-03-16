@@ -81,6 +81,14 @@ If a verification fails because the backend, database, runtime, or dependency st
 
 If `vp/domain/**` exists, treat it as the business-domain source of truth. Do a real data-engineering step from business objects to technical storage/read/write/exchange objects, and normalize driver-native values such as BigInt ids, numeric strings, binary payloads, or DB timestamps before exposing them through JSON, REST, GraphQL, UI state, or events.
 
+Treat the startup scaffold or archetype plugin as the initial dependency baseline. Extend that baseline only when a verification really requires it.
+
+Prefer the platform, the framework, and dependencies already installed by the scaffold before adding any new npm package. Never guess package names. If you are not certain a dependency exists and is required, do not add it.
+
+For GraphQL browser work, prefer `fetch` against `/graphql` unless the scaffold already includes an approved GraphQL client.
+
+For SQLite work, use `node:sqlite` when the scaffold or verification pack expects SQLite. Do not import `node:sqlite3`, do not shell out to `sqlite3`, and do not add `sqlite3` or `better-sqlite3`.
+
 For browser UI work: reuse the design system or open-source design-system component library already present in the repo. If none exists and the user did not explicitly ask for a bespoke internal UI kit, use a standard, widely used open-source design-system component library appropriate to the stack instead of inventing one-off primitives. Only create a new local shared component library when the user explicitly asks for it or the repo already follows that pattern.
 
 ## Commands

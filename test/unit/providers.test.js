@@ -6,13 +6,17 @@ import path from "node:path";
 import {
   buildKiroCliArgs,
   buildClaudeCliArgs,
+  buildGeminiCliArgs,
   claudeAllowedToolsForResponseFormat,
   claudeEffortForResponseFormat,
   claudePermissionModeForResponseFormat,
+  claudeToolsForResponseFormat,
   cliProviderChildEnv,
   codexEffortForResponseFormat,
   codexSandboxModeForResponseFormat,
+  defaultModelForProvider,
   DEFAULT_PROVIDER_MAX_BUFFER_BYTES,
+  extractClaudeCliText,
   normalizeProviderText,
   providerReady,
   resolveAutoProvider,
@@ -74,6 +78,12 @@ describe("providerReady", () => {
   });
 });
 
+describe("defaultModelForProvider", () => {
+  it("pins Gemini to a stable model instead of the preview default", () => {
+    assert.equal(defaultModelForProvider("gemini"), "flash");
+  });
+});
+
 describe("cliProviderChildEnv", () => {
   it("clears active session markers before spawning a nested CLI provider", () => {
     assert.deepEqual(cliProviderChildEnv("claude"), {
@@ -110,12 +120,12 @@ describe("claudePermissionModeForResponseFormat", () => {
 });
 
 describe("claudeEffortForResponseFormat", () => {
-  it("uses lower effort for file generation", () => {
+  it("uses lower effort for file generation and structured JSON planning", () => {
     assert.equal(claudeEffortForResponseFormat("files"), "low");
+    assert.equal(claudeEffortForResponseFormat("json"), "low");
   });
 
-  it("uses medium effort for review and text outputs", () => {
-    assert.equal(claudeEffortForResponseFormat("json"), "medium");
+  it("uses medium effort for plain text outputs", () => {
     assert.equal(claudeEffortForResponseFormat("text"), "medium");
   });
 });
@@ -159,6 +169,17 @@ describe("claudeAllowedToolsForResponseFormat", () => {
   });
 });
 
+describe("claudeToolsForResponseFormat", () => {
+  it("disables Claude tools entirely for structured JSON planning", () => {
+    assert.equal(claudeToolsForResponseFormat("json"), "");
+  });
+
+  it("leaves normal tool selection unchanged for other response formats", () => {
+    assert.equal(claudeToolsForResponseFormat("files"), null);
+    assert.equal(claudeToolsForResponseFormat("text"), null);
+  });
+});
+
 describe("buildClaudeCliArgs", () => {
   it("adds a read-only tool set for file generation", () => {
     const args = buildClaudeCliArgs({ model: "sonnet", responseFormat: "files" });
@@ -190,11 +211,64 @@ describe("buildClaudeCliArgs", () => {
       "--permission-mode",
       "plan",
       "--effort",
-      "medium",
+      "low",
       "--output-format",
       "text",
+      "--tools",
+      "",
       "--agent",
       "shipflow-strategy-lead",
+      "--model",
+      "sonnet",
+    ]);
+  });
+
+  it("passes the prompt as a positional argument for Claude print mode", () => {
+    const args = buildClaudeCliArgs({
+      model: "sonnet",
+      responseFormat: "json",
+      prompt: "Return OK",
+    });
+    assert.deepEqual(args, [
+      "-p",
+      "--no-session-persistence",
+      "--permission-mode",
+      "plan",
+      "--effort",
+      "low",
+      "--output-format",
+      "text",
+      "--tools",
+      "",
+      "--model",
+      "sonnet",
+      "Return OK",
+    ]);
+  });
+
+  it("uses native Claude JSON mode with a schema when provided", () => {
+    const args = buildClaudeCliArgs({
+      model: "sonnet",
+      responseFormat: "json",
+      jsonSchema: {
+        type: "object",
+        properties: { ok: { type: "boolean" } },
+        required: ["ok"],
+      },
+    });
+    assert.deepEqual(args, [
+      "-p",
+      "--no-session-persistence",
+      "--permission-mode",
+      "plan",
+      "--effort",
+      "low",
+      "--output-format",
+      "json",
+      "--tools",
+      "",
+      "--json-schema",
+      "{\"type\":\"object\",\"properties\":{\"ok\":{\"type\":\"boolean\"}},\"required\":[\"ok\"]}",
       "--model",
       "sonnet",
     ]);
@@ -208,6 +282,8 @@ describe("buildKiroCliArgs", () => {
       "chat",
       "--no-interactive",
       "--trust-all-tools",
+      "--wrap",
+      "never",
       "fix it",
     ]);
   });
@@ -221,9 +297,43 @@ describe("buildKiroCliArgs", () => {
       "chat",
       "--no-interactive",
       "--trust-all-tools",
+      "--wrap",
+      "never",
       "--agent",
       "shipflow-api-specialist",
       "repair the API slice",
+    ]);
+  });
+});
+
+describe("buildGeminiCliArgs", () => {
+  it("runs Gemini headless with the ShipFlow extension only", () => {
+    const args = buildGeminiCliArgs({});
+    assert.deepEqual(args, [
+      "--prompt",
+      "",
+      "--approval-mode",
+      "plan",
+      "--output-format",
+      "text",
+      "--extensions",
+      "shipflow",
+    ]);
+  });
+
+  it("passes an explicit model when configured", () => {
+    const args = buildGeminiCliArgs({ model: "gemini-2.5-pro" });
+    assert.deepEqual(args, [
+      "--prompt",
+      "",
+      "--approval-mode",
+      "plan",
+      "--output-format",
+      "text",
+      "--extensions",
+      "shipflow",
+      "--model",
+      "gemini-2.5-pro",
     ]);
   });
 });
@@ -247,6 +357,24 @@ describe("normalizeProviderText", () => {
     assert.equal(
       normalizeProviderText(raw, "files"),
       "--- FILE: src/x.txt ---\nok\n--- END FILE ---",
+    );
+  });
+});
+
+describe("extractClaudeCliText", () => {
+  it("unwraps Claude structured_output envelopes when JSON schema mode is enabled", () => {
+    const result = {
+      stdout: JSON.stringify({
+        type: "result",
+        subtype: "success",
+        structured_output: { ok: true },
+        result: "",
+      }),
+      stderr: "",
+    };
+    assert.equal(
+      extractClaudeCliText(result, "json", true),
+      "{\"ok\":true}",
     );
   });
 });

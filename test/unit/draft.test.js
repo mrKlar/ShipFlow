@@ -762,7 +762,7 @@ describe("draft", () => {
       });
       assert.equal(options.provider, "local");
       assert.equal(options.aiProvider, "gemini");
-      assert.equal(options.model, "gemini-2.5-pro");
+      assert.equal(options.model, "");
       assert.equal(options.timeoutMs, 3600000);
     });
   });

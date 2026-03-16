@@ -6,9 +6,9 @@ const backend = spawn(process.execPath, ["src/server.js"], {
 });
 
 const viteBin = process.platform === "win32" ? "npx.cmd" : "npx";
-const frontend = spawn(viteBin, ["vite", "--host", "127.0.0.1", "--port", "3000", "--strictPort"], {
+const frontend = spawn(viteBin, ["vite", "--host", "127.0.0.1"], {
   stdio: "inherit",
-  env: process.env,
+  env: { ...process.env, PORT: process.env.PORT || "3000" },
 });
 
 function shutdown(code = 0) {

@@ -180,6 +180,29 @@ describe("applyProjectScaffold", () => {
     });
   });
 
+  it("keeps the Vue Vite scaffold compatible with ShipFlow managed PORT", () => {
+    withTmpDir(tmpDir => {
+      const result = applyProjectScaffold(tmpDir, {
+        config: {
+          impl: {
+            scaffold: {
+              enabled: true,
+              preset: "vue-antdv-graphql-sqlite",
+            },
+          },
+        },
+      });
+
+      const devScript = fs.readFileSync(path.join(tmpDir, "scripts", "dev.js"), "utf-8");
+      const viteConfig = fs.readFileSync(path.join(tmpDir, "vite.config.js"), "utf-8");
+      assert.equal(result.ok, true);
+      assert.match(devScript, /process\.env\.PORT/);
+      assert.doesNotMatch(devScript, /--port/);
+      assert.match(viteConfig, /process\.env\.PORT/);
+      assert.doesNotMatch(viteConfig, /\bport:\s*3000\b/);
+    });
+  });
+
   it("does not reapply an already-installed startup scaffold on a non-greenfield repo", () => {
     withTmpDir(tmpDir => {
       const first = applyProjectScaffold(tmpDir, {

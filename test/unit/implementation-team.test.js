@@ -158,4 +158,31 @@ describe("fallbackStrategyDecision", () => {
     assert.ok(decision.tasks.some(item => item.role === "ui"));
     assert.ok(decision.tasks.some(item => item.role === "api"));
   });
+
+  it("prefers the latest specialist handoff when falling back after a blocked slice", () => {
+    const decision = fallbackStrategyDecision({
+      run: {
+        failing_groups: [
+          { kind: "ui", label: "UI" },
+        ],
+      },
+      team: normalizeImplementationTeam({}),
+      attemptedRoles: ["api", "ui"],
+      blockedResults: [
+        {
+          role: "ui",
+          status: "blocked",
+          blocker_report: {
+            handoff_role: "technical",
+            blockers: ["src/public/app.js still has invalid JavaScript syntax"],
+            suggested_next_step: "Repair the UI syntax problem in src/public/app.js before retrying the UI slice.",
+          },
+        },
+      ],
+    });
+
+    assert.equal(decision.next_task.role, "technical");
+    assert.match(decision.next_task.goal, /Repair the UI syntax problem/i);
+    assert.deepEqual(decision.next_task.target_groups, ["technical"]);
+  });
 });

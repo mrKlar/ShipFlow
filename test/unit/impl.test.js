@@ -176,6 +176,7 @@ describe("buildPrompt", () => {
         startup: {
           id: "vue-antdv-graphql-sqlite",
           description: "Vue + Ant Design Vue foundation",
+          base_package_names: ["ant-design-vue", "graphql", "vue"],
           base_verification_files: [
             "vp/ui/root-shell.yml",
             "vp/api/health.yml",
@@ -189,6 +190,7 @@ describe("buildPrompt", () => {
           id: "graphql-api-component",
           component_kinds: ["api", "service"],
           description: "GraphQL API component",
+          base_package_names: ["graphql-http"],
           base_verification_files: ["vp/api/comments-health.yml"],
           llm: {
             summary: "A GraphQL transport component is already installed.",
@@ -200,8 +202,10 @@ describe("buildPrompt", () => {
     assert.match(p, /Deterministic Foundation Already Installed/);
     assert.match(p, /vue-antdv-graphql-sqlite/);
     assert.match(p, /Reuse the design-system foundation/);
+    assert.match(p, /package baseline: ant-design-vue, graphql, vue/);
     assert.match(p, /base verification files: vp\/ui\/root-shell\.yml, vp\/api\/health\.yml/);
     assert.match(p, /graphql-api-component/);
+    assert.match(p, /package baseline: graphql-http/);
     assert.match(p, /added verification files: vp\/api\/comments-health\.yml/);
     assert.match(p, /Extend the existing GraphQL transport/);
   });
@@ -225,11 +229,17 @@ describe("buildPrompt", () => {
     assert.match(embedded, /Never fake a pass/i);
     assert.match(embedded, /Do not hand-edit lockfiles/i);
     assert.match(embedded, /do not add conflicting package\.json overrides\/resolutions/i);
+    assert.match(embedded, /Never guess package names/i);
+    assert.match(embedded, /prefer fetch against \/graphql/i);
+    assert.match(embedded, /Do not import node:sqlite3/i);
     const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "claude" });
     assert.match(repoAware, /Fix real root causes/i);
     assert.match(repoAware, /Never fake a pass/i);
     assert.match(repoAware, /Do not hand-edit lockfiles/i);
     assert.match(repoAware, /do not add conflicting package\.json overrides\/resolutions/i);
+    assert.match(repoAware, /Never guess package names/i);
+    assert.match(repoAware, /prefer fetch against \/graphql/i);
+    assert.match(repoAware, /Do not import node:sqlite3/i);
   });
 
   it("guides frontend work toward an existing or mainstream open-source design-system library", () => {
@@ -354,6 +364,7 @@ describe("team prompts", () => {
     assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /This strategy step is orchestration only/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "claude" }), /Do not open a Task/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "gemini" }), /\/shipflow:strategy-lead/);
+    assert.match(buildStrategyPrompt({ ...base, provider: "gemini" }), /Do not guess dependency names during planning/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /subagent tool/i);
     assert.match(buildStrategyPrompt({ ...base, provider: "kiro" }), /~\/\.kiro\/agents/);
   });
@@ -386,6 +397,8 @@ describe("team prompts", () => {
       focus_types: ["ui"],
     };
     assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "gemini"), /\/shipflow:ui-specialist/);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "gemini"), /Do not guess dependency names in this slice/i);
+    assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "gemini"), /Do not use node:sqlite3/i);
     assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "claude"), /Task tool/i);
     assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "claude"), /shipflow-ui-specialist/);
     assert.match(buildSpecialistPrompt("Base prompt", assignment, {}, "codex"), /shipflow_ui_specialist/);
@@ -442,6 +455,93 @@ describe("validateGeneratedFiles", () => {
     assert.match(issues[0], /^src\/server\.js: /);
     assert.match(issues[1], /^src\/public\/app\.js: /);
     assert.match(issues[0], /SyntaxError|invalid JavaScript syntax|missing \)/i);
+  });
+
+  it("flags imports of undeclared packages before ShipFlow writes them", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        name: "tmp",
+        private: true,
+        dependencies: { graphql: "^16.0.0" },
+      }));
+      assert.deepEqual(
+        validateGeneratedFiles([
+          { path: "src/server.js", content: "import { DatabaseSync } from \"sqlite\";\n" },
+        ], { cwd: tmpDir }),
+        ['src/server.js: use "node:sqlite" instead of bare "sqlite"'],
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("flags unknown node builtins and sqlite shell detours before ShipFlow writes them", () => {
+    const issues = validateGeneratedFiles([
+      { path: "src/server.js", content: "import { DatabaseSync } from \"node:sqlite3\";\n" },
+      { path: "src/bootstrap.js", content: "execSync(\"sqlite3 ./test.db '.tables'\");\n" },
+    ]);
+    assert.deepEqual(issues, [
+      'src/server.js: imports unknown Node builtin "node:sqlite3"',
+      "src/bootstrap.js: sqlite shell commands are not allowed; use node:sqlite inside the app runtime",
+    ]);
+  });
+
+  it("allows the ShipFlow sqlite builtin import", () => {
+    assert.deepEqual(
+      validateGeneratedFiles([
+        { path: "src/server.js", content: "import { DatabaseSync } from \"node:sqlite\";\n" },
+      ]),
+      [],
+    );
+  });
+
+  it("flags forbidden hallucinated dependencies in package.json before ShipFlow writes them", () => {
+    const issues = validateGeneratedFiles([
+      {
+        path: "package.json",
+        content: JSON.stringify({
+          name: "tmp",
+          private: true,
+          dependencies: {
+            vue: "^3.5.0",
+            "vue-apollo-composable": "^4.0.2",
+          },
+        }, null, 2),
+      },
+    ]);
+    assert.deepEqual(issues, [
+      'package.json: dependency "vue-apollo-composable" is not allowed (Do not guess Vue Apollo wrapper package names. Prefer fetch against /graphql or a client already installed by the scaffold.)',
+    ]);
+  });
+
+  it("flags Vite startup files that break ShipFlow managed PORT on the Vue scaffold", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, ".shipflow"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".shipflow", "scaffold-state.json"), JSON.stringify({
+        version: 1,
+        startup: { id: "vue-antdv-graphql-sqlite" },
+        components: [],
+      }, null, 2));
+      const issues = validateGeneratedFiles([
+        {
+          path: "scripts/dev.js",
+          content: "spawn(viteBin, ['vite', '--host', '127.0.0.1', '--port', '3000', '--strictPort'], { env: process.env });\n",
+        },
+        {
+          path: "vite.config.js",
+          content: "export default { server: { host: '127.0.0.1', port: 3000, strictPort: true } };\n",
+        },
+      ], { cwd: tmpDir });
+      assert.deepEqual(issues, [
+        "scripts/dev.js: do not hardcode Vite CLI port flags; let Vite read process.env.PORT",
+        "vite.config.js: Vite must bind to process.env.PORT for ShipFlow managed runtime compatibility",
+        "vite.config.js: do not hardcode Vite to port 3000",
+      ]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -648,6 +748,8 @@ describe("impl", () => {
                       goal: "Create the home screen",
                       why_now: "UI is missing",
                       focus_types: ["ui"],
+                      target_groups: ["ui"],
+                      done_when: ["The home screen renders for the blocker UI slice."],
                     },
                   }
                 : {
@@ -723,6 +825,8 @@ describe("impl", () => {
                       goal: "Write package.json and server entrypoint",
                       why_now: "Runtime files are missing",
                       focus_types: ["technical"],
+                      target_groups: ["technical"],
+                      done_when: ["The package metadata and server entrypoint are present and valid."],
                     },
                   }
                 : {
@@ -795,6 +899,8 @@ describe("impl", () => {
                       goal: "Write the server entrypoint",
                       why_now: "The runtime entrypoint is invalid",
                       focus_types: ["technical"],
+                      target_groups: ["technical"],
+                      done_when: ["src/server.js is a valid server entrypoint for the runtime slice."],
                     },
                   }
                 : {
@@ -849,6 +955,8 @@ describe("impl", () => {
                       goal: "Make src/server.js syntactically valid",
                       why_now: "The server entrypoint is still red",
                       focus_types: ["technical"],
+                      target_groups: ["technical"],
+                      done_when: ["src/server.js parses successfully as JavaScript."],
                     },
                   }
                 : {
@@ -906,6 +1014,8 @@ describe("impl", () => {
                     goal: "Create the HTTP handler",
                     why_now: "API is missing",
                     focus_types: ["api"],
+                    target_groups: ["api"],
+                    done_when: ["The HTTP handler exists for the blocker API slice."],
                   },
                 });
               }
@@ -922,6 +1032,8 @@ describe("impl", () => {
                     goal: "Render the home page",
                     why_now: "UI is missing",
                     focus_types: ["ui"],
+                    target_groups: ["ui"],
+                    done_when: ["The home page UI renders for the blocker slice."],
                   },
                 });
               }
@@ -987,6 +1099,8 @@ describe("impl", () => {
                         goal: "Render the home page",
                         why_now: "UI is red",
                         focus_types: ["ui"],
+                        target_groups: ["ui"],
+                        done_when: ["The home page UI renders for the blocker slice."],
                       },
                     }
                   : {
@@ -1033,6 +1147,7 @@ describe("impl", () => {
       fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
 
       const seenAgents = [];
+      let strategyCalls = 0;
       await impl({
         cwd: tmpDir,
         provider: "claude",
@@ -1043,13 +1158,193 @@ describe("impl", () => {
         },
         deps: {
           generateWithProvider: async ({ responseFormat, options }) => {
-            seenAgents.push({ responseFormat, agent: options?.agent || null });
+            seenAgents.push({
+              responseFormat,
+              agent: options?.agent || null,
+              hasJsonSchema: Boolean(options?.jsonSchema),
+            });
+            if (responseFormat === "json") {
+              strategyCalls += 1;
+              return JSON.stringify(strategyCalls === 1
+                ? {
+                    summary: "Send the home screen work to UI.",
+                    approach: "UI-first",
+                    changed_approach: false,
+                    root_causes: ["Missing home UI"],
+                    continue_iteration: true,
+                    next_task: {
+                      task_id: "ui-home",
+                      role: "ui",
+                      goal: "Render the home page",
+                      why_now: "UI is red",
+                      focus_types: ["ui"],
+                      target_groups: ["ui"],
+                      done_when: ["The home page UI renders for the blocker slice."],
+                    },
+                  }
+                : {
+                    summary: "Ready to verify.",
+                    approach: "UI-first",
+                    changed_approach: false,
+                    continue_iteration: false,
+                    stop_reason: "Ready to verify after the UI slice.",
+                  });
+            }
             return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
           },
         },
       });
 
-      assert.deepEqual(seenAgents, [{ responseFormat: "files", agent: "shipflow-ui-specialist" }]);
+      assert.deepEqual(seenAgents, [
+        { responseFormat: "json", agent: null, hasJsonSchema: true },
+        { responseFormat: "files", agent: "shipflow-ui-specialist", hasJsonSchema: false },
+        { responseFormat: "json", agent: null, hasJsonSchema: true },
+      ]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("requests a corrected strategy reply when the provider returns an overly broad task", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const jsonPrompts = [];
+      let strategyCalls = 0;
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
+            if (responseFormat === "json") {
+              jsonPrompts.push(prompt);
+              strategyCalls += 1;
+              if (strategyCalls === 1) {
+                return JSON.stringify({
+                  summary: "Build the complete app in one shot.",
+                  approach: "Do the whole stack together.",
+                  changed_approach: false,
+                  continue_iteration: true,
+                  next_task: {
+                    task_id: "full-app",
+                    role: "architecture",
+                    goal: "Build the complete app and fix UI and server together",
+                    why_now: "Nothing exists yet",
+                    focus_types: ["ui", "api", "database", "technical"],
+                    target_groups: ["ui", "api", "db", "technical", "behavior"],
+                    instructions: [
+                      "Implement the whole backend",
+                      "Build the full app shell",
+                      "Fix all routes",
+                      "Wire the database",
+                      "Make all tests green",
+                      "Do it all in one shot",
+                    ],
+                  },
+                });
+              }
+              if (strategyCalls === 2) {
+                return JSON.stringify({
+                  summary: "Start with the UI shell only.",
+                  approach: "Narrow UI-first slice.",
+                  changed_approach: true,
+                  continue_iteration: true,
+                  next_task: {
+                    task_id: "ui-home",
+                    role: "ui",
+                    goal: "Render the home page shell",
+                    why_now: "The visible UI surface is currently missing",
+                    focus_types: ["ui"],
+                    target_groups: ["ui"],
+                    instructions: ["Render the home page shell and keep the change local to the UI surface."],
+                    done_when: ["The home page UI renders successfully."],
+                  },
+                });
+              }
+              return JSON.stringify({
+                summary: "Ready to verify.",
+                approach: "UI-first",
+                changed_approach: false,
+                continue_iteration: false,
+                stop_reason: "Ready to verify after the UI slice.",
+              });
+            }
+            return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.deepEqual(result.written, ["src/app.js"]);
+      assert.equal(strategyCalls, 3);
+      assert.ok(jsonPrompts[1].includes("Strategy JSON Correction"));
+      assert.match(jsonPrompts[1], /too broad|too many verification groups|one-shot micro-task/i);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("requests a corrected strategy reply when continue_iteration is true but next_task is missing", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-impl-run-"));
+    try {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), "id: home\ntitle: Home\nseverity: blocker\napp:\n  kind: web\n  base_url: http://localhost:3000\nflow:\n  - open: /\nassert:\n  - visible: { text: Home }\n");
+
+      const jsonPrompts = [];
+      let strategyCalls = 0;
+      const result = await impl({
+        cwd: tmpDir,
+        provider: "command",
+        deps: {
+          generateWithProvider: async ({ prompt, responseFormat }) => {
+            if (responseFormat === "json") {
+              jsonPrompts.push(prompt);
+              strategyCalls += 1;
+              if (strategyCalls === 1) {
+                return JSON.stringify({
+                  summary: "Do the UI slice next.",
+                  approach: "UI-first",
+                  changed_approach: false,
+                  continue_iteration: true,
+                });
+              }
+              if (strategyCalls === 2) {
+                return JSON.stringify({
+                  summary: "Do the UI slice next.",
+                  approach: "UI-first",
+                  changed_approach: false,
+                  continue_iteration: true,
+                  next_task: {
+                    task_id: "ui-home",
+                    role: "ui",
+                    goal: "Render the home page",
+                    why_now: "UI is red",
+                    focus_types: ["ui"],
+                    target_groups: ["ui"],
+                    done_when: ["The home page UI renders for the blocker slice."],
+                  },
+                });
+              }
+              return JSON.stringify({
+                summary: "Ready to verify.",
+                approach: "UI-first",
+                changed_approach: false,
+                continue_iteration: false,
+                stop_reason: "Ready to verify after the UI slice.",
+              });
+            }
+            return "--- FILE: src/app.js ---\nconsole.log('ui');\n--- END FILE ---";
+          },
+        },
+      });
+
+      assert.deepEqual(result.written, ["src/app.js"]);
+      assert.equal(strategyCalls, 3);
+      assert.ok(jsonPrompts[1].includes("Strategy JSON Correction"));
+      assert.match(jsonPrompts[1], /next_task is required/i);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -1084,6 +1379,8 @@ describe("impl", () => {
                       goal: "Investigate API blocker",
                       why_now: "Behavior is red",
                       focus_types: ["api"],
+                      target_groups: ["api"],
+                      done_when: ["The API blocker has either a concrete fix or a crisp blocker handoff."],
                     },
                   });
                 }
@@ -1100,6 +1397,8 @@ describe("impl", () => {
                       goal: "Render the home page",
                       why_now: "UI is missing",
                       focus_types: ["ui"],
+                      target_groups: ["ui"],
+                      done_when: ["The home page UI renders for the blocker slice."],
                     },
                   });
                 }
@@ -1227,6 +1526,8 @@ describe("impl", () => {
                         goal: "Inspect the failing API slice",
                         why_now: "API is red",
                         focus_types: ["api"],
+                        target_groups: ["api"],
+                        done_when: ["The failing API slice has a concrete fix or blocker handoff."],
                       },
                     }
                   : {
@@ -1284,6 +1585,8 @@ describe("impl", () => {
                         goal: "Diagnose the slice",
                         why_now: "Need a handoff",
                         focus_types: ["technical"],
+                        target_groups: ["technical"],
+                        done_when: ["The slice has a concrete blocker handoff or root-cause fix."],
                       },
                     }
                   : {
