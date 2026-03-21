@@ -260,6 +260,15 @@ describe("buildPrompt", () => {
     assert.match(repoAware, /before returning them through JSON, REST, GraphQL, UI state, or events/i);
   });
 
+  it("requires unique accessible selector targets for browser UI controls", () => {
+    const embedded = buildPrompt(vpFiles, [], [], config, null, writePolicy);
+    assert.match(embedded, /unique accessible match/i);
+    assert.match(embedded, /parent form, region, or container/i);
+    const repoAware = buildPrompt(vpFiles, [], [], config, null, writePolicy, { provider: "codex" });
+    assert.match(repoAware, /unique accessible match/i);
+    assert.match(repoAware, /parent form, region, or container/i);
+  });
+
   it("truncates long errors to 8000 chars", () => {
     const longError = "x".repeat(10000);
     const p = buildPrompt(vpFiles, [], [], config, longError, writePolicy);
