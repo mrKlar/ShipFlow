@@ -58,6 +58,37 @@ function writeFakePlaywrightInstall(cwd, revision = "1234") {
   }, null, 2));
 }
 
+function writeFakeNestedPlaywrightInstall(cwd, revision = "1234") {
+  const testDir = path.join(cwd, "node_modules", "@playwright", "test");
+  const playwrightDir = path.join(cwd, "node_modules", "playwright");
+  const nestedCoreDir = path.join(playwrightDir, "node_modules", "playwright-core");
+  fs.mkdirSync(testDir, { recursive: true });
+  fs.mkdirSync(nestedCoreDir, { recursive: true });
+  fs.writeFileSync(path.join(testDir, "package.json"), JSON.stringify({
+    name: "@playwright/test",
+    type: "module",
+    exports: {
+      ".": "./index.js",
+      "./cli": "./cli.js",
+    },
+  }, null, 2));
+  fs.writeFileSync(path.join(testDir, "index.js"), "export {};\n");
+  fs.writeFileSync(path.join(playwrightDir, "package.json"), JSON.stringify({
+    name: "playwright",
+    type: "module",
+  }, null, 2));
+  fs.writeFileSync(path.join(nestedCoreDir, "package.json"), JSON.stringify({
+    name: "playwright-core",
+    type: "module",
+    exports: {
+      ".": "./index.js",
+    },
+  }, null, 2));
+  fs.writeFileSync(path.join(nestedCoreDir, "browsers.json"), JSON.stringify({
+    browsers: [{ name: "chromium", revision }],
+  }, null, 2));
+}
+
 function writeFakePlaywrightRuntime(cwd, revision = "1234") {
   const runtimeDir = path.join(cwd, ".shipflow", "runtime", "playwright", `chromium-${revision}`, "chrome-linux");
   fs.mkdirSync(runtimeDir, { recursive: true });
@@ -381,6 +412,43 @@ describe("bootstrapVerificationRuntime", () => {
     withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
       writeFakePlaywrightInstall(tmpDir, "5678");
+      writeFakePlaywrightRuntime(tmpDir, "1234");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        private: true,
+        devDependencies: { "@playwright/test": "^1.45.0" },
+      }, null, 2));
+      fs.writeFileSync(path.join(tmpDir, "vp", "ui", "home.yml"), [
+        "id: ui-home",
+        "title: Home screen is visible",
+        "severity: blocker",
+        "app:",
+        "  kind: web",
+        "  base_url: http://localhost:3000",
+        "flow:",
+        "  - open: /",
+        "assert:",
+        "  - url_matches:",
+        "      regex: /",
+        "",
+      ].join("\n"));
+
+      const calls = [];
+      const result = bootstrapVerificationRuntime(tmpDir, {
+        spawnSync: makeSpawnRecorder(tmpDir, calls),
+        commandExists: cmd => ["npm", "npx"].includes(cmd),
+      });
+
+      assert.equal(result.ok, true);
+      assert.equal(result.playwright_browsers_installed, true);
+      assert.equal(result.playwright_browsers_reused, false);
+      assert.ok(calls.some(call => call.bin === "npx" && call.args[0] === "--no-install" && call.args[1] === "playwright" && call.args[2] === "install" && call.args[3] === "chromium"));
+    });
+  });
+
+  it("reinstalls Playwright browsers when only nested playwright-core metadata is available and the revision changed", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "vp", "ui"), { recursive: true });
+      writeFakeNestedPlaywrightInstall(tmpDir, "5678");
       writeFakePlaywrightRuntime(tmpDir, "1234");
       fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
         private: true,
