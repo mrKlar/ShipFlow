@@ -767,6 +767,50 @@ describe("draft", () => {
     });
   });
 
+  it("does not treat unrelated draft model maps as local draft model overrides", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".gemini", "settings.json"), "{}\n");
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "local",
+          aiProvider: "auto",
+          models: {
+            codex: "gpt-custom",
+          },
+        },
+      }));
+
+      const options = resolveDraftOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "gemini",
+      });
+      assert.equal(options.aiProvider, "gemini");
+      assert.equal(options.model, "");
+    });
+  });
+
+  it("uses a matching configured draft model for local AI refinement", async () => {
+    await withTmpDir(async tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, ".gemini", "settings.json"), "{}\n");
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        draft: {
+          provider: "local",
+          aiProvider: "auto",
+          models: {
+            gemini: "gemini-custom",
+          },
+        },
+      }));
+
+      const options = resolveDraftOptions(tmpDir, {}, {
+        commandExists: cmd => cmd === "gemini",
+      });
+      assert.equal(options.aiProvider, "gemini");
+      assert.equal(options.model, "gemini-custom");
+    });
+  });
+
   it("prefers draft timeoutMs and falls back to impl timeoutMs", async () => {
     await withTmpDir(async tmpDir => {
       fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({

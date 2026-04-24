@@ -379,6 +379,8 @@ describe("genDomainArtifacts", () => {
     assert.ok(artifact.content.includes("ShipFlow business-domain backend"));
     assert.ok(artifact.content.includes("data engineering section"));
     assert.ok(artifact.content.includes("implementation source path"));
+    assert.ok(artifact.content.includes("must stay inside repository root"));
+    assert.ok(artifact.content.includes("const codeFiles = walkCode(ROOT);"));
     assert.ok(artifact.content.includes("/api/todos"));
     assert.ok(artifact.content.includes("todo_list_item"));
   });
