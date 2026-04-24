@@ -1,0 +1,14 @@
+id: technical-api-protocol
+title: Requested GraphQL protocol stays enforced
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - graphql_surface_present:
+      files: '**/*'
+      endpoint: /graphql

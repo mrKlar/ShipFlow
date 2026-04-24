@@ -1,0 +1,70 @@
+id: behavior-query-score-history
+feature: Score history
+scenario: Recording a completed game makes it visible in GraphQL score history
+severity: blocker
+runner:
+  kind: gherkin
+  framework: cucumber
+executor:
+  kind: api
+  framework: playwright-request
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS score_history (
+      game_id INTEGER PRIMARY KEY,
+      winner TEXT NOT NULL,
+      moves_json TEXT NOT NULL,
+      move_count INTEGER NOT NULL,
+      finished_at TEXT NOT NULL
+    );
+    DELETE FROM score_history;
+app:
+  kind: api
+  base_url: http://localhost:3000
+given:
+  - request:
+      method: POST
+      path: /graphql
+      headers:
+        content-type: application/json
+      body_json:
+        query: |-
+          mutation RecordCompletedGame {
+            recordCompletedGame(winner: "O", moves: [0, 1, 4, 2, 8]) {
+              gameId
+              winner
+              moveCount
+            }
+          }
+when:
+  - request:
+      method: POST
+      path: /graphql
+      headers:
+        content-type: application/json
+      body_json:
+        query: |-
+          query ScoreHistory {
+            scoreHistory {
+              gameId
+              winner
+              moveCount
+            }
+          }
+then:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_absent:
+      path: $.errors
+  - json_type:
+      path: $.data.scoreHistory
+      type: array
+  - json_array_includes:
+      path: $.data.scoreHistory
+      equals:
+        winner: O
+        moveCount: 5

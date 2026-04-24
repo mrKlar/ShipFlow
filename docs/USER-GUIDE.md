@@ -797,6 +797,12 @@ data_engineering:
       - { name: todo_response, fields: [id, title, status] }
   guidance:
     - Split the business object from technical read/write/exchange models when it improves the system.
+  implementation:
+    source_paths: [src/server.js]
+    source_contains:
+      - { path: src/server.js, text: "CREATE TABLE todos" }
+    api_paths: [/api/todos]
+    db_tables: [todos]
 assert:
   - data_engineering_present: { sections: [storage, exchange] }
   - read_model_defined: { name: todo_list_item }
@@ -827,10 +833,11 @@ assert:
 - `exchange.inbound` names inbound command or request shapes.
 - `exchange.outbound` names outbound response or event shapes.
 - `guidance` records deliberate engineering choices, such as allowing denormalized copies or separating write and read models.
+- `implementation` optionally links the domain contract to source files, API paths, and database table names the generated runner must find.
 
 This is the layer that lets the pack say "the business object is Todo" without forcing the code to use the exact same shape everywhere.
 
-Business-domain checks generate `.gen/domain/*.runner.mjs` and verify that the contract is internally coherent and that the required technical data objects are explicitly named.
+Business-domain checks generate `.gen/domain/*.runner.mjs` and verify that the contract is internally coherent, the required technical data objects are explicitly named, and any declared implementation links exist.
 
 ### API Checks — `vp/api/*.yml`
 
@@ -854,6 +861,9 @@ request:
 assert:
   - status: 201
   - json_equals: { path: "$.name", equals: "Bob" }
+mutation_guard:
+  mode: all
+  required_strategies: [mutated-body-json, mutated-path-segment]
 ```
 
 #### Request Fields
@@ -866,6 +876,8 @@ assert:
 | `body` | Optional raw string body |
 | `body_json` | Optional JSON body (object/array) |
 | `auth` | Optional bearer auth injected from env or inline token |
+
+`mutation_guard` is optional. By default ShipFlow requires at least one generated mutation to invalidate the original API contract. Set `mode: all` to require every generated mutation to fail the original assertions, or set `required_strategies` to name specific generated mutation strategies that must be killed.
 
 #### API Assertions
 

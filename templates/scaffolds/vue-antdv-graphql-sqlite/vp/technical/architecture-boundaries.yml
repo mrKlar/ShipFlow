@@ -1,0 +1,23 @@
+id: technical-architecture-boundaries
+title: Vue client and Node GraphQL backend stay separated
+severity: blocker
+category: architecture
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden:
+      files: "src/main.js"
+      patterns: ["node:http", "node:sqlite", "node:fs"]
+  - imports_forbidden:
+      files: "src/App.vue"
+      patterns: ["node:http", "node:sqlite", "node:fs"]
+  - imports_forbidden:
+      files: "src/server.js"
+      patterns: ["ant-design-vue", "@vitejs/plugin-vue", "vite/client"]
+  - no_circular_dependencies:
+      files: "src/**/*"
+      extensions: ["js", "mjs", "vue"]

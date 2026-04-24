@@ -1,0 +1,157 @@
+id: domain-movie
+title: Movie business object and comment data engineering stay explicit
+severity: blocker
+object:
+  name: Movie
+  kind: aggregate
+description: A movie must keep film metadata, poster image location, and comment references explicit before technical storage and exchange models are chosen.
+identity:
+  fields:
+    - movieId
+  strategy: surrogate
+attributes:
+  - name: movieId
+    type: number
+    required: true
+    mutable: false
+  - name: slug
+    type: string
+    required: true
+    mutable: false
+  - name: title
+    type: string
+    required: true
+    mutable: false
+  - name: releaseYear
+    type: number
+    required: true
+    mutable: false
+  - name: posterUrl
+    type: string
+    required: true
+    mutable: false
+  - name: synopsis
+    type: string
+    required: true
+    mutable: false
+  - name: commentId
+    type: number
+    required: false
+    mutable: false
+    description: Technical identifier materialized when an individual movie comment row is persisted or exchanged.
+  - name: author
+    type: string
+    required: false
+    mutable: false
+    description: Viewer display name attached to a movie comment.
+  - name: body
+    type: string
+    required: false
+    mutable: false
+    description: Comment body text attached to a movie.
+  - name: createdAt
+    type: datetime
+    required: false
+    mutable: false
+    description: Timestamp recorded when a movie comment is created.
+references:
+  - name: comments
+    target: MovieComment
+    cardinality: many
+    required: false
+    description: Viewer-submitted comments attached to the movie detail.
+invariants:
+  - A movie detail must keep title, year, poster image location, and synopsis aligned for the same movie identity.
+  - Movie comments must always reference a real movie.
+  - Read models may denormalize comment counts or summaries, but the detailed movie view must still expose comment author and body pairs.
+access_patterns:
+  reads:
+    - name: movie_feed
+      fields:
+        - movieId
+        - title
+        - releaseYear
+        - posterUrl
+      description: Read movie cards for the catalog grid.
+    - name: movie_detail
+      fields:
+        - movieId
+        - title
+        - releaseYear
+        - posterUrl
+        - synopsis
+        - comments
+      description: Read the selected movie detail with comments.
+  writes:
+    - name: add_movie_comment
+      fields:
+        - movieId
+        - author
+        - body
+      description: Persist a viewer comment for a movie.
+data_engineering:
+  storage:
+    canonical_model: movie_catalog_and_comments
+    allow_denormalized_copies: true
+    write_models:
+      - name: movie_comment_row
+        fields:
+          - commentId
+          - movieId
+          - author
+          - body
+          - createdAt
+        description: Canonical persisted comment row linked to a movie.
+    read_models:
+      - name: movie_card
+        fields:
+          - movieId
+          - title
+          - releaseYear
+          - posterUrl
+        description: Lightweight movie-card projection for the catalog.
+      - name: movie_detail
+        fields:
+          - movieId
+          - title
+          - releaseYear
+          - posterUrl
+          - synopsis
+          - comments
+        description: Detailed read model combining movie info and comments.
+  exchange:
+    inbound:
+      - name: add_movie_comment_input
+        fields:
+          - movieId
+          - author
+          - body
+        description: GraphQL mutation input for posting a movie comment.
+    outbound:
+      - name: movie_detail_payload
+        fields:
+          - movieId
+          - title
+          - releaseYear
+          - posterUrl
+          - synopsis
+          - comments
+        description: GraphQL payload returned for movie detail reads.
+  guidance:
+    - Do not force the domain aggregate to match a single table one-to-one when comment rows and movie projections need different shapes.
+    - Normalize technical identifiers and transport values before exposing them through GraphQL, UI state, or JSON payloads.
+assert:
+  - data_engineering_present:
+      sections:
+        - storage
+        - exchange
+  - read_model_defined:
+      name: movie_detail
+  - write_model_defined:
+      name: movie_comment_row
+  - exchange_model_defined:
+      direction: inbound
+      name: add_movie_comment_input
+  - reference_defined:
+      name: comments
+      target: MovieComment

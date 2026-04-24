@@ -84,6 +84,30 @@ describe("buildMap", () => {
     });
   });
 
+  it("supports library maps without product-surface gap noise", () => {
+    withTmpDir(tmpDir => {
+      fs.mkdirSync(path.join(tmpDir, "lib"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "package.json"), JSON.stringify({
+        name: "library",
+        bin: { library: "bin/library.js" },
+      }));
+      fs.writeFileSync(path.join(tmpDir, "shipflow.json"), JSON.stringify({
+        map: { projectType: "library", sourceRoots: ["lib"] },
+      }));
+      fs.writeFileSync(path.join(tmpDir, "lib", "gen.js"), `
+        export const generated = 'app.get("/api/users", handler); SELECT * FROM users';
+      `);
+
+      const result = buildMap(tmpDir);
+      assert.equal(result.project.project_type, "library");
+      assert.equal(result.project.app_archetype, null);
+      assert.deepEqual(result.detected.api_endpoints, []);
+      assert.deepEqual(result.detected.db_tables, []);
+      assert.equal(result.coverage.gaps.some(gap => gap.includes("API endpoint")), false);
+      assert.equal(result.coverage.gaps.some(gap => gap.includes("database usage")), false);
+    });
+  });
+
   it("detects UI routes from Next-style page files", () => {
     withTmpDir(tmpDir => {
       fs.mkdirSync(path.join(tmpDir, "app", "dashboard"), { recursive: true });

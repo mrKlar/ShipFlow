@@ -1,0 +1,11 @@
+{
+  "map": {
+    "projectType": "library",
+    "sourceRoots": [
+      "bin",
+      "lib",
+      "hooks",
+      "scripts"
+    ]
+  }
+}

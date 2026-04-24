@@ -1,0 +1,19 @@
+id: api-health
+title: Health endpoint stays available
+severity: blocker
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /health
+assert:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_equals:
+      path: $.ok
+      equals: true
+  - json_has:
+      path: $.service

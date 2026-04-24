@@ -1,0 +1,21 @@
+id: technical-framework-stack
+title: Node web REST scaffold stays in place
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists:
+      path: package.json
+  - path_exists:
+      path: src/server.js
+  - path_exists:
+      path: src/public/index.html
+  - script_present:
+      name: dev
+  - script_present:
+      name: start

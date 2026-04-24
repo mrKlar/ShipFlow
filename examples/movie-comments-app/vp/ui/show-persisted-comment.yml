@@ -1,0 +1,55 @@
+id: show-persisted-comment
+title: Viewer sees persisted movie comments after selecting a movie
+severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS movies (
+      movie_id INTEGER PRIMARY KEY,
+      slug TEXT NOT NULL,
+      title TEXT NOT NULL,
+      release_year INTEGER NOT NULL,
+      poster_url TEXT NOT NULL,
+      synopsis TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS movie_comments (
+      comment_id INTEGER PRIMARY KEY,
+      movie_id INTEGER NOT NULL,
+      author TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (movie_id) REFERENCES movies(movie_id)
+    );
+    DELETE FROM movie_comments;
+    DELETE FROM movies;
+    INSERT INTO movies (movie_id, slug, title, release_year, poster_url, synopsis)
+    VALUES (
+      1,
+      'arrival',
+      'Arrival',
+      2016,
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360"><rect width="100%" height="100%" fill="%23141b2d"/><text x="50%" y="50%" fill="white" font-size="28" text-anchor="middle" dominant-baseline="middle">Arrival</text></svg>',
+      'A linguist works with alien visitors to understand their language before conflict escalates.'
+    );
+    INSERT INTO movie_comments (comment_id, movie_id, author, body, created_at)
+    VALUES (1, 1, 'Nadia', 'Loved the ending.', '2026-01-01T00:00:00.000Z');
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /
+  - click:
+      testid: movie-card-1
+assert:
+  - text_equals:
+      testid: selected-movie-title
+      equals: Arrival
+  - visible:
+      testid: movie-poster-image
+  - count:
+      testid: movie-comment
+      equals: 1
+  - text_matches:
+      testid: movie-comment-0
+      regex: Nadia.*Loved the ending

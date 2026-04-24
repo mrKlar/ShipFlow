@@ -1,0 +1,42 @@
+id: play-winning-game
+title: Player can finish a winning game and see it in score history
+severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS score_history (
+      game_id INTEGER PRIMARY KEY,
+      winner TEXT NOT NULL,
+      moves_json TEXT NOT NULL,
+      move_count INTEGER NOT NULL,
+      finished_at TEXT NOT NULL
+    );
+    DELETE FROM score_history;
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /
+  - click:
+      testid: board-cell-0
+  - click:
+      testid: board-cell-3
+  - click:
+      testid: board-cell-1
+  - click:
+      testid: board-cell-4
+  - click:
+      testid: board-cell-2
+  - wait_for:
+      ms: 300
+assert:
+  - text_equals:
+      testid: game-status
+      equals: 'Winner: X'
+  - count:
+      testid: score-entry
+      equals: 1
+  - text_matches:
+      testid: score-entry-0
+      regex: X.*5

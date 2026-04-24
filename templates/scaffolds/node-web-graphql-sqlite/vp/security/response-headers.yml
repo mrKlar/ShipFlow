@@ -1,0 +1,21 @@
+id: security-response-headers
+title: Base response headers stay in place
+severity: blocker
+category: headers
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /health
+assert:
+  - status: 200
+  - header_equals:
+      name: x-content-type-options
+      equals: nosniff
+  - header_equals:
+      name: x-frame-options
+      equals: DENY
+  - header_equals:
+      name: referrer-policy
+      equals: no-referrer

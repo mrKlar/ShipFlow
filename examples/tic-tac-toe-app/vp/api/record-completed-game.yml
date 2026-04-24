@@ -1,0 +1,47 @@
+id: api-record-completed-game
+title: POST /graphql records a completed game
+severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS score_history (
+      game_id INTEGER PRIMARY KEY,
+      winner TEXT NOT NULL,
+      moves_json TEXT NOT NULL,
+      move_count INTEGER NOT NULL,
+      finished_at TEXT NOT NULL
+    );
+    DELETE FROM score_history;
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: POST
+  path: /graphql
+  headers:
+    content-type: application/json
+  body_json:
+    query: |-
+      mutation RecordCompletedGame {
+        recordCompletedGame(winner: "X", moves: [0, 3, 1, 4, 2]) {
+          gameId
+          winner
+          moveCount
+        }
+      }
+assert:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_absent:
+      path: $.errors
+  - json_has:
+      path: $.data.recordCompletedGame.gameId
+  - json_equals:
+      path: $.data.recordCompletedGame.winner
+      equals: X
+  - json_equals:
+      path: $.data.recordCompletedGame.moveCount
+      equals: 5

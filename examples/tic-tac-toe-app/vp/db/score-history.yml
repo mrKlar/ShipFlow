@@ -1,0 +1,46 @@
+id: db-score-history-sqlite
+title: SQLite score history stays queryable
+severity: blocker
+app:
+  kind: db
+  engine: sqlite
+  connection: ./test.db
+setup_sql: |-
+  CREATE TABLE IF NOT EXISTS score_history (
+    game_id INTEGER PRIMARY KEY,
+    winner TEXT NOT NULL,
+    moves_json TEXT NOT NULL,
+    move_count INTEGER NOT NULL,
+    finished_at TEXT NOT NULL
+  );
+  DELETE FROM score_history;
+before_query: PRAGMA table_info(score_history);
+before_assert:
+  - row_count_gte: 5
+  - column_contains:
+      column: name
+      value: game_id
+  - column_contains:
+      column: name
+      value: winner
+  - column_contains:
+      column: name
+      value: moves_json
+  - column_contains:
+      column: name
+      value: move_count
+action_sql: |-
+  INSERT INTO score_history (game_id, winner, moves_json, move_count, finished_at)
+  VALUES (1, 'X', '[0,3,1,4,2]', 5, '2026-01-01T00:00:00.000Z');
+query: SELECT game_id, winner, move_count FROM score_history ORDER BY game_id;
+assert:
+  - row_count: 1
+  - cell_equals:
+      row: 0
+      column: winner
+      equals: X
+  - cell_equals:
+      row: 0
+      column: move_count
+      equals: '5'
+cleanup_sql: DELETE FROM score_history;

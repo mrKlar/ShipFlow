@@ -1,20 +1,22 @@
 import { test, expect } from "@playwright/test";
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+
 test.describe("Shopping Cart", () => {
   // executor: browser/playwright
   test("checkout-flow: User adds item and checks out", async ({ page }) => {
-    await page.goto("http://localhost:3000");
+    await page.goto(shipflowBaseUrl);
     // setup: login-fixture
-    await page.goto("http://localhost:3000/login");
+    await page.goto(shipflowBaseUrl + "/login");
     await page.getByTestId("email-input").fill("test@example.com");
     await page.getByLabel("Password").fill("testpass");
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForTimeout(300);
     // Given
-    await page.goto("http://localhost:3000/products");
+    await page.goto(shipflowBaseUrl + "/products");
     await page.getByTestId("add-to-cart").click();
     // When
-    await page.goto("http://localhost:3000/cart");
+    await page.goto(shipflowBaseUrl + "/cart");
     await page.getByRole("button", { name: "Checkout" }).click();
     await page.getByLabel("Card Number").fill("4111111111111111");
     await page.getByRole("button", { name: "Pay" }).click();
@@ -23,15 +25,15 @@ test.describe("Shopping Cart", () => {
     await expect(page.getByTestId("success-message")).toBeVisible();
   });
   test("checkout-flow: User adds item and checks out [mutation guard]", async ({ page }) => {
-    await page.goto("http://localhost:3000");
+    await page.goto(shipflowBaseUrl);
     // setup: login-fixture
-    await page.goto("http://localhost:3000/login");
+    await page.goto(shipflowBaseUrl + "/login");
     await page.getByTestId("email-input").fill("test@example.com");
     await page.getByLabel("Password").fill("testpass");
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForTimeout(300);
     // Given
-    await page.goto("http://localhost:3000/products");
+    await page.goto(shipflowBaseUrl + "/products");
     await page.getByTestId("add-to-cart").click();
     const mutationGuardPasses = [
       new RegExp("/confirmation").test(page.url()),

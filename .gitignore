@@ -9,6 +9,9 @@ vp/
 .gemini/
 .kiro/
 
+!templates/scaffolds/**/vp/
+!templates/scaffolds/**/vp/**
+
 !examples/
 !examples/todo-app/
 !examples/todo-app/.gen/
@@ -29,6 +32,12 @@ vp/
 !examples/security-load-app/.gen/**
 !examples/security-load-app/vp/
 !examples/security-load-app/vp/**
+!examples/movie-comments-app/
+!examples/movie-comments-app/vp/
+!examples/movie-comments-app/vp/**
+!examples/tic-tac-toe-app/
+!examples/tic-tac-toe-app/vp/
+!examples/tic-tac-toe-app/vp/**
 
 # Ignore Windows NTFS alternate data stream metadata files
 *Zone.Identifier

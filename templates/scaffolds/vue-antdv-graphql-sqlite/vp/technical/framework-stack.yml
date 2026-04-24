@@ -1,0 +1,34 @@
+id: technical-framework-stack
+title: Vue, Ant Design Vue, and GraphQL scaffold stays in place
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists:
+      path: package.json
+  - path_exists:
+      path: src/server.js
+  - path_exists:
+      path: src/App.vue
+  - path_exists:
+      path: vite.config.js
+  - script_present:
+      name: dev
+  - script_present:
+      name: server
+  - script_present:
+      name: client
+  - dependency_present:
+      name: vue
+      section: all
+  - dependency_present:
+      name: ant-design-vue
+      section: all
+  - dependency_present:
+      name: graphql
+      section: all

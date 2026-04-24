@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+
 test("ui-login: User can log in", async ({ page }) => {
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/login");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/login");
   await page.getByTestId("email-input").fill("user@example.com");
   await page.getByLabel("Password").fill("secret123");
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -12,8 +14,8 @@ test("ui-login: User can log in", async ({ page }) => {
 });
 
 test("ui-login: User can log in [mutation guard]", async ({ page }) => {
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/login");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/login");
   const mutationGuardPasses = [
     new RegExp("/dashboard").test(page.url()),
     await page.getByTestId("user-avatar").isVisible().catch(() => false),

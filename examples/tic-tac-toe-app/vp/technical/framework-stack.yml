@@ -1,0 +1,16 @@
+id: technical-framework-stack
+title: Requested GraphQL stack stays in place
+severity: blocker
+category: framework
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - path_exists:
+      path: package.json
+  - dependency_present:
+      name: graphql
+      section: all

@@ -49,6 +49,8 @@ The business-domain layer is where ShipFlow makes stateful and integration-heavy
 
 That last point matters. `vp/domain/*.yml` does not force business objects to be implemented 1:1 as tables or payloads. Instead, it locks the required translation into technical data objects such as canonical storage models, read models, write models, and exchange models.
 
+Domain checks may also declare `data_engineering.implementation` links to source files, API paths, and database table names. Those links let the generated domain runner verify that the declared business/data model is actually represented in the implementation, instead of only checking the YAML's internal consistency.
+
 When a UI check includes a `visual` block, the generated Playwright test also performs structured visual assertions and snapshot comparison. Approved baselines live under `vp/ui/_baselines/<check-id>/`. Regression artifacts are written under `evidence/visual/<check-id>/`.
 
 The lock file `.gen/vp.lock.json` records SHA-256 hashes of every file in `vp/` and every generated artifact in `.gen/` except the lock file itself.

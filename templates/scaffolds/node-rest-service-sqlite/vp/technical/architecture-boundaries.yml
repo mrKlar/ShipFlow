@@ -1,0 +1,17 @@
+id: technical-architecture-boundaries
+title: Backend service stays UI-free and acyclic
+severity: blocker
+category: architecture
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden:
+      files: "src/**/*.js"
+      patterns: ["react", "vue", "ant-design-vue", "@mui/material", "@chakra-ui/react"]
+  - no_circular_dependencies:
+      files: "src/**/*"
+      extensions: ["js", "mjs"]

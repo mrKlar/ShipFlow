@@ -1,0 +1,108 @@
+id: domain-completed-game
+title: Completed game business object and data engineering stay explicit
+severity: blocker
+object:
+  name: CompletedGame
+  kind: aggregate
+description: A completed tic-tac-toe game must keep its winner and move sequence explicit before technical storage and exchange shapes are chosen.
+identity:
+  fields:
+    - gameId
+  strategy: surrogate
+attributes:
+  - name: gameId
+    type: number
+    required: true
+    mutable: false
+  - name: winner
+    type: string
+    required: true
+    mutable: false
+    values:
+      - X
+      - O
+      - draw
+  - name: moveSequence
+    type: number[]
+    required: true
+    mutable: false
+  - name: moveCount
+    type: number
+    required: true
+    mutable: false
+  - name: finishedAt
+    type: datetime
+    required: true
+    mutable: false
+references: []
+invariants:
+  - A completed game must record a winner or draw outcome.
+  - A completed game must preserve the exact move sequence that produced the result.
+  - Score history reads must stay derivable from completed games without losing move-count information.
+access_patterns:
+  reads:
+    - name: scoreboard_entry
+      fields:
+        - gameId
+        - winner
+        - moveCount
+        - finishedAt
+      description: Read recent completed games for the score history panel.
+  writes:
+    - name: record_completed_game
+      fields:
+        - winner
+        - moveSequence
+      description: Persist a completed game after the board reaches a terminal state.
+data_engineering:
+  storage:
+    canonical_model: score_history
+    allow_denormalized_copies: true
+    write_models:
+      - name: score_history_row
+        fields:
+          - gameId
+          - winner
+          - moveSequence
+          - moveCount
+          - finishedAt
+        description: Canonical persisted completed-game row.
+    read_models:
+      - name: scoreboard_entry
+        fields:
+          - gameId
+          - winner
+          - moveCount
+          - finishedAt
+        description: Read-optimized scoreboard projection.
+  exchange:
+    inbound:
+      - name: record_completed_game_input
+        fields:
+          - winner
+          - moveSequence
+        description: GraphQL mutation input for recording a completed game.
+    outbound:
+      - name: completed_game_payload
+        fields:
+          - gameId
+          - winner
+          - moveCount
+          - moveSequence
+          - finishedAt
+        description: GraphQL payload returned for completed games.
+  guidance:
+    - Do not force the domain object to match the storage row one-to-one when read or exchange models need different shapes.
+    - Keep the write model append-friendly for score history while exposing a compact scoreboard read model.
+assert:
+  - data_engineering_present:
+      sections:
+        - storage
+        - exchange
+  - read_model_defined:
+      name: scoreboard_entry
+  - write_model_defined:
+      name: score_history_row
+  - exchange_model_defined:
+      direction: inbound
+      name: record_completed_game_input

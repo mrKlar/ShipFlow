@@ -413,6 +413,12 @@ describe("DomainCheck schema", () => {
         outbound: [{ name: "todo_response", fields: ["id", "title", "status"] }],
       },
       guidance: ["Split business objects from technical read/write/exchange models."],
+      implementation: {
+        source_paths: ["src/server.js"],
+        source_contains: [{ path: "src/server.js", text: "CREATE TABLE todos" }],
+        api_paths: ["/api/todos"],
+        db_tables: ["todos"],
+      },
     },
     assert: [
       { data_engineering_present: { sections: ["storage", "exchange"] } },
@@ -423,6 +429,7 @@ describe("DomainCheck schema", () => {
   it("accepts business-domain checks with explicit data engineering", () => {
     const result = DomainCheck.parse(baseDomain);
     assert.equal(result.data_engineering.storage.canonical_model, "todo");
+    assert.equal(result.data_engineering.implementation.source_paths[0], "src/server.js");
     assert.equal(result.assert[0].data_engineering_present.sections[0], "storage");
   });
 

@@ -107,6 +107,19 @@ describe("ApiCheck schema", () => {
     assert.equal(r.request.auth.kind, "bearer");
   });
 
+  it("accepts explicit mutation guard policy", () => {
+    const r = ApiCheck.parse({
+      ...base,
+      assert: [{ status: 200 }],
+      mutation_guard: {
+        mode: "all",
+        required_strategies: ["mutated-path-segment", "mutated-method"],
+      },
+    });
+    assert.equal(r.mutation_guard.mode, "all");
+    assert.deepEqual(r.mutation_guard.required_strategies, ["mutated-path-segment", "mutated-method"]);
+  });
+
   it("rejects unknown assert", () => {
     assert.throws(() => {
       ApiCheck.parse({ ...base, assert: [{ unknown: true }] });
@@ -217,6 +230,7 @@ describe("genApiTest", () => {
     assert.ok(code.includes("REQUEST_SPEC"));
     assert.ok(code.includes("MUTATION_REQUEST_SPECS"));
     assert.ok(code.includes("MUTATION_STRATEGIES"));
+    assert.ok(code.includes("MUTATION_GUARD"));
     assert.ok(code.includes("sendShipFlowRequest"));
     assert.ok(code.includes('const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;'));
     assert.ok(code.includes("options.timeout = shipflowApiTimeoutMs;"));
@@ -224,6 +238,22 @@ describe("genApiTest", () => {
     assert.ok(code.includes("toBe(200)"));
     assert.ok(code.includes("[mutation guard]"));
     assert.ok(code.includes("toBeGreaterThan(0)"));
+    assert.ok(code.includes("missingRequiredStrategies"));
+  });
+
+  it("generates strict mutation guard assertions when requested", () => {
+    const code = genApiTest({
+      ...base,
+      assert: [{ status: 200 }],
+      mutation_guard: {
+        mode: "all",
+        required_strategies: ["mutated-path-segment"],
+      },
+    });
+    assert.ok(code.includes('"mode":"all"'));
+    assert.ok(code.includes('"required_strategies":["mutated-path-segment"]'));
+    assert.ok(code.includes("Expected every API mutation to invalidate the original contract"));
+    assert.ok(code.includes("Expected required API mutation strategies to be killed"));
   });
 
   it("injects sqlite state reset before api checks", () => {

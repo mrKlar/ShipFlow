@@ -1,0 +1,11 @@
+id: ui-root-shell
+title: Root web shell stays reachable
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /
+assert:
+  - visible:
+      testid: app-shell

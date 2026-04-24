@@ -1,0 +1,77 @@
+id: api-add-movie-comment
+title: POST /graphql adds a movie comment with nested movie detail
+severity: blocker
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS movies (
+      movie_id INTEGER PRIMARY KEY,
+      slug TEXT NOT NULL,
+      title TEXT NOT NULL,
+      release_year INTEGER NOT NULL,
+      poster_url TEXT NOT NULL,
+      synopsis TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS movie_comments (
+      comment_id INTEGER PRIMARY KEY,
+      movie_id INTEGER NOT NULL,
+      author TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (movie_id) REFERENCES movies(movie_id)
+    );
+    DELETE FROM movie_comments;
+    DELETE FROM movies;
+    INSERT INTO movies (movie_id, slug, title, release_year, poster_url, synopsis)
+    VALUES (
+      1,
+      'arrival',
+      'Arrival',
+      2016,
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360"><rect width="100%" height="100%" fill="%23141b2d"/><text x="50%" y="50%" fill="white" font-size="28" text-anchor="middle" dominant-baseline="middle">Arrival</text></svg>',
+      'A linguist works with alien visitors to understand their language before conflict escalates.'
+    );
+app:
+  kind: api
+  base_url: http://localhost:3000
+request:
+  method: POST
+  path: /graphql
+  headers:
+    content-type: application/json
+  body_json:
+    query: |-
+      mutation AddMovieComment {
+        addMovieComment(movieId: 1, author: "Nadia", body: "Loved the ending.") {
+          commentId
+          author
+          body
+          movie {
+            movieId
+            title
+            posterUrl
+          }
+        }
+      }
+assert:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_absent:
+      path: $.errors
+  - json_has:
+      path: $.data.addMovieComment.commentId
+  - json_equals:
+      path: $.data.addMovieComment.author
+      equals: Nadia
+  - json_equals:
+      path: $.data.addMovieComment.body
+      equals: Loved the ending.
+  - json_equals:
+      path: $.data.addMovieComment.movie.title
+      equals: Arrival
+  - json_matches:
+      path: $.data.addMovieComment.movie.posterUrl
+      matches: .+

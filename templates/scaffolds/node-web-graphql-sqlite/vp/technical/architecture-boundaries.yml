@@ -1,0 +1,20 @@
+id: technical-architecture-boundaries
+title: Browser shell and Node GraphQL server stay separated
+severity: blocker
+category: architecture
+runner:
+  kind: custom
+  framework: custom
+app:
+  kind: technical
+  root: .
+assert:
+  - imports_forbidden:
+      files: "src/public/**/*.js"
+      patterns: ["node:http", "node:sqlite", "node:fs", "graphql"]
+  - imports_forbidden:
+      files: "src/server.js"
+      patterns: ["./public/", "src/public/"]
+  - no_circular_dependencies:
+      files: "src/**/*"
+      extensions: ["js", "mjs"]

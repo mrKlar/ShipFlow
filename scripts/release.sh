@@ -12,12 +12,18 @@ tar czf "$OUT" \
   -C "$ROOT" \
   .claude-plugin/ \
   bin/ \
+  claude-agents/ \
+  codex-skills/ \
+  docs/ \
+  gemini-extension/ \
   lib/ \
   hooks/ \
+  kiro-agents/ \
   plugin/ \
   templates/ \
   package.json \
   install.sh \
+  uninstall.sh \
   README.md
 
 echo "Built $OUT"

@@ -11,6 +11,20 @@
   "groups": [
     {
       "version": 1,
+      "kind": "behavior_gherkin",
+      "label": "Behavior (Gherkin)",
+      "ok": true,
+      "skipped": true,
+      "reason": "no generated features",
+      "passed": 0,
+      "failed": 0,
+      "skipped_count": 0,
+      "advisory_failed": 0,
+      "files": [],
+      "checks": []
+    },
+    {
+      "version": 1,
       "kind": "ui",
       "label": "UI",
       "started_at": "<iso>",
@@ -134,20 +148,6 @@
           "exit_code": 0
         }
       ]
-    },
-    {
-      "version": 1,
-      "kind": "behavior_gherkin",
-      "label": "Behavior (Gherkin)",
-      "ok": true,
-      "skipped": true,
-      "reason": "no generated features",
-      "passed": 0,
-      "failed": 0,
-      "skipped_count": 0,
-      "advisory_failed": 0,
-      "files": [],
-      "checks": []
     },
     {
       "version": 1,

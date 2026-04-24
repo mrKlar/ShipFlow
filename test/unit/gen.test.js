@@ -362,6 +362,12 @@ describe("genDomainArtifacts", () => {
           outbound: [{ name: "todo_response", fields: ["id", "title", "status"] }],
         },
         guidance: ["Do not force a one-to-one mapping."],
+        implementation: {
+          source_paths: ["src/server.js"],
+          source_contains: [{ path: "src/server.js", text: "CREATE TABLE todos" }],
+          api_paths: ["/api/todos"],
+          db_tables: ["todos"],
+        },
       },
       assert: [
         { data_engineering_present: { sections: ["storage", "exchange"] } },
@@ -372,6 +378,8 @@ describe("genDomainArtifacts", () => {
     assert.equal(artifact.kind, "domain-runner");
     assert.ok(artifact.content.includes("ShipFlow business-domain backend"));
     assert.ok(artifact.content.includes("data engineering section"));
+    assert.ok(artifact.content.includes("implementation source path"));
+    assert.ok(artifact.content.includes("/api/todos"));
     assert.ok(artifact.content.includes("todo_list_item"));
   });
 });

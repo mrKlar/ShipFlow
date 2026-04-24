@@ -264,8 +264,8 @@ function assertForbiddenImports(glob, patterns) {
   for (const file of files) {
     const imports = parseImports(readText(file));
     for (const pattern of patterns) {
-      const violated = imports.some(specifier => specifier === pattern || specifier.startsWith(pattern.replace(/\*\*$/, ""))) || readText(file).includes(pattern);
-      assertCondition(!violated, file + " should not import or reference " + pattern);
+      const violated = imports.some(specifier => specifier === pattern || specifier.startsWith(pattern.replace(/\*\*$/, "")));
+      assertCondition(!violated, file + " should not import " + pattern);
     }
   }
 }

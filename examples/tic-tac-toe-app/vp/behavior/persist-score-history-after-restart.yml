@@ -1,0 +1,73 @@
+id: behavior-persist-score-history-after-restart
+feature: Score history
+scenario: Recorded score history persists after an application restart
+severity: blocker
+runner:
+  kind: gherkin
+  framework: cucumber
+executor:
+  kind: api
+  framework: playwright-request
+state:
+  kind: sqlite
+  connection: ./test.db
+  reset_sql: |-
+    CREATE TABLE IF NOT EXISTS score_history (
+      game_id INTEGER PRIMARY KEY,
+      winner TEXT NOT NULL,
+      moves_json TEXT NOT NULL,
+      move_count INTEGER NOT NULL,
+      finished_at TEXT NOT NULL
+    );
+    DELETE FROM score_history;
+app:
+  kind: api
+  base_url: http://localhost:3000
+given:
+  - request:
+      method: POST
+      path: /graphql
+      headers:
+        content-type: application/json
+      body_json:
+        query: |-
+          mutation RecordCompletedGame {
+            recordCompletedGame(winner: "X", moves: [0, 3, 1, 4, 2]) {
+              gameId
+              winner
+              moveCount
+            }
+          }
+when:
+  - restart_app:
+      wait_for_ready_ms: 10000
+      wait_after_ms: 200
+  - request:
+      method: POST
+      path: /graphql
+      headers:
+        content-type: application/json
+      body_json:
+        query: |-
+          query ScoreHistoryAfterRestart {
+            scoreHistory {
+              gameId
+              winner
+              moveCount
+            }
+          }
+then:
+  - status: 200
+  - header_matches:
+      name: content-type
+      matches: json
+  - json_absent:
+      path: $.errors
+  - json_type:
+      path: $.data.scoreHistory
+      type: array
+  - json_array_includes:
+      path: $.data.scoreHistory
+      equals:
+        winner: X
+        moveCount: 5

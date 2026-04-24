@@ -1,0 +1,75 @@
+id: db-movie-comments-sqlite
+title: SQLite movie comments stay queryable with their movie metadata
+severity: blocker
+app:
+  kind: db
+  engine: sqlite
+  connection: ./test.db
+setup_sql: |-
+  CREATE TABLE IF NOT EXISTS movies (
+    movie_id INTEGER PRIMARY KEY,
+    slug TEXT NOT NULL,
+    title TEXT NOT NULL,
+    release_year INTEGER NOT NULL,
+    poster_url TEXT NOT NULL,
+    synopsis TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS movie_comments (
+    comment_id INTEGER PRIMARY KEY,
+    movie_id INTEGER NOT NULL,
+    author TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (movie_id) REFERENCES movies(movie_id)
+  );
+  DELETE FROM movie_comments;
+  DELETE FROM movies;
+  INSERT INTO movies (movie_id, slug, title, release_year, poster_url, synopsis)
+  VALUES (
+    1,
+    'arrival',
+    'Arrival',
+    2016,
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360"><rect width="100%" height="100%" fill="%23141b2d"/><text x="50%" y="50%" fill="white" font-size="28" text-anchor="middle" dominant-baseline="middle">Arrival</text></svg>',
+    'A linguist works with alien visitors to understand their language before conflict escalates.'
+  );
+before_query: PRAGMA table_info(movie_comments);
+before_assert:
+  - row_count_gte: 5
+  - column_contains:
+      column: name
+      value: comment_id
+  - column_contains:
+      column: name
+      value: movie_id
+  - column_contains:
+      column: name
+      value: author
+  - column_contains:
+      column: name
+      value: body
+action_sql: |-
+  INSERT INTO movie_comments (comment_id, movie_id, author, body, created_at)
+  VALUES (1, 1, 'Nadia', 'Loved the ending.', '2026-01-01T00:00:00.000Z');
+query: |-
+  SELECT m.title, c.author, c.body
+  FROM movie_comments c
+  JOIN movies m ON m.movie_id = c.movie_id
+  ORDER BY c.comment_id;
+assert:
+  - row_count: 1
+  - cell_equals:
+      row: 0
+      column: title
+      equals: Arrival
+  - cell_equals:
+      row: 0
+      column: author
+      equals: Nadia
+  - cell_equals:
+      row: 0
+      column: body
+      equals: Loved the ending.
+cleanup_sql: |-
+  DELETE FROM movie_comments;
+  DELETE FROM movies;
