@@ -48,6 +48,7 @@ Advanced / debug:
   shipflow slice <sub>         Manage vertical slices linking intent → decisions → vp → evidence
   shipflow preview             Show concrete artifacts available for human review (vp, slices, evidence, decisions)
   shipflow review-artifact     Capture structured feedback on a concrete artifact (list|show|new|resolve|wont-fix|reopen)
+  shipflow discover            Brownfield: scan repo and propose regression VPs for existing surfaces
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -188,6 +189,18 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "discover") {
+    const { discoverCli } = await import("../lib/discover.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = discoverCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 
