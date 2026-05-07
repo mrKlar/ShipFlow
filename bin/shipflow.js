@@ -43,6 +43,7 @@ Advanced / debug:
   shipflow status              Show pack, generated tests, and evidence
   shipflow decision <sub>      Capture validated decisions backing the pack (list|show|new|link|unlink)
   shipflow grill <sub>         Manage grilling sessions (list|show <id>|promote <id> --decision=<id>)
+  shipflow approve-pack        Sign the current verification pack (status|list|show <id>|revoke <id>)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -177,6 +178,18 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "approve-pack") {
+    const { approvalsCli } = await import("../lib/approvals.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = approvalsCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 
