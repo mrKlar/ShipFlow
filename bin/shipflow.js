@@ -34,6 +34,7 @@ Standard flow:
 Advanced / debug:
   shipflow map [description]   Review repo surfaces and coverage gaps before drafting
   shipflow lint                Lint verification quality before generation
+  shipflow critique            Score the cognitive quality of the pack (decision linkage, negative cases, vague titles)
   shipflow doctor              Check local tools, runners, and AI CLI adapters
   shipflow gen                 Generate runnable tests from the verification pack
   shipflow approve-visual      Capture or refresh locked UI visual baselines
@@ -153,6 +154,12 @@ Exit codes:
   if (cmd === "lint") {
     const { lint } = await import("../lib/lint.js");
     const { exitCode } = lint({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "critique") {
+    const { critique } = await import("../lib/critique.js");
+    const { exitCode } = critique({ cwd: process.cwd(), json: flags.has("--json") });
     process.exit(exitCode);
   }
 
