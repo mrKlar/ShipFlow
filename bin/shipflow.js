@@ -46,6 +46,8 @@ Advanced / debug:
   shipflow grill <sub>         Manage grilling sessions (list|show <id>|promote <id> --decision=<id>)
   shipflow approve-pack        Sign the current verification pack (status|list|show <id>|revoke <id>)
   shipflow slice <sub>         Manage vertical slices linking intent → decisions → vp → evidence
+  shipflow preview             Show concrete artifacts available for human review (vp, slices, evidence, decisions)
+  shipflow review-artifact     Capture structured feedback on a concrete artifact (list|show|new|resolve|wont-fix|reopen)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -186,6 +188,24 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "preview") {
+    const { previewArtifacts } = await import("../lib/reviews.js");
+    const { exitCode } = previewArtifacts({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "review-artifact" || cmd === "review-artifacts") {
+    const { reviewsCli } = await import("../lib/reviews.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = reviewsCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 
