@@ -50,6 +50,7 @@ Advanced / debug:
   shipflow review-artifact     Capture structured feedback on a concrete artifact (list|show|new|resolve|wont-fix|reopen)
   shipflow discover            Brownfield: scan repo and propose regression VPs for existing surfaces
   shipflow trace               Traceability matrix: vp ↔ decisions ↔ grill ↔ slices ↔ generated ↔ evidence (--markdown)
+  shipflow governance <sub>    Org policy: validate the pack against .shipflow/governance.yml (init|check|show)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -190,6 +191,18 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "governance") {
+    const { governanceCli } = await import("../lib/governance.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = governanceCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 

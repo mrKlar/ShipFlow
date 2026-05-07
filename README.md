@@ -2,7 +2,7 @@
 
 # ShipFlow
 
-### *Spec-driven development is dead.*<br>Welcome to **verification-first shipping**.
+### *Spec-driven development is dead.*<br>Welcome to **understanding-to-verification-first shipping**.
 
 [![Node 18+](https://img.shields.io/badge/node-18%2B-brightgreen)](https://nodejs.org)
 [![Tests Passing](https://img.shields.io/badge/tests-passing-brightgreen)](#)
@@ -10,13 +10,16 @@
 
 </div>
 
-ShipFlow is a framework for AI coding agents. You do not hand the agent a long spec and hope it interprets it correctly. You define what must be observably true when the work is done, ShipFlow turns that into executable verification, locks the boundary, installs a deterministic project foundation when needed, and drives implementation until the checks pass.
+ShipFlow is a framework for AI coding agents. You do not hand the agent a long spec and hope it interprets it correctly. You grill the intent into validated shared understanding, capture decisions and slices of value, sign off on the resulting verification pack, and let ShipFlow drive implementation until those constraints pass.
 
 ```text
-Define outcomes  ->  Draft the pack  ->  Generate tests/runners  ->  Scaffold the foundation  ->  Implement until green
+Grill the intent  ->  Capture decisions  ->  Draft the pack  ->  Approve  ->
+  Generate tests/runners  ->  Scaffold  ->  Implement until green  ->  Trace
 ```
 
-The code is disposable. The verification pack is the durable artifact.
+The verification pack is the **executable capture of validated understanding**, not a generated artifact you trust by default. ShipFlow does not replace human judgment with tests; it captures human judgment as executable verification.
+
+The code is disposable. The verification pack — backed by decisions, grill sessions, slices, approvals, and reviews — is the durable artifact.
 
 ## Why ShipFlow
 
@@ -26,10 +29,18 @@ Most AI dev workflows still follow a human process:
 - let the agent implement
 - trust the claim that it is done
 
-ShipFlow replaces that with a locked verification boundary:
-- real UI, behavior, API, database, technical, and domain checks
-- generated tests and runners from the pack itself
+A pure "verification-first" framing is not enough either: an AI-generated verification pack disconnected from human judgment is just an AI-generated PRD with a `.yml` extension. ShipFlow closes that gap with a sensemaking phase up front.
+
+ShipFlow replaces both with an understanding-to-verification loop:
+- a **grill** phase (Three-Amigos with AI as the fourth scribe) that exposes ambiguities, contradictions, edge cases, and assumptions before any YAML is written
+- a **decision log** that binds every constraint to the question, decision, rationale, and source that produced it
+- **slices** that group intent + decisions + vp + evidence into reviewable vertical tracer-bullets
+- a **pack approval** signature that ties the current pack hash to a named human reviewer (and can gate `implement`)
+- real UI, behavior, API, database, technical, and domain checks generated from the approved pack
 - cryptographic locks and runtime hooks to stop pack drift during implementation
+- a **critique** layer that scores cognitive quality (negative cases, decision linkage, vague titles, placeholders) so the pack cannot pass green while staying weak
+- a **trace** matrix that walks intent → grill → decisions → vp → tests → evidence → approval, suitable for PR descriptions and audit
+- an org-level **governance** policy expressing what "approved" means in your team
 - an implementation loop that ends on verification, not on vibes
 
 ShipFlow owns the top-level workflow:
@@ -178,10 +189,19 @@ shipflow init [--claude|--codex|--gemini|--kiro|--all]
 
 Then use the normal flow:
 
-1. Draft and finalize the verification pack.
-2. Generate the runnable artifacts.
-3. Optionally apply or review the deterministic scaffold.
-4. Run the multi-agent implementation loop.
+1. **Grill the intent** — `shipflow grill --ai --role=<product|architecture|qa|security|risk> --intent="…"` exposes ambiguities, edge cases, and assumptions before any YAML is written. Promote outcomes to the decision log with `shipflow grill promote`.
+2. **Capture decisions** — `shipflow decision new` (or `link`) binds each constraint to its question, decision, rationale, and source. The pack drifts the moment a constraint exists without a decision behind it.
+3. **Draft and finalize the verification pack.** Slices group intent + decisions + vp + evidence (`shipflow slice new`).
+4. **Critique** the cognitive quality of the pack — `shipflow critique` flags happy-path-only, missing decision links, vague titles, placeholders.
+5. **Approve** the pack — `shipflow approve-pack` records the human signoff against the current pack hash. Optional gating via `impl.requirePackApproval` makes `implement` refuse to run without it.
+6. **Generate** the runnable artifacts.
+7. Optionally apply or review the deterministic scaffold.
+8. **Implement** with the multi-agent loop.
+9. **Trace** the audit trail — `shipflow trace --markdown` walks intent → grill → decisions → vp → tests → evidence → approval, suitable for PR descriptions.
+
+Brownfield: `shipflow discover` scans the repo and proposes regression VPs for existing surfaces, so refactors cannot silently change behavior the team relied on.
+
+Org policy: `shipflow governance init` scaffolds `.shipflow/governance.yml`; `shipflow governance check` validates the current state of the repo against it (CI-friendly).
 
 For deterministic project setup:
 
@@ -195,7 +215,7 @@ For visual approvals:
 shipflow approve-visual
 ```
 
-For exact agent commands and debug commands like `map`, `doctor`, `lint`, `gen`, `verify`, and `status`, use the docs below.
+For exact agent commands and debug commands like `map`, `doctor`, `lint`, `critique`, `gen`, `verify`, `status`, `slice`, `preview`, `review-artifact`, `discover`, `trace`, and `governance`, use the docs below.
 
 ## Docs
 
