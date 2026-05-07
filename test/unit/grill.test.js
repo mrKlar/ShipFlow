@@ -11,6 +11,8 @@ import {
   buildLocalGrillTemplate,
   grillCli,
   grillDir,
+  roleGuidance,
+  GRILL_ROLES,
 } from "../../lib/grill.js";
 import { loadDecisions } from "../../lib/decisions.js";
 
@@ -202,6 +204,41 @@ describe("grill", () => {
   it("findGrillSession returns null when missing", async () => {
     await withTmpDir(async (tmp) => {
       assert.equal(findGrillSession(tmp, "nope"), null);
+    });
+  });
+
+  it("roleGuidance covers all GRILL_ROLES with non-empty must_ask", () => {
+    for (const role of GRILL_ROLES) {
+      const g = roleGuidance(role);
+      assert.ok(g.summary, `role ${role} missing summary`);
+      assert.ok(Array.isArray(g.must_ask) && g.must_ask.length >= 3, `role ${role} must_ask too small`);
+      assert.ok(g.finding_focus, `role ${role} missing finding_focus`);
+    }
+  });
+
+  it("buildGrillPrompt for security includes trust boundary phrasing", () => {
+    const prompt = buildGrillPrompt({ intent: "Add data export consent", role: "security" });
+    assert.match(prompt, /trust boundary/i);
+    assert.match(prompt, /abuse case/i);
+    assert.match(prompt, /Active role lens: security/);
+  });
+
+  it("buildGrillPrompt for product includes outcome and non-goal phrasing", () => {
+    const prompt = buildGrillPrompt({ intent: "Add filter sidebar", role: "product" });
+    assert.match(prompt, /outcome/i);
+    assert.match(prompt, /NOT to support/i);
+  });
+
+  it("buildLocalGrillTemplate for risk produces risk-flavored questions", () => {
+    const t = buildLocalGrillTemplate({ intent: "Bulk-delete inactive users", role: "risk" });
+    assert.ok(t.questions.length >= 3);
+    const joined = t.questions.map(q => q.question).join(" ");
+    assert.match(joined, /irreversible|rollback|blast radius|monitoring/i);
+  });
+
+  it("createGrillSession rejects unknown role", async () => {
+    await withTmpDir(async (tmp) => {
+      await assert.rejects(() => createGrillSession(tmp, { intent: "x", role: "captain" }), /role must be one of/);
     });
   });
 
