@@ -27,6 +27,7 @@ async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Standard flow:
+  shipflow grill "<intent>"    Three-Amigos grilling: surface ambiguities and assumptions before drafting
   shipflow draft [description] Draft and finalize the verification pack
   shipflow implement           Standard loop: validate pack, generate tests, implement, verify
 
@@ -41,6 +42,7 @@ Advanced / debug:
   shipflow verify              Run generated tests and write evidence
   shipflow status              Show pack, generated tests, and evidence
   shipflow decision <sub>      Capture validated decisions backing the pack (list|show|new|link|unlink)
+  shipflow grill <sub>         Manage grilling sessions (list|show <id>|promote <id> --decision=<id>)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -175,6 +177,18 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "grill") {
+    const { grillCli } = await import("../lib/grill.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = await grillCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 
