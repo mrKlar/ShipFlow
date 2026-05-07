@@ -40,6 +40,7 @@ Advanced / debug:
   shipflow scaffold-plugin     Install or list scaffold plugins packaged as zip archives
   shipflow verify              Run generated tests and write evidence
   shipflow status              Show pack, generated tests, and evidence
+  shipflow decision <sub>      Capture validated decisions backing the pack (list|show|new|link|unlink)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
 
@@ -174,6 +175,18 @@ Exit codes:
   if (cmd === "status") {
     const { status } = await import("../lib/status.js");
     const { exitCode } = status({ cwd: process.cwd(), json: flags.has("--json") });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "decision" || cmd === "decisions") {
+    const { decisionsCli } = await import("../lib/decisions.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = decisionsCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
     process.exit(exitCode);
   }
 
