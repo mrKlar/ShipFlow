@@ -1,9 +1,19 @@
 # The Scientific Foundations of ShipFlow
-## A Verification-First Paradigm for AI-Native Engineering
+## An Understanding-to-Verification-First Paradigm for AI-Native Engineering
 
-ShipFlow is not merely a testing tool; it is a concrete implementation of several advanced software engineering paradigms, reinterpreted for the era of generative AI. In practice, the workflow starts by defining a verification pack that captures what must be observably true, then moves into a locked implementation loop. That pack can now express not only API and behavior truth, but also visible UI truth, business-domain truth, runtime truth, and app-shape-aware system boundaries. This document outlines the theoretical principles and academic foundations of the framework.
+ShipFlow is not merely a testing tool; it is a concrete implementation of several advanced software engineering paradigms, reinterpreted for the era of generative AI. In practice, the workflow starts with a sensemaking phase (the **grill**) that turns vague intent into validated shared understanding, captures that understanding as durable **decisions**, packages it into reviewable vertical **slices**, and only then materializes it as a **verification pack** that the AI implements against. That pack can express not only API and behavior truth, but also visible UI truth, business-domain truth, runtime truth, and app-shape-aware system boundaries. This document outlines the theoretical principles and academic foundations of the framework.
+
+ShipFlow does not replace human judgment with tests. It captures human judgment as executable verification. The verification pack is the executable capture of validated understanding, not a generated artifact you trust by default.
 
 ---
+
+### 0. AI-Augmented Three Amigos (Understanding before Specification)
+
+**Principle:** A specification — even an executable one — is only trustworthy when it is the result of a deliberate sensemaking loop with the humans who own the outcome.
+
+- **Theoretical Root:** This builds on the **Three Amigos** practice (product, dev, QA in conversation) popularized in BDD literature, and on **Specification by Example**'s rule that examples must come from the business, not from the test author. ShipFlow promotes this from a meeting habit to an executable artifact.
+- **Analysis:** `shipflow grill` runs the AI as the fourth participant — facilitator, challenger, and scribe. It produces a structured transcript of questions, ambiguities, contradictions, edge cases, assumptions, and proposed decisions. Five role lenses (`product`, `architecture`, `qa`, `security`, `risk`) keep the questioning honest by refusing to summarize all concerns into one generalist pass. Outcomes are promoted to `.shipflow/decisions/*.yml`, which bind every later constraint to a question, decision, rationale, and source. A pack written without that substrate is, by construction, an opinion-shaped YAML file, and ShipFlow's `shipflow critique` and `shipflow trace` surfaces make that visible.
+- **Practical effect:** Without grill + decisions, ShipFlow risks repeating the failure mode it was built to defeat — replacing AI-generated PRDs with AI-generated YAML.
 
 ### 1. Executable Specifications (Specification by Example)
 
@@ -58,13 +68,13 @@ The same boundary discipline now applies to archetypes and scaffolds. If a start
 
 ### Comparative Synthesis: The Evolution of Software Engineering
 
-| Dimension | Classical SE (1.0) | Spec-Driven (spec-kit / SpecOS) | Verification-First (ShipFlow 2.0) | Scientific Value |
-| :--- | :--- | :--- | :--- | :--- |
-| **Source of Truth** | Implementation (Code) | Documentation (Markdown) | Verification (YAML) | Elimination of semantic ambiguity. |
-| **Primary Artifact** | Source Files | Spec Files (`spec.md`) | Executable Contracts (`vp/*.yml`) | Shift to machine-readable intent. |
-| **Review Process** | Code Review (Human) | Spec Review (Human) | Pack definition before implementation | Intent-based validation vs. syntax check. |
-| **Verification Loop** | Human-led TDD | AI-led (Loose coupling) | Pack definition + locked loop | Exponential acceleration of feedback. |
-| **Drift Protection** | Manual Tests / CI | Manual Audit | Cryptographic Lock / Anti-Cheat | Guaranteed lifecycle integrity. |
-| **Code Nature** | Permanent (The Asset) | Semi-permanent | Disposable (The Artifact) | Elimination of technical debt by design. |
+| Dimension | Classical SE (1.0) | Spec-Driven (spec-kit / SpecOS) | Verification-First (naive) | Understanding-to-Verification (ShipFlow 2.0) | Scientific Value |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Source of Truth** | Implementation (Code) | Documentation (Markdown) | Verification (YAML) | Validated understanding, captured as executable verification | Elimination of semantic ambiguity *and* of "correct YAML, wrong outcome". |
+| **Primary Artifact** | Source Files | Spec Files (`spec.md`) | Executable Contracts (`vp/*.yml`) | Grill transcripts + decisions + slices + signed `vp/*.yml` | Machine-readable intent backed by an audit trail. |
+| **Review Process** | Code Review (Human) | Spec Review (Human) | Pack definition before implementation | Three-Amigos grilling, decision log, signed pack approval | Intent-based validation, not syntax check, not vibes. |
+| **Verification Loop** | Human-led TDD | AI-led (loose coupling) | Pack + locked impl loop | Sensemaking → pack → critique → approve → locked impl loop | Exponential acceleration of feedback without skipping judgment. |
+| **Drift Protection** | Manual Tests / CI | Manual Audit | Cryptographic Lock / Anti-Cheat | Crypto Lock + sha256-bound human approvals + governance check | Drift visible in code AND in the substrate that produced the pack. |
+| **Code Nature** | Permanent (The Asset) | Semi-permanent | Disposable | Disposable; substrate (decisions, grill, slices, approvals) is permanent | Elimination of technical debt; preservation of human reasoning. |
 
-**Conclusion:** While Spec-Driven frameworks (SpecOS/spec-kit) improve AI alignment by providing better instructions, ShipFlow (Verification-First) redefines the process as a constraint-modeling problem followed by a formal execution loop. The source code becomes the side-effect of satisfying a locked verification proof. That proof can now span rendered UI, business-domain objects and data objects, backend-service orchestration, runtime assumptions, and system boundaries, which is why ShipFlow feels closer to an AI-native delivery model than to a smarter template generator.
+**Conclusion:** A pure verification-first framing is only a partial answer to the spec-driven problem. The deeper move is **understanding-to-verification-first**: a sensemaking loop that turns intent into shared understanding, captures that understanding as durable decisions, and only then compiles it into executable verification. Source code becomes the side-effect of satisfying that signed proof. The proof, in turn, is auditable back through the grill transcripts and decisions that produced it — which is what makes ShipFlow a real alternative to the spec-driven model rather than a faster way of generating the same kind of disconnected artifact.

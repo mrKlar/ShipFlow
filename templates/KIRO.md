@@ -1,31 +1,51 @@
 # ShipFlow
 
-This project uses ShipFlow for verification-first shipping with Kiro.
+This project uses ShipFlow for **understanding-to-verification-first** shipping with Kiro. The verification pack is the executable capture of validated understanding, not a generated artifact you trust by default. Treat human judgment as a first-class artifact: capture it as grill transcripts, decisions, slices, approvals, and structured artifact reviews.
 
 ## Two Phases
 
-### Phase 1: Verification Pack Definition
+### Phase 1: Validated Understanding → Verification Pack
 
-Draft verifications in `vp/`. Use natural-language discussion when helpful, or finalize proposals directly when the user wants an autonomous draft.
+Before drafting any YAML, run a sensemaking pass:
+- `shipflow grill --ai --role=general|product|architecture|qa|security|risk --intent="..."` produces `.shipflow/grill/<id>.{md,json}` — questions, ambiguities, edge cases, assumptions.
+- Walk the markdown transcript with the user. Capture answers inline.
+- Promote agreed-upon outcomes with `shipflow grill promote <session-id> --decision=<id>`. The decision lands in `.shipflow/decisions/<id>.yml` with `source: grill` and `source_ref: <session-id>`.
+- Use `shipflow decision new` / `shipflow decision link` to bind every non-obvious constraint to its question, decision, rationale, and the vp files it impacts.
+
+Then draft verifications in `vp/`. Use natural-language discussion when helpful, or finalize proposals directly when the user wants an autonomous draft.
 Use `shipflow draft` to propose, refine, and finalize candidates into `vp/`.
+Group user-visible work into slices (`shipflow slice new --id=... --goal="..."`), linking the slice to its decisions, grill sessions, and vp files.
+
+For brownfield projects, run `shipflow discover` first; it scans existing UI routes, API endpoints, DB tables, auth/security signals, and technical artifacts and proposes regression VPs that lock current behavior before refactors change it.
 Treat deterministic ShipFlow starters as archetype-level base constraints: base stack, protocol, architecture, security, delivery, and other scaffold-defined boundaries. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 During drafting, first summarize what ShipFlow understood. On an empty or low-signal greenfield repo, ask only the single highest-leverage next question from `shipflow draft --json`, rerun `shipflow draft --json` after each answer, then narrow into UI, behavior, API, database, performance, security, and technical using ShipFlow's per-type discussion prompts and best practices as a checklist. Surface at most one or two best-practice prompts for the current type, ask clarifications when the draft marks a decision unresolved, do not present a long list of open questions spanning several verification types in one turn, and do not inspect the installed ShipFlow wrapper/package, examples, templates, or source files to reverse-engineer the YAML format during a normal draft flow.
 
-Seven verification types:
+Eight verification types plus fixtures and policy:
 - `vp/ui/*.yml` — UI checks (browser interactions + assertions)
 - `vp/behavior/*.yml` — behavior checks (Given/When/Then scenarios)
+- `vp/domain/*.yml` — business-domain checks (objects, invariants, access patterns, data-engineering translation)
 - `vp/api/*.yml` — API checks (HTTP requests + response assertions)
 - `vp/db/*.yml` — Database checks (SQL queries + row/cell assertions)
 - `vp/nfr/*.yml` — Performance checks (load/performance thresholds)
 - `vp/security/*.yml` — Security checks (auth/authz/headers/exposure)
 - `vp/technical/*.yml` — Technical checks (frameworks/architecture/CI/infra/tooling)
 - `vp/ui/_fixtures/*.yml` — reusable setup flows (login, etc.)
+- `vp/policy/*.rego` — OPA policy gates
 
-You MAY modify `vp/` files during this phase only.
+You MAY modify these surfaces during this phase only:
+- `vp/**` — verification pack
+- `slice/**` — vertical slices
+- `.shipflow/decisions/**`, `.shipflow/grill/**`, `.shipflow/reviews/**`, `.shipflow/governance.yml` — substrate
+- `.shipflow/approvals/**` is append-only via `shipflow approve-pack`
+- `.shipflow/discovered/**` is append-only via `shipflow discover`
+
+Run `shipflow critique` to score the cognitive quality of the pack (negative cases, decision linkage, vague titles, placeholders) before approval. Capture concerns with `shipflow review-artifact new --target=... --target-kind=...`.
+
+Sign the pack with `shipflow approve-pack` once a human reviewer has read it. Approval is sha256-bound: any later change to `vp/**` invalidates it until re-signed.
 
 ### Phase 2: Implementation (AI-led, pack-controlled)
 
-Implement app code that passes all generated checks. Treat the verification pack as ground truth; if it is wrong or ambiguous, stop and ask for pack changes.
+Implement app code that passes all generated checks. Treat the verification pack as ground truth; if it is wrong or ambiguous, stop and go back to Phase 1.
 
 ## Kiro Flow
 
@@ -58,13 +78,14 @@ During implementation, use the installed Kiro native custom agents from `.kiro/a
 ## Protected Paths
 
 Never modify these during implementation:
-- `vp/**`
-- `.gen/**`
-- `evidence/**`
-- `.shipflow/**`
-- `shipflow.json`
+- `vp/**` — verification pack
+- `slice/**` — vertical slices
+- `.gen/**` — generated tests
+- `evidence/**` — verification output
+- `.shipflow/**` — substrate (decisions, grill, approvals, reviews, discovered, governance) and runtime state
+- `shipflow.json` — framework config
 
-If a verification seems wrong, stop and go back to the verification phase with the user.
+If a verification seems wrong, stop and go back to the verification phase with the user. Capture the concern with `shipflow review-artifact new`, fix the pack, and re-sign with `shipflow approve-pack`.
 
 ## What to Match
 
@@ -103,19 +124,44 @@ For browser UI work: reuse the design system or open-source design-system compon
 ## Commands
 
 ```bash
-shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
+# Sensemaking before authoring the pack
+shipflow grill "<intent>" --ai --role=general|product|architecture|qa|security|risk
+shipflow grill list | show <id> | promote <session-id> --decision=<proposed-id>
+shipflow decision new --id=... --title="..." --question="..." --decision="..." --rationale="..." [--source=grill --source-ref=<grill-id>] [--impacts=vp/path.yml]
+shipflow decision list | show <id> | link <id> --vp=... | unlink <id> --vp=...
+
+# Standard authoring + drafting
+shipflow draft "<user request>"       # Standard flow: co-draft and refine the verification pack
 shipflow draft --clear-session
-shipflow draft --accept=vp/path.yml
+shipflow draft --accept=vp/path.yml [--write] [--update-existing]
 shipflow draft --pending=vp/path.yml
-shipflow draft --accept=vp/path.yml --write
-shipflow draft --accept=vp/path.yml --update-existing --write
-shipflow implement      # Standard flow: validate, generate, implement, verify
-shipflow map "<user request>"  # Advanced: review repo surfaces and coverage gaps
-shipflow doctor         # Advanced: check local tools, runners, and adapters
-shipflow lint           # Advanced: lint verification quality
-shipflow gen            # Advanced: generate runnable tests from the pack
-shipflow verify         # Advanced: run generated tests and write evidence
-shipflow implement-once # Advanced: single implementation pass, no retry loop
+shipflow slice new --id=... --goal="..." [--vp=...] [--decision=...] [--grill=...]
+shipflow slice list | show <id> | link/unlink <id> --vp=... | set-status <id> --status=...
+shipflow critique                     # Cognitive quality scoring (advisory)
+shipflow preview                      # Concrete artifacts available for human review
+shipflow review-artifact new --target=... --target-kind=vp|slice|evidence|... --text="..."
+shipflow review-artifact list | show <id> | resolve/wont-fix/reopen <id>
+
+# Approval (gate-able via impl.requirePackApproval / SHIPFLOW_REQUIRE_APPROVAL=1)
+shipflow approve-pack [--approver=... --role=architect|product|qa|security|engineering --decision-ref=... --grill-ref=...]
+shipflow approve-pack status | list | show <id> | revoke <id>
+
+# Implementation
+shipflow implement                    # Standard flow: validate, generate, implement, verify
+shipflow implement-once               # Single implementation pass, no retry loop
+
+# Brownfield + audit
+shipflow discover                     # Scan repo and propose regression VPs
+shipflow trace [--json|--markdown]    # Traceability matrix
+shipflow governance init | check | show
+
+# Advanced / debug
+shipflow map "<user request>"
+shipflow doctor
+shipflow lint
+shipflow gen
+shipflow verify
+shipflow status
 ```
 
 Only use `--update-existing` with explicit approval before replacing an existing verification file.

@@ -222,7 +222,7 @@ For exact agent commands and debug commands like `map`, `doctor`, `lint`, `criti
 - [User Guide](./docs/USER-GUIDE.md) — commands, workflows, and day-to-day usage
 - [Verification Pack](./docs/VERIFICATION-PACK.md) — pack structure, generated outputs, and execution model
 - [Scaffold Plugins](./docs/SCAFFOLD-PLUGINS.md) — how to author, package, install, and contribute scaffold plugins
-- [Scientific Foundations](./docs/SCIENTIFIC-FOUNDATIONS.md) — why verification-first shipping exists
+- [Scientific Foundations](./docs/SCIENTIFIC-FOUNDATIONS.md) — why understanding-to-verification-first shipping exists
 
 ## Requirements
 

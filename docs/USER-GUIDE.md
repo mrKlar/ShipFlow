@@ -2,17 +2,26 @@
 
 ## What is ShipFlow?
 
-ShipFlow is a verification-first shipping framework. You define what must be observably true when the work is done, you and/or the AI turn that into a verification pack, ShipFlow compiles it into runnable tests, and the AI implements against that locked pack.
+ShipFlow is an **understanding-to-verification-first** shipping framework. You grill the intent into validated shared understanding, capture decisions and slices, sign off on the resulting verification pack, and let ShipFlow drive implementation against that locked, signed pack.
 
-The verification pack records required checks and constraints, not a prose description of the app. It is the durable artifact. The implementation is disposable.
+The verification pack is the **executable capture of validated understanding** — not a generated artifact you trust by default. It is durable, but it is not isolated: it is backed by grill transcripts, decisions, slices, approvals, and structured artifact reviews. The implementation is disposable.
+
+ShipFlow does not replace human judgment with tests. It captures human judgment as executable verification.
 
 ShipFlow also owns the top-level execution model. The loop, the managed local runtime, and the final success condition belong to ShipFlow itself. Playwright, Cucumber, k6, and the technical/domain backends are execution backends for individual verification slices, not the owners of the overall workflow.
 
 ```
-vp/**/*.yml  →  shipflow gen  →  .gen/playwright/*.test.ts + .gen/cucumber/** + .gen/domain/*.runner.mjs + .gen/k6/*.js + .gen/technical/*.runner.mjs  →  shipflow verify  →  evidence/*.json
+shipflow grill        →  .shipflow/grill/<id>.{md,json}        (intent → questions → findings)
+shipflow decision new →  .shipflow/decisions/<id>.yml          (durable judgment)
+shipflow slice new    →  slice/<id>.yml                        (vertical tracer-bullets)
+vp/**/*.yml           →  shipflow critique                     (cognitive quality)
+                      →  shipflow approve-pack                 (sha256-bound human signoff)
+                      →  shipflow gen                          (.gen/playwright + .gen/cucumber + .gen/domain + .gen/k6 + .gen/technical)
+                      →  shipflow verify                       (evidence/*.json)
+                      →  shipflow trace                        (intent → grill → decisions → vp → tests → evidence)
 ```
 
-The only files you define and edit are under `vp/`. Everything else is generated.
+The files you define and edit live under `vp/`, `slice/`, and `.shipflow/` (decisions, grill, reviews, governance). Generated artifacts and evidence are reproducible.
 
 ## What ShipFlow Can Lock
 
@@ -332,6 +341,8 @@ Kiro-specific native implementation surface:
 
 `shipflow implement` is the standard loop. It validates the verification pack, bootstraps the verification runtime, applies a deterministic scaffold when configured or inferred, syncs dependencies when that scaffold changes the repo, generates tests, runs a bounded multi-agent implementation round, verifies, and retries within the configured budget.
 
+When the org enables the approval gate (`impl.requirePackApproval: true` in `shipflow.json`, or `SHIPFLOW_REQUIRE_APPROVAL=1` in the environment), `shipflow implement` refuses to start unless an active approval (`shipflow approve-pack`) matches the current pack hash. Any change to `vp/**` invalidates every prior approval until a new signature is recorded. This is the line of defense that prevents the loop from running against an AI-generated pack no human ever reviewed.
+
 The success rule is simple: the run is done only when ShipFlow's own verification phase turns fully green. No specialist, subagent, or runner backend can declare completion on its own.
 
 ### Multi-Agent Implementation Strategy
@@ -419,8 +430,32 @@ The practical effect of the one-shot model is important:
 ### Core Commands
 
 ```bash
-shipflow draft "<user request>"  # Standard flow: co-draft and refine the verification pack
-shipflow implement   # Standard flow: validate, generate, implement, verify
+# Sensemaking before authoring the pack
+shipflow grill "<intent>" --ai --role=general|product|architecture|qa|security|risk
+shipflow grill list | show <id> | promote <session-id> --decision=<id>
+shipflow decision new --id=... --title=... --question=... --decision=... --rationale=... [--source=grill --source-ref=<grill-id>] [--impacts=vp/path.yml]
+shipflow decision list | show <id> | link <id> --vp=... | unlink <id> --vp=...
+
+# Standard authoring + drafting
+shipflow draft "<user request>"  # Co-draft and refine the verification pack
+shipflow slice new --id=... --goal="..." [--vp=...] [--decision=...] [--grill=...]
+shipflow slice list | show <id> | link/unlink <id> --vp=... | set-status <id> --status=...
+shipflow critique                # Cognitive quality scoring (negative cases, decision linkage, vague titles, placeholders)
+shipflow preview                 # Concrete artifacts available for human review
+shipflow review-artifact new --target=... --target-kind=vp|slice|evidence|... --text="..."
+shipflow review-artifact list | show <id> | resolve/wont-fix/reopen <id>
+
+# Approval (opt-in gate via impl.requirePackApproval / SHIPFLOW_REQUIRE_APPROVAL=1)
+shipflow approve-pack [--approver=... --role=architect|product|qa|security|engineering --decision-ref=... --grill-ref=...]
+shipflow approve-pack status | list | show <id> | revoke <id>
+
+# Implementation
+shipflow implement               # Standard flow: validate, generate, implement, verify
+
+# Brownfield + audit
+shipflow discover                # Scan repo and propose regression VPs for existing surfaces
+shipflow trace [--json|--markdown]  # Traceability matrix: vp ↔ decisions ↔ grill ↔ slices ↔ generated ↔ evidence
+shipflow governance init | check | show
 
 # Advanced / debug
 shipflow map "<user request>"
@@ -436,6 +471,30 @@ shipflow status
 shipflow implement-once
 ```
 
+### Sensemaking Before Drafting
+
+The recommended flow is **understanding-to-verification**, not "intent-to-YAML":
+
+```bash
+shipflow grill --ai --role=product --intent="Add inactivity-based session timeout for the admin console"
+# Walk the resulting .shipflow/grill/<id>.md transcript with the user.
+# Capture answers inline. Promote agreed-upon decisions:
+shipflow grill promote <session-id> --decision=<proposed-id>
+
+# Optional: re-run from other lenses
+shipflow grill --ai --role=security --intent="..."
+shipflow grill --ai --role=risk     --intent="..."
+
+# Then group by user-visible value:
+shipflow slice new --id=session-expiry --goal="User is safely logged out after 30 minutes idle" \
+  --decision=auth-session-expiry --grill=<security-session-id>
+
+# Only THEN draft:
+shipflow draft "session inactivity timeout"
+```
+
+For brownfield projects, replace the first step with `shipflow discover` and walk the regression-VP proposals before grilling new behavior.
+
 ### Draft Workflow
 
 ```bash
@@ -444,15 +503,19 @@ shipflow draft "todo app with login"
 shipflow draft "todo app with login" --write
 shipflow doctor
 shipflow lint
+shipflow critique
 shipflow gen
 ```
 
 Recommended usage:
-1. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
-2. `shipflow draft "..."` to see the understood coverage, inferred app archetype, request-driven gaps, ambiguities, and proposed starter files.
-3. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include business-domain starters such as `vp/domain/*.yml` plus technical starters such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml`.
-4. Review and tighten the `vp/` files.
-5. Run `shipflow doctor`, then `shipflow lint`, then `shipflow gen`.
+1. `shipflow grill --ai --role=...` first if the intent is non-trivial. Capture decisions before drafting.
+2. `shipflow map "..."` to inspect the current repo surface in the context of the requested scope.
+3. `shipflow draft "..."` to see the understood coverage, inferred app archetype, request-driven gaps, ambiguities, and proposed starter files.
+4. `shipflow draft "..." --write` to write starter files for the highest-confidence gaps. On a new project, this can include business-domain starters such as `vp/domain/*.yml` plus technical starters such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml`.
+5. `shipflow decision link <id> --vp=...` to bind every constraint to its decision.
+6. Review and tighten the `vp/` files.
+7. `shipflow doctor`, `shipflow lint`, `shipflow critique` (the cognitive layer), then `shipflow gen`.
+8. `shipflow approve-pack` once a human reviewer has read the pack. The signature is sha256-bound; any later change to `vp/**` invalidates it until re-signed.
 
 ## Authoring the Verification Pack
 
