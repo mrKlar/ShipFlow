@@ -123,6 +123,18 @@ describe("approvals", () => {
     });
   });
 
+  it("CLI: an unknown subcommand returns 2 (no silent fall-through)", () => {
+    withTmpDir(tmp => {
+      seedVerificationPack(tmp);
+      const { result, stderr } = captureStdio(() => approvePackCli({
+        cwd: tmp,
+        args: ["nonsense"],
+      }));
+      assert.equal(result.exitCode, 2);
+      assert.match(stderr, /Unknown approve-pack subcommand: nonsense/);
+    });
+  });
+
   it("approvePack rejects an unparseable approved_at", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
