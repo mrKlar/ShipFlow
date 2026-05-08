@@ -69,4 +69,20 @@ describe("grill-prompt", () => {
     const general = roleGuidance("general");
     assert.deepEqual(g, general);
   });
+
+  it("GrillQuestion / GrillFinding ids must be kebab-case (matches the prompt contract)", async () => {
+    const { GrillQuestion, GrillFinding } = await import("../../lib/schema/grill.zod.js");
+    // Valid kebab passes
+    assert.doesNotThrow(() => GrillQuestion.parse({
+      id: "q-outcome", topic: "outcome", question: "Q?",
+    }));
+    assert.doesNotThrow(() => GrillFinding.parse({
+      id: "f-edge-1", kind: "edge_case", text: "T",
+    }));
+    // Spaces, uppercase, leading/trailing dashes all rejected
+    assert.throws(() => GrillQuestion.parse({ id: "q 1", topic: "t", question: "?" }));
+    assert.throws(() => GrillQuestion.parse({ id: "Q-1", topic: "t", question: "?" }));
+    assert.throws(() => GrillFinding.parse({ id: "-bad", kind: "risk", text: "T" }));
+    assert.throws(() => GrillFinding.parse({ id: "bad-", kind: "risk", text: "T" }));
+  });
 });

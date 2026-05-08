@@ -123,6 +123,25 @@ describe("approvals", () => {
     });
   });
 
+  it("Approval schema rejects uppercase pack_sha256 (matches downstream === comparison)", async () => {
+    const { Approval } = await import("../../lib/schema/approval.zod.js");
+    assert.throws(() => Approval.parse({
+      id: "x",
+      pack_sha256: "A".repeat(64),
+      approved_by: "nic",
+      approved_at: "2026-05-08T00:00:00.000Z",
+      role: "architect",
+    }), /lowercase/);
+    // Sanity: a valid lowercase digest still passes
+    assert.doesNotThrow(() => Approval.parse({
+      id: "x",
+      pack_sha256: "a".repeat(64),
+      approved_by: "nic",
+      approved_at: "2026-05-08T00:00:00.000Z",
+      role: "architect",
+    }));
+  });
+
   it("CLI: an unknown subcommand returns 2 (no silent fall-through)", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
