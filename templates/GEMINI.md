@@ -34,7 +34,7 @@ Eight verification types plus fixtures and policy:
 
 You MAY modify these surfaces during this phase only:
 - `vp/**` — verification pack
-- `slice/**` — vertical slices
+- `.shipflow/slices/**` — vertical slices
 - `.shipflow/decisions/**`, `.shipflow/grill/**`, `.shipflow/reviews/**`, `.shipflow/governance.yml` — substrate
 - `.shipflow/approvals/**` is append-only via `shipflow approve-pack`
 - `.shipflow/discovered/**` is append-only via `shipflow discover`
@@ -70,7 +70,7 @@ During implementation, use the installed Gemini extension commands:
 ## Protected Paths — NEVER Modify During Implementation
 
 - `vp/**` — Verification pack (executable capture of validated understanding)
-- `slice/**` — Vertical slices linking intent → decisions → vp → evidence
+- `.shipflow/slices/**` — Vertical slices linking intent → decisions → vp → evidence
 - `.gen/**` — Generated tests
 - `evidence/**` — Verification output
 - `.shipflow/**` — Substrate (decisions, grill, approvals, reviews, discovered, governance) and runtime state

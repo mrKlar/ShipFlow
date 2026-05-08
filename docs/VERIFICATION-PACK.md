@@ -4,7 +4,7 @@
 
 The verification pack is not a generated artifact you trust by default. It is the **executable capture of validated understanding**. The substrate that produces and validates it — grill sessions, decisions, slices, approvals, and reviews — is part of the durable record. Without that substrate, an AI-generated verification pack repeats the failure mode of an AI-generated PRD.
 
-`vp/` remains the executable surface. The validating substrate lives next to it under `slice/` and `.shipflow/`. Generated tests, evidence, runtime caches, and draft-session state are all reproducible.
+`vp/` remains the executable surface. The validating substrate lives next to it under `.shipflow/slices/` and `.shipflow/`. Generated tests, evidence, runtime caches, and draft-session state are all reproducible.
 
 That durability now covers more of the real product boundary: visible UI contracts, approved visual baselines, business-domain objects and data objects, runtime and stack constraints, and app-shape-aware bundles for frontend apps, fullstack apps, REST services, and terminal products.
 
@@ -13,7 +13,7 @@ That durability now covers more of the real product boundary: visible UI contrac
 | Directory | Role | Editable |
 |---|---|---|
 | `vp/` | Verification pack — executable constraints | Yes (verification phase only) |
-| `slice/` | Vertical slices linking intent → decisions → vp → evidence | Yes (verification phase only) |
+| `.shipflow/slices/` | Vertical slices linking intent → decisions → vp → evidence | Yes (verification phase only) |
 | `.shipflow/decisions/` | Durable decision log backing each constraint | Yes (verification phase only) |
 | `.shipflow/grill/` | Three-Amigos sensemaking transcripts (`<id>.{md,json}`) | Yes (verification phase only) |
 | `.shipflow/approvals/` | Pack approval signatures (sha256-bound) | Append-only via `shipflow approve-pack` |
@@ -48,7 +48,7 @@ These artifacts are not verification types themselves; they are what gives the p
 |---|---|---|
 | Grill sessions | `.shipflow/grill/<id>.{md,json}` | Three-Amigos questioning — exposes ambiguities, contradictions, edge cases, assumptions BEFORE the pack is written. Five role lenses: `general`, `product`, `architecture`, `qa`, `security`, `risk`. |
 | Decisions | `.shipflow/decisions/<id>.yml` | Durable log binding each constraint to its question, decision, rationale, source (`grill`/`review`/`incident`/`client-feedback`/`manual`/`discovery`), and the vp files it impacts. |
-| Slices | `slice/<id>.yml` | Vertical tracer-bullets grouping intent + decisions + vp + grill_refs + evidence into one user-visible outcome. |
+| Slices | `.shipflow/slices/<id>.yml` | Vertical tracer-bullets grouping intent + decisions + vp + grill_refs + evidence into one user-visible outcome. |
 | Approvals | `.shipflow/approvals/<id>.json` | Human signoff binding `pack_sha256` (current vp hash) to a named reviewer + role. Optional gate (`impl.requirePackApproval` / `SHIPFLOW_REQUIRE_APPROVAL=1`) makes `shipflow implement` refuse to run without an active approval. |
 | Reviews | `.shipflow/reviews/<id>.yml` | Structured feedback against any target (vp / slice / decision / evidence / screenshot / api_sample / grill). Status: `open` / `resolved` / `wont_fix` / `obsolete`. |
 | Discovery | `.shipflow/discovered/<id>.json` | Brownfield scan output: regression-VP proposals derived from existing UI routes, API endpoints, DB tables, auth/security signals, and technical artifacts. Surfaces already covered by an existing vp file are filtered out. |
@@ -181,7 +181,7 @@ This is why ShipFlow can keep working on hard cases for hours without pretending
 
 ## Anti-Cheat Invariants
 
-- Implementation phase MUST NOT modify `vp/`, `slice/`, `.shipflow/`, `.gen/`, or `evidence/`
+- Implementation phase MUST NOT modify `vp/`, `.shipflow/slices/`, `.shipflow/`, `.gen/`, or `evidence/`
 - `.gen/` is regenerated only via `shipflow gen`
 - The cryptographic lock prevents tampering between `gen` and `verify` for both the pack and generated artifacts
 - Approvals are sha256-bound: any change to `vp/**` invalidates every active approval until a new `shipflow approve-pack` is recorded

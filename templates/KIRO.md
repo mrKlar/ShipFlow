@@ -34,7 +34,7 @@ Eight verification types plus fixtures and policy:
 
 You MAY modify these surfaces during this phase only:
 - `vp/**` — verification pack
-- `slice/**` — vertical slices
+- `.shipflow/slices/**` — vertical slices
 - `.shipflow/decisions/**`, `.shipflow/grill/**`, `.shipflow/reviews/**`, `.shipflow/governance.yml` — substrate
 - `.shipflow/approvals/**` is append-only via `shipflow approve-pack`
 - `.shipflow/discovered/**` is append-only via `shipflow discover`
@@ -79,7 +79,7 @@ During implementation, use the installed Kiro native custom agents from `.kiro/a
 
 Never modify these during implementation:
 - `vp/**` — verification pack
-- `slice/**` — vertical slices
+- `.shipflow/slices/**` — vertical slices
 - `.gen/**` — generated tests
 - `evidence/**` — verification output
 - `.shipflow/**` — substrate (decisions, grill, approvals, reviews, discovered, governance) and runtime state

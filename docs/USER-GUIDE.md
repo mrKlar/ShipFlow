@@ -13,7 +13,7 @@ ShipFlow also owns the top-level execution model. The loop, the managed local ru
 ```
 shipflow grill        →  .shipflow/grill/<id>.{md,json}        (intent → questions → findings)
 shipflow decision new →  .shipflow/decisions/<id>.yml          (durable judgment)
-shipflow slice new    →  slice/<id>.yml                        (vertical tracer-bullets)
+shipflow slice new    →  .shipflow/slices/<id>.yml             (vertical tracer-bullets)
 vp/**/*.yml           →  shipflow critique                     (cognitive quality)
                       →  shipflow approve-pack                 (sha256-bound human signoff)
                       →  shipflow gen                          (.gen/playwright + .gen/cucumber + .gen/domain + .gen/k6 + .gen/technical)
@@ -21,7 +21,7 @@ vp/**/*.yml           →  shipflow critique                     (cognitive qual
                       →  shipflow trace                        (intent → grill → decisions → vp → tests → evidence)
 ```
 
-The files you define and edit live under `vp/`, `slice/`, and `.shipflow/` (decisions, grill, reviews, governance). Generated artifacts and evidence are reproducible.
+The files you define and edit live under `vp/`, `.shipflow/slices/`, and `.shipflow/` (decisions, grill, reviews, governance). Generated artifacts and evidence are reproducible.
 
 ## What ShipFlow Can Lock
 
