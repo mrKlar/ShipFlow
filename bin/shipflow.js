@@ -53,6 +53,7 @@ Advanced / debug:
   shipflow preview             Show concrete artifacts available for human review (vp, slices, evidence, decisions)
   shipflow review-artifact     Capture structured feedback on a concrete artifact (list|show|new|resolve|wont-fix|reopen)
   shipflow discover            Brownfield: scan repo and propose regression VPs for existing surfaces
+  shipflow migrate [--apply]   Detect & apply layout migrations from older ShipFlow versions (dry-run by default)
   shipflow report [--markdown|--json]
                                Aggregate snapshot for weekly status: vp count, decisions, slices, approvals, open reviews, last verify run.
   shipflow trace [--markdown|--pr-comment|--json]
@@ -225,6 +226,18 @@ Exit codes:
     const cmdIndex = args.indexOf(cmd);
     const subArgs = args.slice(cmdIndex + 1);
     const { exitCode } = governanceCli({
+      cwd: process.cwd(),
+      args: subArgs,
+      json: flags.has("--json"),
+    });
+    process.exit(exitCode);
+  }
+
+  if (cmd === "migrate") {
+    const { migrateCli } = await import("../lib/migrate.js");
+    const cmdIndex = args.indexOf(cmd);
+    const subArgs = args.slice(cmdIndex + 1);
+    const { exitCode } = migrateCli({
       cwd: process.cwd(),
       args: subArgs,
       json: flags.has("--json"),
