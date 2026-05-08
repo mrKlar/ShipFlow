@@ -10,7 +10,7 @@ import {
   findDecision,
   linkDecisionImpact,
   unlinkDecisionImpact,
-  decisionsCli,
+  decisionCli,
   decisionsDir,
 } from "../../lib/decisions.js";
 
@@ -164,14 +164,14 @@ describe("decisions", () => {
 
   it("CLI: new requires required flags and writes file", () => {
     withTmpDir(tmp => {
-      const fail = captureStdio(() => decisionsCli({
+      const fail = captureStdio(() => decisionCli({
         cwd: tmp,
         args: ["new", "--id=x", "--title=t"],
       }));
       assert.equal(fail.result.exitCode, 2);
       assert.match(fail.stderr, /Missing required flags/);
 
-      const ok = captureStdio(() => decisionsCli({
+      const ok = captureStdio(() => decisionCli({
         cwd: tmp,
         args: [
           "new",
@@ -199,7 +199,7 @@ describe("decisions", () => {
         decision: "D",
         rationale: "R",
       });
-      const { result, stdout } = captureStdio(() => decisionsCli({
+      const { result, stdout } = captureStdio(() => decisionCli({
         cwd: tmp,
         args: ["list"],
         json: true,
@@ -214,7 +214,7 @@ describe("decisions", () => {
 
   it("CLI: show returns 1 when missing", () => {
     withTmpDir(tmp => {
-      const { result } = captureStdio(() => decisionsCli({
+      const { result } = captureStdio(() => decisionCli({
         cwd: tmp,
         args: ["show", "missing"],
       }));
@@ -231,7 +231,7 @@ describe("decisions", () => {
         decision: "D",
         rationale: "R",
       });
-      const { result } = captureStdio(() => decisionsCli({
+      const { result } = captureStdio(() => decisionCli({
         cwd: tmp,
         args: ["link", "consent", "--vp=vp/security/consent.yml"],
       }));
@@ -243,7 +243,7 @@ describe("decisions", () => {
 
   it("CLI: unknown subcommand returns 2", () => {
     withTmpDir(tmp => {
-      const { result } = captureStdio(() => decisionsCli({
+      const { result } = captureStdio(() => decisionCli({
         cwd: tmp,
         args: ["whatever"],
       }));

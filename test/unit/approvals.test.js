@@ -10,7 +10,7 @@ import {
   isApprovalRequired,
   summarizeApprovalGate,
   revokeApproval,
-  approvalsCli,
+  approvePackCli,
 } from "../../lib/approvals.js";
 import { computeVerificationPackSnapshot } from "../../lib/util/vp-snapshot.js";
 
@@ -154,7 +154,7 @@ describe("approvals", () => {
   it("CLI: approve-pack with no sub records an approval", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
-      const { result } = captureStdio(() => approvalsCli({
+      const { result } = captureStdio(() => approvePackCli({
         cwd: tmp,
         args: ["--approver=nic", "--role=architect", "--scope=initial"],
       }));
@@ -169,7 +169,7 @@ describe("approvals", () => {
   it("CLI: approve-pack rejects an unknown role", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
-      const { result, stderr } = captureStdio(() => approvalsCli({
+      const { result, stderr } = captureStdio(() => approvePackCli({
         cwd: tmp,
         args: ["--role=czar"],
       }));
@@ -181,11 +181,11 @@ describe("approvals", () => {
   it("CLI: status shows approved/not approved transitions", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
-      const before = captureStdio(() => approvalsCli({ cwd: tmp, args: ["status"] }));
+      const before = captureStdio(() => approvePackCli({ cwd: tmp, args: ["status"] }));
       assert.equal(before.result.exitCode, 0);
       assert.match(before.stdout, /NOT currently approved/);
       approvePack(tmp, { approver: "nic" });
-      const after = captureStdio(() => approvalsCli({ cwd: tmp, args: ["status"] }));
+      const after = captureStdio(() => approvePackCli({ cwd: tmp, args: ["status"] }));
       assert.match(after.stdout, /Approved by 1 active approval/);
     });
   });
@@ -194,7 +194,7 @@ describe("approvals", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
       approvePack(tmp, { approver: "nic" });
-      const { result, stdout } = captureStdio(() => approvalsCli({
+      const { result, stdout } = captureStdio(() => approvePackCli({
         cwd: tmp,
         args: ["list"],
         json: true,

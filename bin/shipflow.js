@@ -237,10 +237,10 @@ Exit codes:
   }
 
   if (cmd === "review-artifact" || cmd === "review-artifacts") {
-    const { reviewsCli } = await import("../lib/reviews.js");
+    const { reviewArtifactCli } = await import("../lib/reviews.js");
     const cmdIndex = args.indexOf(cmd);
     const subArgs = args.slice(cmdIndex + 1);
-    const { exitCode } = reviewsCli({
+    const { exitCode } = reviewArtifactCli({
       cwd: process.cwd(),
       args: subArgs,
       json: flags.has("--json"),
@@ -249,10 +249,10 @@ Exit codes:
   }
 
   if (cmd === "slice" || cmd === "slices") {
-    const { slicesCli } = await import("../lib/slices.js");
+    const { sliceCli } = await import("../lib/slices.js");
     const cmdIndex = args.indexOf(cmd);
     const subArgs = args.slice(cmdIndex + 1);
-    const { exitCode } = slicesCli({
+    const { exitCode } = sliceCli({
       cwd: process.cwd(),
       args: subArgs,
       json: flags.has("--json"),
@@ -261,10 +261,10 @@ Exit codes:
   }
 
   if (cmd === "approve-pack") {
-    const { approvalsCli } = await import("../lib/approvals.js");
+    const { approvePackCli } = await import("../lib/approvals.js");
     const cmdIndex = args.indexOf(cmd);
     const subArgs = args.slice(cmdIndex + 1);
-    const { exitCode } = approvalsCli({
+    const { exitCode } = approvePackCli({
       cwd: process.cwd(),
       args: subArgs,
       json: flags.has("--json"),
@@ -285,10 +285,10 @@ Exit codes:
   }
 
   if (cmd === "decision" || cmd === "decisions") {
-    const { decisionsCli } = await import("../lib/decisions.js");
+    const { decisionCli } = await import("../lib/decisions.js");
     const cmdIndex = args.indexOf(cmd);
     const subArgs = args.slice(cmdIndex + 1);
-    const { exitCode } = decisionsCli({
+    const { exitCode } = decisionCli({
       cwd: process.cwd(),
       args: subArgs,
       json: flags.has("--json"),

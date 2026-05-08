@@ -11,7 +11,7 @@ import {
   unlinkSlice,
   updateSlice,
   deriveSliceProgress,
-  slicesCli,
+  sliceCli,
   slicesDir,
 } from "../../lib/slices.js";
 import { createDecision } from "../../lib/decisions.js";
@@ -163,7 +163,7 @@ describe("slices", () => {
   it("CLI: list returns json", () => {
     withTmpDir(tmp => {
       createSlice(tmp, { id: "a", goal: "Goal A" });
-      const { result, stdout } = captureStdio(() => slicesCli({
+      const { result, stdout } = captureStdio(() => sliceCli({
         cwd: tmp,
         args: ["list"],
         json: true,
@@ -178,7 +178,7 @@ describe("slices", () => {
 
   it("CLI: new validates required flags", () => {
     withTmpDir(tmp => {
-      const { result, stderr } = captureStdio(() => slicesCli({
+      const { result, stderr } = captureStdio(() => sliceCli({
         cwd: tmp,
         args: ["new", "--id=x"],
       }));
@@ -190,7 +190,7 @@ describe("slices", () => {
   it("CLI: set-status changes the status", () => {
     withTmpDir(tmp => {
       createSlice(tmp, { id: "slice", goal: "G" });
-      const { result } = captureStdio(() => slicesCli({
+      const { result } = captureStdio(() => sliceCli({
         cwd: tmp,
         args: ["set-status", "slice", "--status=in-progress"],
       }));
@@ -202,7 +202,7 @@ describe("slices", () => {
   it("CLI: set-status rejects unknown status", () => {
     withTmpDir(tmp => {
       createSlice(tmp, { id: "slice", goal: "G" });
-      const { result, stderr } = captureStdio(() => slicesCli({
+      const { result, stderr } = captureStdio(() => sliceCli({
         cwd: tmp,
         args: ["set-status", "slice", "--status=floating"],
       }));
@@ -213,7 +213,7 @@ describe("slices", () => {
 
   it("CLI: show on missing slice returns 1", () => {
     withTmpDir(tmp => {
-      const { result } = captureStdio(() => slicesCli({
+      const { result } = captureStdio(() => sliceCli({
         cwd: tmp,
         args: ["show", "nope"],
       }));

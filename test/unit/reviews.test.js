@@ -11,7 +11,7 @@ import {
   reopenReview,
   listConcreteArtifacts,
   previewArtifacts,
-  reviewsCli,
+  reviewArtifactCli,
   reviewsDir,
 } from "../../lib/reviews.js";
 import { createSlice } from "../../lib/slices.js";
@@ -146,7 +146,7 @@ describe("reviews", () => {
 
   it("CLI: new without required flags returns 2", () => {
     withTmpDir(tmp => {
-      const { result } = captureStdio(() => reviewsCli({
+      const { result } = captureStdio(() => reviewArtifactCli({
         cwd: tmp,
         args: ["new", "--target=x"],
       }));
@@ -160,7 +160,7 @@ describe("reviews", () => {
       createReview(tmp, { target: "vp/ui/b.yml", target_kind: "vp", text: "B" });
       resolveReview(tmp, a.review.id);
 
-      const open = captureStdio(() => reviewsCli({
+      const open = captureStdio(() => reviewArtifactCli({
         cwd: tmp,
         args: ["list", "--status=open"],
         json: true,
@@ -169,7 +169,7 @@ describe("reviews", () => {
       assert.equal(parsedOpen.reviews.length, 1);
       assert.equal(parsedOpen.reviews[0].text, "B");
 
-      const resolved = captureStdio(() => reviewsCli({
+      const resolved = captureStdio(() => reviewArtifactCli({
         cwd: tmp,
         args: ["list", "--status=resolved"],
         json: true,
@@ -183,7 +183,7 @@ describe("reviews", () => {
   it("CLI: resolve sets resolved status", () => {
     withTmpDir(tmp => {
       const { review } = createReview(tmp, { target: "x", target_kind: "vp", text: "T" });
-      const { result } = captureStdio(() => reviewsCli({
+      const { result } = captureStdio(() => reviewArtifactCli({
         cwd: tmp,
         args: ["resolve", review.id, "--resolved-by=nic", "--resolution-notes=Fixed"],
       }));
