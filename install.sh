@@ -131,9 +131,12 @@ if command -v codex &>/dev/null; then
   info "Codex CLI found"
   FOUND+=("codex")
 
-  # Global exec policy rules
+  # Global exec policy rules — substitute the running user's home for the
+  # __SHIPFLOW_HOME__ placeholder so the absolute-path patterns actually
+  # match this machine (the ~/... patterns cover shells that resolve tildes;
+  # the absolute patterns cover those that do not).
   mkdir -p "$HOME/.codex/rules"
-  cp "$INSTALL_DIR/templates/codex-rules.rules" "$HOME/.codex/rules/shipflow.rules"
+  sed "s|__SHIPFLOW_HOME__|$HOME|g" "$INSTALL_DIR/templates/codex-rules.rules" > "$HOME/.codex/rules/shipflow.rules"
   info "Exec policy: ~/.codex/rules/shipflow.rules"
 
   # Global instructions (append to existing or create)

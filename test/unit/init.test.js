@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { init, recommendedPlatforms } from "../../lib/init.js";
@@ -187,6 +188,12 @@ describe("init", () => {
       const rules = fs.readFileSync(path.join(tmpDir, ".codex", "rules", "shipflow.rules"), "utf-8");
       assert.ok(rules.includes('pattern=["cat", ["~/.local/bin/shipflow"'));
       assert.ok(rules.includes('pattern=["find", ["~/.claude/plugins"'));
+      // The __SHIPFLOW_HOME__ placeholder must be substituted at install
+      // time with this user's actual home, so the absolute-path patterns
+      // match on the running machine. The template should keep ~/... AND
+      // a real path side by side; the placeholder must not leak through.
+      assert.equal(rules.includes("__SHIPFLOW_HOME__"), false);
+      assert.ok(rules.includes(`${os.homedir()}/.local/bin/shipflow`));
       // Claude files NOT created
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
       assert.ok(!fs.existsSync(path.join(tmpDir, ".claude", "hooks.json")));
@@ -303,5 +310,16 @@ describe("init", () => {
       assert.ok(settings.trustedAgents.includes("shipflow-ui-specialist"));
       assert.ok(!fs.existsSync(path.join(tmpDir, "CLAUDE.md")));
     });
+  });
+
+  it("templates/codex-rules.rules carries no developer username — uses __SHIPFLOW_HOME__ placeholder only", () => {
+    // The template ships in the npm package and gets copied to user
+    // machines. Any hardcoded developer home path (e.g. /home/<dev>/...)
+    // would (a) leak the maintainer's username and (b) silently fail to
+    // match on every other user's machine.
+    const repoRoot = path.resolve(__dirname, "..", "..");
+    const tmpl = fs.readFileSync(path.join(repoRoot, "templates", "codex-rules.rules"), "utf-8");
+    assert.equal(/\/home\/[a-zA-Z0-9_-]+\//.test(tmpl), false, "template must not contain hardcoded /home/<user>/ paths");
+    assert.ok(tmpl.includes("__SHIPFLOW_HOME__"), "template must use the __SHIPFLOW_HOME__ placeholder for absolute paths");
   });
 });
