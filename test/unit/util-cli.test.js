@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { parseFlags, ensureArray, flagListAsArray, relPath } from "../../lib/util/cli.js";
-import { slugify, timestampStamp } from "../../lib/util/id.js";
+import { slugify, timestampStamp, todayIso } from "../../lib/util/id.js";
 
 describe("util/cli", () => {
   it("parseFlags handles boolean, single-value, and repeated flags", () => {
@@ -53,5 +53,10 @@ describe("util/id", () => {
     const a = timestampStamp(new Date("2026-05-07T14:30:00.123Z"));
     const b = timestampStamp(new Date("2026-05-07T14:30:00.999Z"));
     assert.notEqual(a, b, "milliseconds must disambiguate within a second");
+  });
+
+  it("todayIso returns YYYY-MM-DD", () => {
+    const out = todayIso();
+    assert.match(out, /^\d{4}-\d{2}-\d{2}$/, `expected YYYY-MM-DD, got ${out}`);
   });
 });
