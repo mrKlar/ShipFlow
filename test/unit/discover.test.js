@@ -140,6 +140,23 @@ describe("discover", () => {
     });
   });
 
+  it("loadDiscoverySessions flags duplicate ids", () => {
+    withTmpDir(tmp => {
+      const dir = discoveryDir(tmp);
+      fs.mkdirSync(dir, { recursive: true });
+      const body = (id) => JSON.stringify({
+        id,
+        created_at: "2026-05-07T00:00:00.000Z",
+        proposals: [],
+        by_kind: {},
+      }) + "\n";
+      fs.writeFileSync(path.join(dir, "first.json"), body("dup"));
+      fs.writeFileSync(path.join(dir, "second.json"), body("dup"));
+      const { issues } = loadDiscoverySessions(tmp);
+      assert.ok(issues.some(i => i.code === "discovery.duplicate_id"));
+    });
+  });
+
   it("CLI: unknown subcommand returns 2", () => {
     withTmpDir(tmp => {
       const { result } = captureStdio(() => discoverCli({ cwd: tmp, args: ["whatever"] }));

@@ -151,6 +151,16 @@ describe("approvals", () => {
     });
   });
 
+  it("approvePack rejects an unparseable approved_at", () => {
+    withTmpDir(tmp => {
+      seedVerificationPack(tmp);
+      assert.throws(
+        () => approvePack(tmp, { approver: "nic", approved_at: "not-a-date" }),
+        /must be a valid ISO date string/,
+      );
+    });
+  });
+
   it("CLI: approve-pack with no sub records an approval", () => {
     withTmpDir(tmp => {
       seedVerificationPack(tmp);
