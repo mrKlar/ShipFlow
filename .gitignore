@@ -38,6 +38,11 @@ vp/
 !examples/tic-tac-toe-app/
 !examples/tic-tac-toe-app/vp/
 !examples/tic-tac-toe-app/vp/**
+!examples/session-expiry-substrate/
+!examples/session-expiry-substrate/vp/
+!examples/session-expiry-substrate/vp/**
+!examples/session-expiry-substrate/.shipflow/
+!examples/session-expiry-substrate/.shipflow/**
 
 # Ignore Windows NTFS alternate data stream metadata files
 *Zone.Identifier

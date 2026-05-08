@@ -1,0 +1,12 @@
+id: session-expired-modal
+title: Expired session shows the re-login modal on /admin
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /admin
+assert:
+  - text_equals:
+      testid: session-expired-message
+      equals: "Your session expired. Please sign in again."

@@ -1,0 +1,12 @@
+{
+  "draft": {
+    "provider": "local",
+    "aiProvider": "auto"
+  },
+  "impl": {
+    "provider": "auto",
+    "srcDir": "src",
+    "historyLimit": 50,
+    "requirePackApproval": false
+  }
+}

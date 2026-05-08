@@ -1,0 +1,49 @@
+{
+  "id": "admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-12-18-45-205Z",
+  "intent": "Admin session expires after 30 minutes of inactivity",
+  "role": "security",
+  "created_at": "2026-05-08T12:18:45.205Z",
+  "questions": [
+    {
+      "id": "q-security-1",
+      "topic": "security",
+      "question": "What is the trust boundary of this feature — who can hit which endpoint or surface, with what credential?",
+      "why_it_matters": "Required framing for the security lens. Flag missing authorization checks, data exposure into logs/responses, abuse cases without verifications, and policy gates that are not yet wired."
+    },
+    {
+      "id": "q-security-2",
+      "topic": "security",
+      "question": "What sensitive data flows in, out, or into logs because of this change?",
+      "why_it_matters": "Required framing for the security lens. Flag missing authorization checks, data exposure into logs/responses, abuse cases without verifications, and policy gates that are not yet wired."
+    },
+    {
+      "id": "q-security-3",
+      "topic": "security",
+      "question": "What does the abuse case look like — a user, an insider, a partner with stolen credentials, a malicious payload?",
+      "why_it_matters": "Required framing for the security lens. Flag missing authorization checks, data exposure into logs/responses, abuse cases without verifications, and policy gates that are not yet wired."
+    },
+    {
+      "id": "q-security-4",
+      "topic": "security",
+      "question": "What policy or compliance regime governs this (PCI, SOC2, GDPR, internal) and which artifact captures the requirement?",
+      "why_it_matters": "Required framing for the security lens. Flag missing authorization checks, data exposure into logs/responses, abuse cases without verifications, and policy gates that are not yet wired."
+    },
+    {
+      "id": "q-security-5",
+      "topic": "security",
+      "question": "What is the rollback if this introduces a vulnerability we discover post-ship?",
+      "why_it_matters": "Required framing for the security lens. Flag missing authorization checks, data exposure into logs/responses, abuse cases without verifications, and policy gates that are not yet wired."
+    }
+  ],
+  "findings": [
+    {
+      "id": "f-security-template",
+      "kind": "assumption",
+      "text": "Replace this entry with assumptions the team is making about security before drafting begins."
+    }
+  ],
+  "proposed_decisions": [],
+  "follow_ups": [
+    "Run shipflow grill --ai --role=security --intent=\"Admin session expires after 30 minutes of inactivity\" once a provider is configured to extract real findings."
+  ]
+}

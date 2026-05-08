@@ -1,0 +1,14 @@
+id: session-timeout
+title: Admin session rejects stale cookies after 30 minutes
+severity: blocker
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/admin/me
+  headers:
+    Cookie: "session=stale-after-31m"
+assert:
+  - status: 401
+  - body_not_contains: "stack trace"

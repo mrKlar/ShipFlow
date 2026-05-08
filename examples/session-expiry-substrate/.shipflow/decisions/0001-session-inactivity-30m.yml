@@ -1,0 +1,13 @@
+id: session-inactivity-30m
+type: security
+status: accepted
+title: 30-minute admin session inactivity timeout
+question: How long should an admin session persist without activity?
+decision: Expire after 30 minutes.
+rationale: PCI/SOC2 baseline + matches existing finance console policy.
+source: grill
+source_ref: admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-12-18-45-205Z
+impacts:
+  - vp/security/session-timeout.yml
+  - vp/ui/session-expired-modal.yml
+decided_at: '2026-05-08'

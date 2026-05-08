@@ -1,0 +1,12 @@
+id: session-expiry
+goal: Admin user is safely signed out after 30 idle minutes and shown a clear re-login prompt.
+status: planned
+vp:
+  - vp/security/session-timeout.yml
+  - vp/ui/session-expired-modal.yml
+decisions:
+  - session-inactivity-30m
+grill_refs:
+  - admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-12-18-45-205Z
+evidence: []
+created_at: '2026-05-08'
