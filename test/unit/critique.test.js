@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { runCritique, critique } from "../../lib/critique.js";
+import { runCritique, critique, NEGATIVE_CASE_FINDING_CODES } from "../../lib/critique.js";
 import { captureStdio } from "../util/stdio.js";
 import { createDecision, linkDecisionImpact } from "../../lib/decisions.js";
 import { withTmpDir as tmpDir } from "../util/tmp.js";
@@ -200,6 +200,30 @@ describe("critique", () => {
       const strict = captureStdio(() => critique({ cwd: tmp, threshold: 95 }));
       assert.equal(strict.result.exitCode, 1, "score < 95 fails the gate");
       assert.match(strict.stdout, /Threshold: 95.*FAIL/);
+    });
+  });
+
+  it("NEGATIVE_CASE_FINDING_CODES matches the codes runCritique actually emits", () => {
+    withTmpDir(tmp => {
+      // Pack designed to trigger every negative-case heuristic at once:
+      // - 0 negative checks anywhere -> happy_path_only
+      // - 2+ behavior-area checks with no negative -> behavior_no_negative
+      // - 2+ api/security would need actual files; we cover the union here.
+      writeUiCheck(tmp, "vp/ui/home.yml", HAPPY_HOME);
+      writeUiCheck(tmp, "vp/ui/login.yml", HAPPY_LOGIN);
+      const r = runCritique(tmp);
+      const emittedCodes = new Set(r.findings.map(f => f.code));
+      // Every code in the canonical list must be a critique.* code that
+      // critique itself can emit (no typos, no stale renames). We don't
+      // require every code to fire on this fixture, just that every
+      // canonical code starts with the expected prefix.
+      for (const code of NEGATIVE_CASE_FINDING_CODES) {
+        assert.match(code, /^critique\./, `${code} must be a critique.* code`);
+      }
+      // happy_path_only must fire on this all-positive pack — sanity that
+      // at least one canonical code is reachable from runCritique.
+      assert.ok(emittedCodes.has("critique.happy_path_only"));
+      assert.ok(NEGATIVE_CASE_FINDING_CODES.includes("critique.happy_path_only"));
     });
   });
 

@@ -123,7 +123,6 @@ describe("discover", () => {
         id,
         created_at: "2026-05-07T00:00:00.000Z",
         proposals: [],
-        by_kind: {},
       }) + "\n";
       fs.writeFileSync(path.join(dir, "first.json"), body("dup"));
       fs.writeFileSync(path.join(dir, "second.json"), body("dup"));
@@ -171,7 +170,6 @@ describe("discover", () => {
           rationale: "Detected existing route",
           evidence: [],
         }],
-        by_kind: { ui_route: 1 },
       };
       fs.writeFileSync(path.join(dir, `${session.id}.json`), JSON.stringify(session, null, 2));
 
