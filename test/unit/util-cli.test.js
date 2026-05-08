@@ -44,8 +44,14 @@ describe("util/id", () => {
     assert.equal(slugify("a".repeat(80)).length, 60);
   });
 
-  it("timestampStamp returns YYYY-MM-DD-HH-MM-SS-Z", () => {
-    const out = timestampStamp(new Date("2026-05-07T14:30:00.000Z"));
-    assert.equal(out, "2026-05-07-14-30-00Z");
+  it("timestampStamp returns YYYY-MM-DD-HH-MM-SS-mmmZ with millisecond precision", () => {
+    const out = timestampStamp(new Date("2026-05-07T14:30:00.123Z"));
+    assert.equal(out, "2026-05-07-14-30-00-123Z");
+  });
+
+  it("timestampStamp differs for two dates in the same second", () => {
+    const a = timestampStamp(new Date("2026-05-07T14:30:00.123Z"));
+    const b = timestampStamp(new Date("2026-05-07T14:30:00.999Z"));
+    assert.notEqual(a, b, "milliseconds must disambiguate within a second");
   });
 });
