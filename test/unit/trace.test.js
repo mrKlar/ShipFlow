@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { buildTrace, traceCli } from "../../lib/trace.js";
+import { buildTrace, traceCli, matchEvidenceForVp } from "../../lib/trace.js";
 import { createDecision, linkDecisionImpact } from "../../lib/decisions.js";
 import { createGrillSession } from "../../lib/grill.js";
 import { createSlice, linkSlice } from "../../lib/slices.js";
@@ -31,6 +31,42 @@ assert:
       equals: Welcome
 `);
 }
+
+describe("trace.matchEvidenceForVp — substring false-positive guard", () => {
+  it("does NOT match an evidence path that merely contains the vp basename as a substring", () => {
+    // The legacy bug: `evidence/reauth.json` would have matched `vp/api/auth.yml`
+    // because String.includes("auth") was the join. The current implementation
+    // requires either an exact basename match or a full directory segment.
+    const matches = matchEvidenceForVp("vp/api/auth.yml", [
+      "evidence/reauth.json",
+      "evidence/auth-something-else.json",
+      "evidence/api/something.json",
+    ]);
+    assert.deepEqual(matches, [],
+      "neither reauth nor auth-something-else nor api/something belong to vp/api/auth.yml");
+  });
+
+  it("matches an evidence file whose basename equals the vp basename", () => {
+    const matches = matchEvidenceForVp("vp/api/auth.yml", ["evidence/auth.json"]);
+    assert.deepEqual(matches, ["evidence/auth.json"]);
+  });
+
+  it("matches a directory-segregated evidence file (evidence/<vp-base>/...)", () => {
+    const matches = matchEvidenceForVp("vp/ui/home.yml", [
+      "evidence/visual/home/expected.png",
+      "evidence/visual/home/diff.png",
+    ]);
+    assert.equal(matches.length, 2);
+  });
+
+  it("matches /<base>.<ext> at the end of any path segment", () => {
+    const matches = matchEvidenceForVp("vp/api/users.yml", [
+      "evidence/api/users.json",
+      "evidence/api/users.log",
+    ]);
+    assert.equal(matches.length, 2);
+  });
+});
 
 describe("trace", () => {
   it("buildTrace builds a row per vp file with empty linkages by default", async () => {
