@@ -154,6 +154,30 @@ describe("governance", () => {
     });
   });
 
+  it("runGovernanceCheck surfaces substrate load errors as findings", async () => {
+    await withTmpDir(async (tmp) => {
+      seedVpHomeFile(tmp);
+      writeGovernance(tmp,
+        "version: 1\nrequire_pack_approval: false\nrequired_approver_roles: []\nrequired_grill_roles: []\nmin_decisions_per_vp: 0\nrequire_negative_cases: false\nforbid_orphan_decisions: false\nforbid_open_reviews: false\n");
+      // Drop a corrupt approval file that loadApprovals will reject
+      const approvalsDir = path.join(tmp, ".shipflow", "approvals");
+      fs.mkdirSync(approvalsDir, { recursive: true });
+      fs.writeFileSync(path.join(approvalsDir, "broken.json"), "{not json");
+
+      const result = runGovernanceCheck(tmp);
+      assert.equal(result.ok, false,
+        "governance must fail when a substrate file is unreadable — the policy check is unreliable otherwise");
+      assert.ok(
+        result.findings.some(f => f.code === "governance.substrate_load_error"),
+        "must emit governance.substrate_load_error",
+      );
+      assert.ok(
+        result.findings.some(f => /broken\.json/.test(f.message)),
+        "the message must reference the corrupt file",
+      );
+    });
+  });
+
   it("CLI: init writes the default file", async () => {
     await withTmpDir(async (tmp) => {
       const { result } = captureStdio(() => governanceCli({ cwd: tmp, args: ["init"] }));

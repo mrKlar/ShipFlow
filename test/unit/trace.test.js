@@ -177,6 +177,32 @@ describe("trace", () => {
     });
   });
 
+  it("buildTrace surfaces loader issues for corrupt substrate files", async () => {
+    await withTmpDir(async (tmp) => {
+      seedVpHomeFile(tmp);
+      // Corrupt decision file
+      const decisionsDir = path.join(tmp, ".shipflow", "decisions");
+      fs.mkdirSync(decisionsDir, { recursive: true });
+      fs.writeFileSync(path.join(decisionsDir, "0001-broken.yml"), "id: bad\n  : not yaml");
+      const t = buildTrace(tmp);
+      assert.ok(Array.isArray(t.loader_issues));
+      assert.ok(t.loader_issues.length > 0);
+      const decisionIssues = t.loader_issues.filter(i => i.surface === "decisions");
+      assert.ok(decisionIssues.length >= 1, "decision parse error must propagate to trace");
+    });
+  });
+
+  it("CLI: --pr-comment surfaces loader issues as a top action item", async () => {
+    await withTmpDir(async (tmp) => {
+      seedVpHomeFile(tmp);
+      const decisionsDir = path.join(tmp, ".shipflow", "decisions");
+      fs.mkdirSync(decisionsDir, { recursive: true });
+      fs.writeFileSync(path.join(decisionsDir, "broken.yml"), "id: bad\n  - oops");
+      const { stdout } = captureStdio(() => traceCli({ cwd: tmp, args: ["--pr-comment"] }));
+      assert.match(stdout, /Substrate file unreadable/);
+    });
+  });
+
   it("CLI: --markdown emits a header and table", async () => {
     await withTmpDir(async (tmp) => {
       seedVpHomeFile(tmp);
