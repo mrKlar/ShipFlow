@@ -17,7 +17,10 @@ Use the installed `shipflow` CLI directly. If it is not on `PATH`, retry as `~/.
 
 ```bash
 shipflow critique --json
+shipflow critique --threshold=85   # exit non-zero when score < 85, suitable for CI
 ```
+
+The `--threshold=N` flag (also `SHIPFLOW_CRITIQUE_THRESHOLD=N` env var) makes critique a CI gate: any score below `N` exits 1. **Errors always fail** regardless of the threshold — a placeholder in YAML cannot sneak past a permissive setting.
 
 Then summarize for the user:
 - the score (`strong | ok | weak | fragile`),

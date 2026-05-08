@@ -20,9 +20,10 @@ Use the installed `shipflow` CLI directly. If it is not on `PATH`, retry as `~/.
 shipflow trace
 shipflow trace --json
 shipflow trace --markdown
+shipflow trace --pr-comment
 ```
 
-The markdown form is suitable for inclusion in a PR description or audit document. The JSON form is suitable for piping into governance / compliance tooling.
+The markdown form is suitable for inclusion in a PR description or audit document. The JSON form is suitable for piping into governance / compliance tooling. The `--pr-comment` form is a compact GitHub-friendly markdown block designed to be posted as a PR comment by CI (e.g. `shipflow trace --pr-comment | gh pr comment <pr> -F -`); it leads with approval state and a focused action list rather than the full matrix.
 
 ## What it shows
 

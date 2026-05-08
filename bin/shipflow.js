@@ -34,7 +34,9 @@ Standard flow:
 Advanced / debug:
   shipflow map [description]   Review repo surfaces and coverage gaps before drafting
   shipflow lint                Lint verification quality before generation
-  shipflow critique            Score the cognitive quality of the pack (decision linkage, negative cases, vague titles)
+  shipflow critique [--threshold=N]
+                               Score the cognitive quality of the pack (decision linkage, negative cases, vague titles).
+                               --threshold=N exits 1 when score is below N. Errors always fail.
   shipflow doctor              Check local tools, runners, and AI CLI adapters
   shipflow gen                 Generate runnable tests from the verification pack
   shipflow approve-visual      Capture or refresh locked UI visual baselines
@@ -49,7 +51,9 @@ Advanced / debug:
   shipflow preview             Show concrete artifacts available for human review (vp, slices, evidence, decisions)
   shipflow review-artifact     Capture structured feedback on a concrete artifact (list|show|new|resolve|wont-fix|reopen)
   shipflow discover            Brownfield: scan repo and propose regression VPs for existing surfaces
-  shipflow trace               Traceability matrix: vp ↔ decisions ↔ grill ↔ slices ↔ generated ↔ evidence (--markdown)
+  shipflow trace [--markdown|--pr-comment|--json]
+                               Traceability matrix: vp ↔ decisions ↔ grill ↔ slices ↔ generated ↔ evidence.
+                               --pr-comment formats for GitHub PR comments with approval state and action items.
   shipflow governance <sub>    Org policy: validate the pack against .shipflow/governance.yml (init|check|show)
   shipflow implement-once      Single implementation pass without the retry loop
   shipflow run                 Legacy alias for shipflow implement
@@ -165,7 +169,20 @@ Exit codes:
 
   if (cmd === "critique") {
     const { critique } = await import("../lib/critique.js");
-    const { exitCode } = critique({ cwd: process.cwd(), json: flags.has("--json") });
+    // --threshold=<int> exits non-zero when the score is below the
+    // threshold. Falls back to SHIPFLOW_CRITIQUE_THRESHOLD env var, then
+    // to shipflow.json -> critique.threshold. Numeric only — anything
+    // unparseable is ignored (legacy "errors === 0 && score >= 70" gate
+    // still applies).
+    const thresholdRaw = optionValue("threshold")
+      ?? process.env.SHIPFLOW_CRITIQUE_THRESHOLD
+      ?? null;
+    const threshold = thresholdRaw === null ? null : Number(thresholdRaw);
+    const { exitCode } = critique({
+      cwd: process.cwd(),
+      json: flags.has("--json"),
+      threshold: Number.isFinite(threshold) ? threshold : null,
+    });
     process.exit(exitCode);
   }
 

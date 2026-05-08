@@ -2,7 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { runCritique } from "../../lib/critique.js";
+import { runCritique, critique } from "../../lib/critique.js";
+import { captureStdio } from "../util/stdio.js";
 import { createDecision, linkDecisionImpact } from "../../lib/decisions.js";
 import { withTmpDir as tmpDir } from "../util/tmp.js";
 
@@ -184,6 +185,31 @@ describe("critique", () => {
       });
       const result = runCritique(tmp);
       assert.ok(result.findings.some(f => f.code === "critique.decision_unlinked"));
+    });
+  });
+
+  it("critique exits 0 when score meets threshold and 1 when below", () => {
+    withTmpDir(tmp => {
+      // Pack with a vague title -> score around 88 (only a warn)
+      writeUiCheck(tmp, "vp/ui/works.yml", VAGUE_TITLE_CHECK);
+      writeUiCheck(tmp, "vp/ui/login-error.yml", NEGATIVE_LOGIN);
+
+      const lenient = captureStdio(() => critique({ cwd: tmp, threshold: 70 }));
+      assert.equal(lenient.result.exitCode, 0, "score >= 70 passes the gate");
+
+      const strict = captureStdio(() => critique({ cwd: tmp, threshold: 95 }));
+      assert.equal(strict.result.exitCode, 1, "score < 95 fails the gate");
+      assert.match(strict.stdout, /Threshold: 95.*FAIL/);
+    });
+  });
+
+  it("critique with placeholder error always fails regardless of threshold", () => {
+    withTmpDir(tmp => {
+      writeUiCheck(tmp, "vp/ui/todo.yml", PLACEHOLDER_CHECK);
+      writeUiCheck(tmp, "vp/ui/login-error.yml", NEGATIVE_LOGIN);
+      // Even a permissive threshold of 0 must not let an error through.
+      const r = captureStdio(() => critique({ cwd: tmp, threshold: 0 }));
+      assert.equal(r.result.exitCode, 1, "errors fail the gate independent of threshold");
     });
   });
 });

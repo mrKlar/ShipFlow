@@ -110,6 +110,37 @@ describe("trace", () => {
     });
   });
 
+  it("CLI: --pr-comment emits an approval icon, action list, and per-vp table", async () => {
+    await withTmpDir(async (tmp) => {
+      seedVpHomeFile(tmp);
+      const { result, stdout } = captureStdio(() => traceCli({ cwd: tmp, args: ["--pr-comment"] }));
+      assert.equal(result.exitCode, 0);
+      // No approval yet -> warning icon and the approve-pack action item
+      assert.match(stdout, /⚠️ ShipFlow trace/);
+      assert.match(stdout, /not approved against the current sha/);
+      assert.match(stdout, /Run `shipflow approve-pack`/);
+      // Detail table is collapsible and includes the seeded vp file
+      assert.match(stdout, /VP coverage detail/);
+      assert.match(stdout, /vp\/ui\/home\.yml/);
+    });
+  });
+
+  it("CLI: --pr-comment surfaces 'no outstanding actions' on a clean pack", async () => {
+    await withTmpDir(async (tmp) => {
+      seedVpHomeFile(tmp);
+      // Bind a decision and approve so the comment has no action items
+      const { createDecision: createDec, linkDecisionImpact: linkImp } = await import("../../lib/decisions.js");
+      const { approvePack: approve } = await import("../../lib/approvals.js");
+      createDec(tmp, { id: "welcome", title: "T", question: "Q", decision: "D", rationale: "R" });
+      linkImp(tmp, "welcome", "vp/ui/home.yml");
+      approve(tmp, { approver: "nic", role: "architect" });
+
+      const { stdout } = captureStdio(() => traceCli({ cwd: tmp, args: ["--pr-comment"] }));
+      assert.match(stdout, /✅ ShipFlow trace/);
+      assert.match(stdout, /No outstanding actions before merge/);
+    });
+  });
+
   it("CLI: --markdown emits a header and table", async () => {
     await withTmpDir(async (tmp) => {
       seedVpHomeFile(tmp);
