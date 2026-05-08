@@ -221,6 +221,35 @@ describe("slices", () => {
     });
   });
 
+  it("loadSlices flags dangling decision references", async () => {
+    await withTmpDirAsync(async (tmp) => {
+      // Slice references a decision id that does not exist
+      createSlice(tmp, { id: "s1", goal: "G", decisions: ["ghost-decision"] });
+      const { issues } = loadSlices(tmp);
+      assert.ok(issues.some(i => i.code === "slice.dangling_decision"));
+    });
+  });
+
+  it("loadSlices flags dangling grill_ref references", async () => {
+    await withTmpDirAsync(async (tmp) => {
+      createSlice(tmp, { id: "s1", goal: "G", grill_refs: ["ghost-grill-session"] });
+      const { issues } = loadSlices(tmp);
+      assert.ok(issues.some(i => i.code === "slice.dangling_grill_ref"));
+    });
+  });
+
+  it("loadSlices accepts injected id sets to avoid re-reading disk", () => {
+    withTmpDir(tmp => {
+      // Reference decisions that exist in the injected set, even though no decision files are on disk
+      createSlice(tmp, { id: "s1", goal: "G", decisions: ["d1"] });
+      const { issues } = loadSlices(tmp, {
+        decisionIds: new Set(["d1"]),
+        grillIds: new Set(),
+      });
+      assert.equal(issues.filter(i => i.code === "slice.dangling_decision").length, 0);
+    });
+  });
+
   it("loadSlices reports duplicate id issue", () => {
     withTmpDir(tmp => {
       const dir = slicesDir(tmp);
