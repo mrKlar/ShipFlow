@@ -31,6 +31,17 @@ shipflow grill --ai --role=general --intent="<short statement of what the team w
 
 Roles available: `general` (default), `product`, `architecture`, `qa`, `security`, `risk`. Run multiple sessions with different roles to triangulate.
 
+### Fan out across all five specialist lenses in one command
+
+```bash
+shipflow grill --multi --intent="..."
+shipflow grill --multi --ai --intent="..."
+```
+
+`--multi` is the deliberate Three-Amigos breakdown: it creates one session per specialist role (product, architecture, qa, security, risk) so each lens grills the same intent without bleeding into another's territory. `general` is excluded — `--multi` IS the general view, distributed.
+
+Combine `--multi` with `--role` is rejected (incoherent). Each fan-out session is top-level; use plain `shipflow grill --parent=<id>` for follow-up sessions.
+
 ### 2. Review the transcript
 
 The CLI writes a markdown transcript and a JSON record under `.shipflow/grill/<id>.{md,json}`. Open the markdown, paste it back to the user, and:

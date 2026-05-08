@@ -27,7 +27,9 @@ async function main() {
   if (!cmd || cmd === "help" || flags.has("--help") || flags.has("-h")) {
     console.log(`ShipFlow v1
 Standard flow:
-  shipflow grill "<intent>"    Three-Amigos grilling: surface ambiguities and assumptions before drafting
+  shipflow grill "<intent>" [--multi]
+                               Three-Amigos grilling: surface ambiguities before drafting.
+                               --multi fans out to product, architecture, qa, security, risk lenses.
   shipflow draft [description] Draft and finalize the verification pack
   shipflow implement           Standard loop: validate pack, generate tests, implement, verify
 

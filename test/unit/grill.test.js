@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   createGrillSession,
+  createMultiGrillSession,
   loadGrillSessions,
   findGrillSession,
   grillCli,
@@ -159,6 +160,45 @@ describe("grill", () => {
   it("createGrillSession rejects unknown role", async () => {
     await withTmpDir(async (tmp) => {
       await assert.rejects(() => createGrillSession(tmp, { intent: "x", role: "captain" }), /role must be one of/);
+    });
+  });
+
+  it("createMultiGrillSession fans out to all 5 specialist roles with unique ids", async () => {
+    await withTmpDir(async (tmp) => {
+      const { sessions, roles } = await createMultiGrillSession(tmp, {
+        intent: "Add multi-tenant rate limit to /api/jobs",
+      });
+      assert.deepEqual(roles, ["product", "architecture", "qa", "security", "risk"]);
+      assert.equal(sessions.length, 5);
+      const ids = sessions.map(s => s.session.id);
+      assert.equal(new Set(ids).size, 5, "five distinct ids despite same-ms creation");
+      // Each session embeds its role in its id and is loadable
+      for (const { session } of sessions) {
+        assert.match(session.id, new RegExp(`-${session.role}$`));
+        assert.ok(findGrillSession(tmp, session.id));
+      }
+    });
+  });
+
+  it("CLI: --multi creates 5 sessions and rejects --role", async () => {
+    await withTmpDir(async (tmp) => {
+      const { result } = await captureStdio(() => grillCli({
+        cwd: tmp,
+        args: ["--multi", "--intent=Add session expiry to admin console"],
+      }));
+      assert.equal(result.exitCode, 0);
+      const { items } = loadGrillSessions(tmp);
+      assert.equal(items.length, 5);
+      const roles = new Set(items.map(s => s.role));
+      assert.deepEqual([...roles].sort(), ["architecture", "product", "qa", "risk", "security"]);
+
+      // --multi + --role is incoherent
+      const conflict = await captureStdio(() => grillCli({
+        cwd: tmp,
+        args: ["--multi", "--role=security", "--intent=anything"],
+      }));
+      assert.equal(conflict.result.exitCode, 2);
+      assert.match(conflict.stderr, /--multi cannot be combined with --role/);
     });
   });
 
