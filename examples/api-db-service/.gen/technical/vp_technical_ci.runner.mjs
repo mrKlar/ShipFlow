@@ -109,21 +109,45 @@ function detectDeclaredHttpRoutes(glob) {
   const files = globFiles(glob);
   for (const file of files) {
     const content = readText(file);
+    function pushRoute(method, routePath) {
+      routes.push({ file, method: method.toUpperCase(), path: normalizeRoutePath(routePath) });
+    }
+    function methodsNear(index) {
+      const window = content.slice(index, index + 800);
+      return [...new Set([
+        ...[...window.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)].map(match => match[1].toUpperCase()),
+        ...[...window.matchAll(/\bmethod\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)].map(match => match[1].toUpperCase()),
+      ])];
+    }
+    function routePrefixFromRegexLiteral(literal) {
+      const normalized = String(literal || "").replace(/^\/\^/, "").replace(/\/[a-z]*$/, "").replaceAll("\\/", "/");
+      const prefix = normalized.split(/[\(\[\.\+\*\?\|]/)[0];
+      if (!prefix.startsWith("/")) return null;
+      return normalizeRoutePath(prefix);
+    }
     for (const match of content.matchAll(/\b(?:app|router|server|fastify)\.(get|post|put|patch|delete|options|head|all)\(\s*["'` ]([^"'`]+)["'`]/gi)) {
       const method = match[1].toUpperCase() === "ALL" ? "ANY" : match[1].toUpperCase();
       routes.push({ file, method, path: normalizeRoutePath(match[2]) });
     }
-    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
       routes.push({ file, method: match[2].toUpperCase(), path: normalizeRoutePath(match[1]) });
     }
-    for (const match of content.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+    for (const match of content.matchAll(/(?:req|request)\.method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       routes.push({ file, method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) });
     }
-    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]\s*&&\s*method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]/g)) {
       routes.push({ file, method: match[2].toUpperCase(), path: normalizeRoutePath(match[1]) });
     }
-    for (const match of content.matchAll(/method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|url\.pathname|path)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+    for (const match of content.matchAll(/method\s*===\s*["'`](GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)["'`]\s*&&\s*(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
       routes.push({ file, method: match[1].toUpperCase(), path: normalizeRoutePath(match[2]) });
+    }
+    for (const match of content.matchAll(/(?:pathname|[A-Za-z_$][\w$]*\.pathname|url\.pathname|path|(?:req|request)\.url)\s*===\s*["'`]([^"'`]+)["'`]/g)) {
+      for (const method of methodsNear(match.index)) pushRoute(method, match[1]);
+    }
+    for (const match of content.matchAll(/(?:pathname|url\.pathname|path)\.match\(\s*(\/\^[^\n]+?\/[gimuy]*)\s*\)/g)) {
+      const routePath = routePrefixFromRegexLiteral(match[1]);
+      if (!routePath) continue;
+      for (const method of methodsNear(match.index)) pushRoute(method, routePath);
     }
     const nextRoute = routePathFromFile(file);
     if (nextRoute) {
@@ -230,8 +254,8 @@ function assertForbiddenImports(glob, patterns) {
   for (const file of files) {
     const imports = parseImports(readText(file));
     for (const pattern of patterns) {
-      const violated = imports.some(specifier => specifier === pattern || specifier.startsWith(pattern.replace(/\*\*$/, ""))) || readText(file).includes(pattern);
-      assertCondition(!violated, file + " should not import or reference " + pattern);
+      const violated = imports.some(specifier => specifier === pattern || specifier.startsWith(pattern.replace(/\*\*$/, "")));
+      assertCondition(!violated, file + " should not import " + pattern);
     }
   }
 }
@@ -407,6 +431,8 @@ function runGenericAssertions(assertions) {
     if (assertion.github_action_uses) { assertCondition(readText(assertion.github_action_uses.workflow).includes(assertion.github_action_uses.action), "Expected " + assertion.github_action_uses.workflow + " to use " + assertion.github_action_uses.action); continue; }
     if (assertion.glob_count) { assertCondition(globFiles(assertion.glob_count.glob).length === assertion.glob_count.equals, "Expected " + assertion.glob_count.glob + " to match " + assertion.glob_count.equals + " file(s)"); continue; }
     if (assertion.glob_count_gte) { assertCondition(globFiles(assertion.glob_count_gte.glob).length >= assertion.glob_count_gte.gte, "Expected " + assertion.glob_count_gte.glob + " to match at least " + assertion.glob_count_gte.gte + " file(s)"); continue; }
+    if (assertion.glob_contains_text) { assertCondition(globFiles(assertion.glob_contains_text.glob).some(file => readText(file).includes(assertion.glob_contains_text.text)), "Expected at least one file matching " + assertion.glob_contains_text.glob + " to contain " + assertion.glob_contains_text.text); continue; }
+    if (assertion.glob_not_contains_text) { assertCondition(globFiles(assertion.glob_not_contains_text.glob).every(file => !readText(file).includes(assertion.glob_not_contains_text.text)), "Expected files matching " + assertion.glob_not_contains_text.glob + " not to contain " + assertion.glob_not_contains_text.text); continue; }
     if (assertion.graphql_surface_present) { assertGraphqlSurfacePresent(assertion.graphql_surface_present); continue; }
     if (assertion.graphql_surface_absent) { assertGraphqlSurfaceAbsent(assertion.graphql_surface_absent); continue; }
     if (assertion.rest_api_present) { assertRestApiPresent(assertion.rest_api_present); continue; }

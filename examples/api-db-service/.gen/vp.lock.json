@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "created_at": "2026-03-09T00:02:59.858Z",
+  "version": 2,
+  "created_at": "2026-05-08T15:26:33.625Z",
   "vp_sha256": "6c1db208cd43d1b236d48d302996345f048ce532eefb3f9bf8518a9eacdc47bf",
   "files": [
     {
@@ -18,6 +18,33 @@
     {
       "path": "vp/technical/ci.yml",
       "sha256": "7696e708b3dfe5f8778773bad97a8f5293bda25a425d2baaafb1f4ec84875593"
+    }
+  ],
+  "generated_sha256": "092a58bf44edf0817c297239982bf33de060470a5d6dd8df40cda8031d90ced8",
+  "generated_files": [
+    {
+      "path": ".gen/manifest.json",
+      "sha256": "a7539e6114fe780910e858ee5b25903ee5fe7becf9af5f4e01382fe004c94410"
+    },
+    {
+      "path": ".gen/playwright.config.mjs",
+      "sha256": "c4859433b8ba4908ed6af1e8bbffc6f19f01b84103589ad12898df57bb52fe9c"
+    },
+    {
+      "path": ".gen/playwright/vp_api_list-users.test.ts",
+      "sha256": "7b31d9108fc1c0b4a4c8381e9f30867b2445a5bbe0c22ca79c2620d75030ba4e"
+    },
+    {
+      "path": ".gen/playwright/vp_db_users-state.test.ts",
+      "sha256": "7988c91f7493d70b50cdd0a18597e6beb607164b64d07ac618a3275d57287f0b"
+    },
+    {
+      "path": ".gen/technical/vp_technical_architecture-boundaries.runner.mjs",
+      "sha256": "8a8ef3dc439a95f93013ca09a457afa382635d683161c419f004724225ba9349"
+    },
+    {
+      "path": ".gen/technical/vp_technical_ci.runner.mjs",
+      "sha256": "fbcfb3c77aae655beea291d74035215d964858a8e9ea1f6066e8db6d33122a56"
     }
   ]
 }

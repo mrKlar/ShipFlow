@@ -47,9 +47,13 @@ function assertJsonSchema(value, schema, at = "$") {
   expect(jsonMatchesSchema(value, schema)).toBe(true);
 }
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;
+
 const REQUEST_SPEC = {"method":"POST","path":"/api/todos","body_json":{"title":"Draft task","completed":false}};
 const MUTATION_REQUEST_SPECS = [{"method":"POST","path":"/api/todos","body_json":{"title":"Draft task__shipflow_mutant__","completed":false}},{"method":"POST","path":"/api/todos/__shipflow_mutant__","body_json":{"title":"Draft task","completed":false}},{"method":"GET","path":"/api/todos","body_json":{"title":"Draft task","completed":false}},{"method":"POST","path":"/api/todos?__shipflow_mutant__=1","body_json":{"title":"Draft task","completed":false}}];
 const MUTATION_STRATEGIES = ["mutated-body-json","mutated-path-segment","mutated-method","path-query"];
+const MUTATION_GUARD = {"mode":"any","required_strategies":[]};
 
 async function sendShipFlowRequest(client, spec) {
   const headers = { ...(spec.headers || {}) };
@@ -62,7 +66,8 @@ async function sendShipFlowRequest(client, spec) {
   if (Object.keys(headers).length > 0) options.headers = headers;
   if (spec.body !== undefined) options.data = spec.body;
   if (spec.body_json !== undefined) options.data = spec.body_json;
-  const url = "http://localhost:3000" + spec.path;
+  options.timeout = shipflowApiTimeoutMs;
+  const url = shipflowBaseUrl + spec.path;
   if (Object.keys(options).length > 0) return client[spec.method.toLowerCase()](url, options);
   return client[spec.method.toLowerCase()](url);
 }
@@ -108,12 +113,23 @@ test("api-post-todos: POST /api/todos creates a todo", async ({ request }) => {
 
 test("api-post-todos: POST /api/todos creates a todo [mutation guard]", async ({ request }) => {
   let mutationGuardKilled = 0;
+  const killedStrategies = [];
   const survivors = [];
   for (let index = 0; index < MUTATION_REQUEST_SPECS.length; index += 1) {
     const res = await sendShipFlowRequest(request, MUTATION_REQUEST_SPECS[index]);
     const payload = await readShipFlowPayload(res);
     const mutationGuardPasses = payload.jsonError ? false : responseMatchesOriginalAssertions(res, payload.rawBody, payload.body);
-    if (mutationGuardPasses) survivors.push(MUTATION_STRATEGIES[index]); else mutationGuardKilled += 1;
+    if (mutationGuardPasses) survivors.push(MUTATION_STRATEGIES[index]);
+    else {
+      killedStrategies.push(MUTATION_STRATEGIES[index]);
+      mutationGuardKilled += 1;
+    }
   }
-  expect(mutationGuardKilled, "Expected at least one mutation to invalidate the original API contract. Survivors: " + survivors.join(", ")).toBeGreaterThan(0);
+  const missingRequiredStrategies = (MUTATION_GUARD.required_strategies || []).filter(strategy => !killedStrategies.includes(strategy));
+  if (MUTATION_GUARD.mode === "all") {
+    expect(survivors, "Expected every API mutation to invalidate the original contract. Survivors: " + survivors.join(", ")).toEqual([]);
+  } else {
+    expect(mutationGuardKilled, "Expected at least one mutation to invalidate the original API contract. Survivors: " + survivors.join(", ")).toBeGreaterThan(0);
+  }
+  expect(missingRequiredStrategies, "Expected required API mutation strategies to be killed. Missing: " + missingRequiredStrategies.join(", ")).toEqual([]);
 });

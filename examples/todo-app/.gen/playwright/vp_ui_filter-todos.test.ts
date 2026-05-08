@@ -17,10 +17,12 @@ function resetShipFlowState(state) {
 }
 
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+
 test("filter-todos: User can filter todos by status", async ({ page }) => {
   resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);\nINSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);"});
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/");
   await page.getByLabel("Filter").selectOption("active");
   await expect(page.getByTestId("todo-item")).toHaveCount(1);
   await expect(page.getByTestId("todo-item-0")).toHaveText("Task two");
@@ -30,8 +32,8 @@ test("filter-todos: User can filter todos by status", async ({ page }) => {
 
 test("filter-todos: User can filter todos by status [mutation guard]", async ({ page }) => {
   resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);\nINSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);"});
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/");
   const mutationGuardPasses = [
     (await page.getByTestId("todo-item").count().catch(() => -1)) === 1,
     (await page.getByTestId("todo-item-0").evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())) === "Task two",

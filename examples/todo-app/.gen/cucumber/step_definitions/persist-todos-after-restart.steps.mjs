@@ -8,6 +8,23 @@ const shipflowCucumberTimeoutMs = Number.parseInt(process.env.SHIPFLOW_CUCUMBER_
 const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;
 setDefaultTimeout(shipflowCucumberTimeoutMs);
 
+import { DatabaseSync } from "node:sqlite";
+
+function resetShipFlowState(state) {
+  if (!state) return;
+  if (state.kind === "sqlite") {
+    const db = new DatabaseSync(state.connection);
+    try {
+      db.exec("PRAGMA busy_timeout = 5000");
+      db.exec(state.reset_sql);
+    } finally {
+      db.close();
+    }
+    return;
+  }
+  throw new Error("Unsupported ShipFlow state kind: " + String(state.kind || "unknown"));
+}
+
 function jsonPath(root, path) {
   if (path === "$") return { exists: true, value: root };
   const parts = String(path).replace(/^\$\.?/, "").match(/[^.[\]]+|\[(\d+)\]/g) || [];
@@ -39,35 +56,6 @@ function shipflowValuesMatch(actual, expected) {
 
 function shipflowArrayIncludes(actual, expected) {
   return Array.isArray(actual) && actual.some(item => shipflowValuesMatch(item, expected));
-}
-
-function jsonMatchesSchema(value, schema) {
-  if (schema.type && jsonType(value) !== schema.type) return false;
-  if (schema.enum && !schema.enum.some(item => JSON.stringify(item) === JSON.stringify(value))) return false;
-  if (schema.required) {
-    if (!(value && typeof value === "object" && !Array.isArray(value))) return false;
-    for (const key of schema.required) {
-      if (!Object.prototype.hasOwnProperty.call(value, key)) return false;
-    }
-  }
-  if (schema.properties) {
-    if (!(value && typeof value === "object" && !Array.isArray(value))) return false;
-    for (const [key, child] of Object.entries(schema.properties)) {
-      if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
-      if (!jsonMatchesSchema(value[key], child)) return false;
-    }
-  }
-  if (schema.items) {
-    if (!Array.isArray(value)) return false;
-    for (const item of value) {
-      if (!jsonMatchesSchema(item, schema.items)) return false;
-    }
-  }
-  return true;
-}
-
-function assertJsonSchema(value, schema, at = "$") {
-  expect(jsonMatchesSchema(value, schema)).toBe(true);
 }
 
 function waitMs(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -443,24 +431,55 @@ async function runBehaviorMutationGuard(world) {
 
 const SCENARIOS = new Map([
   {
-    "title": "behavior-get-api-todos: POST then GET /api/todos exposes the created todo",
+    "title": "behavior-persist-todos-after-restart: Todos persist after an application restart",
     "tags": [],
     "surface": "api",
     "app": {
       "kind": "api",
       "base_url": "http://localhost:3000"
     },
+    "state": {
+      "kind": "sqlite",
+      "connection": "./test.db",
+      "reset_sql": "CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;"
+    },
     "setup": [],
-    "given": [],
-    "when": [
+    "given": [
       {
         "request": {
           "method": "POST",
           "path": "/api/todos",
           "body_json": {
-            "title": "Persisted behavior todo",
+            "title": "Alpha",
             "completed": false
           }
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "path": "/api/todos",
+          "body_json": {
+            "title": "Beta",
+            "completed": false
+          }
+        }
+      },
+      {
+        "request": {
+          "method": "PATCH",
+          "path": "/api/todos/1",
+          "body_json": {
+            "completed": true
+          }
+        }
+      }
+    ],
+    "when": [
+      {
+        "restart_app": {
+          "wait_for_ready_ms": 10000,
+          "wait_after_ms": 200
         }
       },
       {
@@ -490,35 +509,17 @@ const SCENARIOS = new Map([
         "json_array_includes": {
           "path": "$",
           "equals": {
-            "title": "Persisted behavior todo",
-            "completed": false
+            "title": "Alpha",
+            "completed": true
           }
         }
       },
       {
-        "json_schema": {
+        "json_array_includes": {
           "path": "$",
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "title",
-                "completed"
-              ],
-              "properties": {
-                "id": {
-                  "type": "number"
-                },
-                "title": {
-                  "type": "string"
-                },
-                "completed": {
-                  "type": "boolean"
-                }
-              }
-            }
+          "equals": {
+            "title": "Beta",
+            "completed": false
           }
         }
       }
@@ -533,9 +534,34 @@ const SCENARIOS = new Map([
             "method": "POST",
             "path": "/api/todos",
             "body_json": {
-              "title": "Persisted behavior todo",
+              "title": "Alpha",
               "completed": false
             }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/api/todos",
+            "body_json": {
+              "title": "Beta",
+              "completed": false
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/api/todos/1",
+            "body_json": {
+              "completed": true
+            }
+          }
+        },
+        {
+          "restart_app": {
+            "wait_for_ready_ms": 10000,
+            "wait_after_ms": 200
           }
         },
         {
@@ -554,9 +580,34 @@ const SCENARIOS = new Map([
                 "method": "POST",
                 "path": "/api/todos",
                 "body_json": {
-                  "title": "Persisted behavior todo",
+                  "title": "Alpha",
                   "completed": false
                 }
+              }
+            },
+            {
+              "request": {
+                "method": "POST",
+                "path": "/api/todos",
+                "body_json": {
+                  "title": "Beta",
+                  "completed": false
+                }
+              }
+            },
+            {
+              "request": {
+                "method": "PATCH",
+                "path": "/api/todos/1",
+                "body_json": {
+                  "completed": true
+                }
+              }
+            },
+            {
+              "restart_app": {
+                "wait_for_ready_ms": 10000,
+                "wait_after_ms": 200
               }
             },
             {
@@ -575,9 +626,34 @@ const SCENARIOS = new Map([
                 "method": "POST",
                 "path": "/api/todos",
                 "body_json": {
-                  "title": "Persisted behavior todo",
+                  "title": "Alpha",
                   "completed": false
                 }
+              }
+            },
+            {
+              "request": {
+                "method": "POST",
+                "path": "/api/todos",
+                "body_json": {
+                  "title": "Beta",
+                  "completed": false
+                }
+              }
+            },
+            {
+              "request": {
+                "method": "PATCH",
+                "path": "/api/todos/1",
+                "body_json": {
+                  "completed": true
+                }
+              }
+            },
+            {
+              "restart_app": {
+                "wait_for_ready_ms": 10000,
+                "wait_after_ms": 200
               }
             },
             {
@@ -596,9 +672,34 @@ const SCENARIOS = new Map([
                 "method": "POST",
                 "path": "/api/todos",
                 "body_json": {
-                  "title": "Persisted behavior todo",
+                  "title": "Alpha",
                   "completed": false
                 }
+              }
+            },
+            {
+              "request": {
+                "method": "POST",
+                "path": "/api/todos",
+                "body_json": {
+                  "title": "Beta",
+                  "completed": false
+                }
+              }
+            },
+            {
+              "request": {
+                "method": "PATCH",
+                "path": "/api/todos/1",
+                "body_json": {
+                  "completed": true
+                }
+              }
+            },
+            {
+              "restart_app": {
+                "wait_for_ready_ms": 10000,
+                "wait_after_ms": 200
               }
             },
             {

@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "created_at": "2026-03-09T00:02:59.859Z",
+  "version": 2,
+  "created_at": "2026-05-08T15:26:33.696Z",
   "vp_sha256": "eed05f6c24cb6d1324b38b4e7394ef85c20429d603e621f1e75b17d964b38cd0",
   "files": [
     {
@@ -14,6 +14,29 @@
     {
       "path": "vp/technical/headers.yml",
       "sha256": "a518408d6b9168ff12e658f804db0330d579f966b8d209ff01fb4fe91eac6b77"
+    }
+  ],
+  "generated_sha256": "78539f2da2e8cf9e62e5629fb0ef5e16e5b55b6d559103056e78eda712d0f714",
+  "generated_files": [
+    {
+      "path": ".gen/k6/vp_nfr_home-smoke.js",
+      "sha256": "684b507e7625b2bd440f4525ffc8c2ab749bf74aceefdb61b4a76defb3506d24"
+    },
+    {
+      "path": ".gen/manifest.json",
+      "sha256": "f972334bc77649d4da0f5497af07f0fcd0c554de573781a79118422f09e1114a"
+    },
+    {
+      "path": ".gen/playwright.config.mjs",
+      "sha256": "c4859433b8ba4908ed6af1e8bbffc6f19f01b84103589ad12898df57bb52fe9c"
+    },
+    {
+      "path": ".gen/playwright/vp_security_admin-authz.test.ts",
+      "sha256": "402d8f55455586eae62b6bf82a8be037a40e6e673efa141253bdfd339e46644d"
+    },
+    {
+      "path": ".gen/technical/vp_technical_headers.runner.mjs",
+      "sha256": "87f072e3fc8869251c1893d38e332b33fc025cab16f59bc30599741abaea3e4d"
     }
   ]
 }

@@ -79,9 +79,13 @@ function shipflowArrayIncludes(actual, expected) {
   return Array.isArray(actual) && actual.some(item => shipflowValuesMatch(item, expected));
 }
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+const shipflowApiTimeoutMs = Number.parseInt(process.env.SHIPFLOW_API_TIMEOUT_MS || "", 10) || 15000;
+
 const REQUEST_SPEC = {"method":"GET","path":"/api/todos?filter=active"};
 const MUTATION_REQUEST_SPECS = [{"method":"GET","path":"/api/todos/__shipflow_mutant__?filter=active"},{"method":"POST","path":"/api/todos?filter=active"},{"method":"GET","path":"/api/todos?filter=active&__shipflow_mutant__=1"}];
 const MUTATION_STRATEGIES = ["mutated-path-segment","mutated-method","path-query"];
+const MUTATION_GUARD = {"mode":"any","required_strategies":[]};
 
 async function sendShipFlowRequest(client, spec) {
   const headers = { ...(spec.headers || {}) };
@@ -94,7 +98,8 @@ async function sendShipFlowRequest(client, spec) {
   if (Object.keys(headers).length > 0) options.headers = headers;
   if (spec.body !== undefined) options.data = spec.body;
   if (spec.body_json !== undefined) options.data = spec.body_json;
-  const url = "http://localhost:3000" + spec.path;
+  options.timeout = shipflowApiTimeoutMs;
+  const url = shipflowBaseUrl + spec.path;
   if (Object.keys(options).length > 0) return client[spec.method.toLowerCase()](url, options);
   return client[spec.method.toLowerCase()](url);
 }
@@ -140,12 +145,23 @@ test("api-get-todos: GET /api/todos?filter=active returns only active todos", as
 test("api-get-todos: GET /api/todos?filter=active returns only active todos [mutation guard]", async ({ request }) => {
   resetShipFlowState({"kind":"sqlite","connection":"./test.db","reset_sql":"CREATE TABLE IF NOT EXISTS todos (\n  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,\n  completed INTEGER NOT NULL DEFAULT 0\n);\nDELETE FROM todos;\nINSERT INTO todos (id, title, completed) VALUES (1, 'Task one', 1);\nINSERT INTO todos (id, title, completed) VALUES (2, 'Task two', 0);"});
   let mutationGuardKilled = 0;
+  const killedStrategies = [];
   const survivors = [];
   for (let index = 0; index < MUTATION_REQUEST_SPECS.length; index += 1) {
     const res = await sendShipFlowRequest(request, MUTATION_REQUEST_SPECS[index]);
     const payload = await readShipFlowPayload(res);
     const mutationGuardPasses = payload.jsonError ? false : responseMatchesOriginalAssertions(res, payload.rawBody, payload.body);
-    if (mutationGuardPasses) survivors.push(MUTATION_STRATEGIES[index]); else mutationGuardKilled += 1;
+    if (mutationGuardPasses) survivors.push(MUTATION_STRATEGIES[index]);
+    else {
+      killedStrategies.push(MUTATION_STRATEGIES[index]);
+      mutationGuardKilled += 1;
+    }
   }
-  expect(mutationGuardKilled, "Expected at least one mutation to invalidate the original API contract. Survivors: " + survivors.join(", ")).toBeGreaterThan(0);
+  const missingRequiredStrategies = (MUTATION_GUARD.required_strategies || []).filter(strategy => !killedStrategies.includes(strategy));
+  if (MUTATION_GUARD.mode === "all") {
+    expect(survivors, "Expected every API mutation to invalidate the original contract. Survivors: " + survivors.join(", ")).toEqual([]);
+  } else {
+    expect(mutationGuardKilled, "Expected at least one mutation to invalidate the original API contract. Survivors: " + survivors.join(", ")).toBeGreaterThan(0);
+  }
+  expect(missingRequiredStrategies, "Expected required API mutation strategies to be killed. Missing: " + missingRequiredStrategies.join(", ")).toEqual([]);
 });

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "created_at": "2026-03-11T15:10:58.699Z",
+  "created_at": "2026-05-08T15:15:54.486Z",
   "outputs": {
     "ui": {
       "label": "UI",
@@ -18,6 +18,7 @@
           "id": "add-todo",
           "title": "User can add a new todo item",
           "severity": "blocker",
+          "vp_file": "vp/ui/add-todo.yml",
           "file": ".gen/playwright/vp_ui_add-todo.test.ts",
           "companion_files": []
         },
@@ -25,6 +26,7 @@
           "id": "complete-todo",
           "title": "User can mark a todo as complete",
           "severity": "blocker",
+          "vp_file": "vp/ui/complete-todo.yml",
           "file": ".gen/playwright/vp_ui_complete-todo.test.ts",
           "companion_files": []
         },
@@ -32,6 +34,7 @@
           "id": "filter-todos",
           "title": "User can filter todos by status",
           "severity": "blocker",
+          "vp_file": "vp/ui/filter-todos.yml",
           "file": ".gen/playwright/vp_ui_filter-todos.test.ts",
           "companion_files": []
         }
@@ -51,19 +54,32 @@
       "output_kind": "cucumber",
       "output_dir": "cucumber",
       "evidence_file": "behavior-gherkin.json",
-      "count": 1,
+      "count": 2,
       "files": [
         ".gen/cucumber/features/get-api-todos-flow.feature",
-        ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs"
+        ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs",
+        ".gen/cucumber/features/persist-todos-after-restart.feature",
+        ".gen/cucumber/step_definitions/persist-todos-after-restart.steps.mjs"
       ],
       "checks": [
         {
           "id": "behavior-get-api-todos",
           "title": "POST then GET /api/todos exposes the created todo",
           "severity": "blocker",
+          "vp_file": "vp/behavior/get-api-todos-flow.yml",
           "file": ".gen/cucumber/features/get-api-todos-flow.feature",
           "companion_files": [
             ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs"
+          ]
+        },
+        {
+          "id": "behavior-persist-todos-after-restart",
+          "title": "Todos persist after an application restart",
+          "severity": "blocker",
+          "vp_file": "vp/behavior/persist-todos-after-restart.yml",
+          "file": ".gen/cucumber/features/persist-todos-after-restart.feature",
+          "companion_files": [
+            ".gen/cucumber/step_definitions/persist-todos-after-restart.steps.mjs"
           ]
         }
       ]
@@ -93,6 +109,7 @@
           "id": "api-get-todos",
           "title": "GET /api/todos?filter=active returns only active todos",
           "severity": "blocker",
+          "vp_file": "vp/api/get-todos.yml",
           "file": ".gen/playwright/vp_api_get-todos.test.ts",
           "companion_files": []
         },
@@ -100,6 +117,7 @@
           "id": "api-patch-todo-completed",
           "title": "PATCH /api/todos/1 marks a todo complete",
           "severity": "blocker",
+          "vp_file": "vp/api/patch-todo-completed.yml",
           "file": ".gen/playwright/vp_api_patch-todo-completed.test.ts",
           "companion_files": []
         },
@@ -107,6 +125,7 @@
           "id": "api-post-todos",
           "title": "POST /api/todos creates a todo",
           "severity": "blocker",
+          "vp_file": "vp/api/post-todos.yml",
           "file": ".gen/playwright/vp_api_post-todos.test.ts",
           "companion_files": []
         }
@@ -126,6 +145,7 @@
           "id": "db-todos-sqlite-lifecycle",
           "title": "SQLite todos data lifecycle stays observable",
           "severity": "blocker",
+          "vp_file": "vp/db/todos-state.yml",
           "file": ".gen/playwright/vp_db_todos-state.test.ts",
           "companion_files": []
         }
@@ -156,6 +176,7 @@
           "id": "technical-api-protocol",
           "title": "Requested REST protocol stays enforced",
           "severity": "blocker",
+          "vp_file": "vp/technical/api-protocol.yml",
           "file": ".gen/technical/vp_technical_api-protocol.runner.mjs",
           "companion_files": []
         },
@@ -163,6 +184,7 @@
           "id": "technical-framework-stack",
           "title": "Declared technical stack stays consistent",
           "severity": "blocker",
+          "vp_file": "vp/technical/framework-stack.yml",
           "file": ".gen/technical/vp_technical_framework-stack.runner.mjs",
           "companion_files": []
         },
@@ -170,6 +192,7 @@
           "id": "technical-sqlite-runtime",
           "title": "Requested SQLite runtime stays portable",
           "severity": "blocker",
+          "vp_file": "vp/technical/sqlite-runtime.yml",
           "file": ".gen/technical/vp_technical_sqlite-runtime.runner.mjs",
           "companion_files": []
         }
@@ -210,6 +233,16 @@
       {
         "type": "behavior_gherkin",
         "file": ".gen/cucumber/step_definitions/get-api-todos-flow.steps.mjs",
+        "ok": true
+      },
+      {
+        "type": "behavior_gherkin",
+        "file": ".gen/cucumber/features/persist-todos-after-restart.feature",
+        "ok": true
+      },
+      {
+        "type": "behavior_gherkin",
+        "file": ".gen/cucumber/step_definitions/persist-todos-after-restart.steps.mjs",
         "ok": true
       },
       {
@@ -256,8 +289,9 @@
     "smoke_compile": [
       {
         "target": "playwright",
-        "status": "skipped",
-        "reason": "@playwright/test not installed"
+        "status": "ok",
+        "exit_code": 0,
+        "output": "Listing tests:\n  vp_api_get-todos.test.ts:127:1 › api-get-todos: GET /api/todos?filter=active returns only active todos\n  vp_api_get-todos.test.ts:145:1 › api-get-todos: GET /api/todos?filter=active returns only active todos [mutation guard]\n  vp_api_patch-todo-completed.test.ts:113:1 › api-patch-todo-completed: PATCH /api/todos/1 marks a todo complete\n  vp_api_patch-todo-completed.test.ts:132:1 › api-patch-todo-completed: PATCH /api/todos/1 marks a todo complete [mutation guard]\n  vp_api_post-todos.test.ts:96:1 › api-post-todos: POST /api/todos creates a todo\n  vp_api_post-todos.test.ts:114:1 › api-post-todos: POST /api/todos creates a todo [mutation guard]\n  vp_db_todos-state.test.ts:23:1 › db-todos-sqlite-lifecycle: SQLite todos data lifecycle stays observable\n  vp_db_todos-state.test.ts:41:1 › db-todos-sqlite-lifecycle: SQLite todos data lifecycle stays observable [mutation guard]\n  vp_ui_add-todo.test.ts:5:1 › add-todo: User can add a new todo item\n  vp_ui_add-todo.test.ts:15:1 › add-todo: User can add a new todo item [mutation guard]\n  vp_ui_complete-todo.test.ts:5:1 › complete-todo: User can mark a todo as complete\n  vp_ui_complete-todo.test.ts:17:1 › complete-todo: User can mark a todo as complete [mutation guard]\n  vp_ui_filter-todos.test.ts:22:1 › filter-todos: User can filter todos by status\n  vp_ui_filter-todos.test.ts:33:1 › filter-todos: User can filter todos by status [mutation guard]\nTotal: 14 tests in 7 files\n(node:360706) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)"
       }
     ]
   }

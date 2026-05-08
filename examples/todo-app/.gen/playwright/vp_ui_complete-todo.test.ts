@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+const shipflowBaseUrl = process.env.SHIPFLOW_BASE_URL || "http://localhost:3000";
+
 test("complete-todo: User can mark a todo as complete", async ({ page }) => {
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/");
   await page.getByTestId("new-todo-input").fill("Write tests");
   await page.getByRole("button", { name: "Add" }).click();
   await page.waitForTimeout(200);
@@ -13,8 +15,8 @@ test("complete-todo: User can mark a todo as complete", async ({ page }) => {
 });
 
 test("complete-todo: User can mark a todo as complete [mutation guard]", async ({ page }) => {
-  await page.goto("http://localhost:3000");
-  await page.goto("http://localhost:3000/");
+  await page.goto(shipflowBaseUrl);
+  await page.goto(shipflowBaseUrl + "/");
   const mutationGuardPasses = [
     await page.getByTestId("todo-completed-0").isVisible().catch(() => false),
     new RegExp("1 completed").test(await page.getByTestId("completed-count").evaluateAll(nodes => ((nodes[0]?.textContent ?? "")).trim())),
