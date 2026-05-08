@@ -32,6 +32,21 @@ shipflow discover list
 shipflow discover show <id>
 ```
 
+### Promote a proposal into a vp scaffold
+
+```bash
+# By kind+target (precise):
+shipflow discover promote <session-id> --kind=ui_route --target=/login
+
+# By index (when there's only one of that kind):
+shipflow discover promote <session-id> --index=0
+
+# Single match by kind:
+shipflow discover promote <session-id> --kind=auth_surface
+```
+
+The scaffolded file lands at the proposal's `suggested_path` (e.g. `vp/ui/regression-login.yml`). It is intentionally a minimal, schema-valid skeleton with **explicit TODO markers** in titles and assertions — `shipflow critique` will flag those via `critique.placeholder_present`, preventing approval until the user replaces them with real assertions for the observed behavior.
+
 ## What it proposes
 
 - **ui_route** — for each detected UI route, a `vp/ui/regression-<slug>.yml` that locks rendering and core selectors.
