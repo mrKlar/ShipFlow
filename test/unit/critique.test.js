@@ -2,18 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import { runCritique } from "../../lib/critique.js";
 import { createDecision, linkDecisionImpact } from "../../lib/decisions.js";
+import { withTmpDir as tmpDir } from "../util/tmp.js";
 
-function withTmpDir(fn) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-critique-"));
-  try {
-    fn(tmpDir);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-}
+const withTmpDir = (fn) => tmpDir("shipflow-critique", fn);
 
 function writeUiCheck(tmp, file, body) {
   const dir = path.dirname(path.join(tmp, file));

@@ -2,7 +2,6 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import {
   loadGovernance,
   writeDefaultGovernance,
@@ -14,37 +13,10 @@ import { createDecision, linkDecisionImpact } from "../../lib/decisions.js";
 import { createGrillSession } from "../../lib/grill.js";
 import { approvePack } from "../../lib/approvals.js";
 import { createReview } from "../../lib/reviews.js";
+import { withTmpDirAsync } from "../util/tmp.js";
+import { captureStdio } from "../util/stdio.js";
 
-async function withTmpDir(fn) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-governance-"));
-  try {
-    return await fn(tmpDir);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-}
-
-function captureStdio(fn) {
-  const out = [];
-  const err = [];
-  const origStdout = process.stdout.write.bind(process.stdout);
-  const origStderr = process.stderr.write.bind(process.stderr);
-  const origLog = console.log;
-  const origErrLog = console.error;
-  process.stdout.write = (chunk) => { out.push(String(chunk)); return true; };
-  process.stderr.write = (chunk) => { err.push(String(chunk)); return true; };
-  console.log = (...args) => { out.push(args.join(" ") + "\n"); };
-  console.error = (...args) => { err.push(args.join(" ") + "\n"); };
-  try {
-    const result = fn();
-    return { result, stdout: out.join(""), stderr: err.join("") };
-  } finally {
-    process.stdout.write = origStdout;
-    process.stderr.write = origStderr;
-    console.log = origLog;
-    console.error = origErrLog;
-  }
-}
+const withTmpDir = (fn) => withTmpDirAsync("shipflow-governance", fn);
 
 function writeGovernance(tmp, body) {
   fs.mkdirSync(path.dirname(governanceFile(tmp)), { recursive: true });

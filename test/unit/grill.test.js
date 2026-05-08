@@ -2,7 +2,6 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import {
   createGrillSession,
   loadGrillSessions,
@@ -15,41 +14,10 @@ import {
   GRILL_ROLES,
 } from "../../lib/grill.js";
 import { loadDecisions } from "../../lib/decisions.js";
+import { withTmpDirAsync } from "../util/tmp.js";
+import { captureStdio } from "../util/stdio.js";
 
-async function withTmpDir(fn) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shipflow-grill-"));
-  try {
-    return await fn(tmpDir);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-}
-
-function captureStdio(fn) {
-  const out = [];
-  const err = [];
-  const origStdout = process.stdout.write.bind(process.stdout);
-  const origStderr = process.stderr.write.bind(process.stderr);
-  const origLog = console.log;
-  const origErrLog = console.error;
-  process.stdout.write = (chunk) => { out.push(String(chunk)); return true; };
-  process.stderr.write = (chunk) => { err.push(String(chunk)); return true; };
-  console.log = (...args) => { out.push(args.join(" ") + "\n"); };
-  console.error = (...args) => { err.push(args.join(" ") + "\n"); };
-  return Promise.resolve(fn()).then(result => {
-    process.stdout.write = origStdout;
-    process.stderr.write = origStderr;
-    console.log = origLog;
-    console.error = origErrLog;
-    return { result, stdout: out.join(""), stderr: err.join("") };
-  }, err => {
-    process.stdout.write = origStdout;
-    process.stderr.write = origStderr;
-    console.log = origLog;
-    console.error = origErrLog;
-    throw err;
-  });
-}
+const withTmpDir = (fn) => withTmpDirAsync("shipflow-grill", fn);
 
 describe("grill", () => {
   it("buildLocalGrillTemplate returns at least 3 questions and 1 finding", () => {
