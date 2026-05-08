@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gen } from "../../lib/gen.js";
+import { buildTrace } from "../../lib/trace.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.resolve(__dirname, "../fixtures");
@@ -198,6 +199,38 @@ describe("gen integration — full cycle on test fixtures", () => {
 
     assert.equal(fs.existsSync(stalePw), false);
     assert.equal(fs.existsSync(staleK6), false);
+  });
+
+  it("manifest records vp_file for each generated check", () => {
+    const manifestPath = path.join(genDir, "manifest.json");
+    assert.ok(fs.existsSync(manifestPath));
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    let totalChecks = 0;
+    for (const [, group] of Object.entries(manifest.outputs || {})) {
+      if (!group || !Array.isArray(group.checks)) continue;
+      for (const check of group.checks) {
+        totalChecks += 1;
+        assert.ok(check.vp_file, `${check.id} must record its source vp_file`);
+        assert.match(check.vp_file, /^vp\//,
+          `vp_file for ${check.id} must be relative to cwd, got ${check.vp_file}`);
+      }
+    }
+    assert.ok(totalChecks > 0, "manifest must have at least one generated check");
+  });
+
+  it("buildTrace populates the generated column for each vp file", () => {
+    const trace = buildTrace(fixturesDir);
+    // Every vp file with at least one playwright/cucumber/k6/etc.
+    // generated artifact should have a non-empty generated[] in its row.
+    const rowsWithGenerated = trace.rows.filter(r => r.generated.length > 0);
+    assert.ok(rowsWithGenerated.length > 0,
+      "at least one vp row must show its generated artifacts");
+    for (const r of rowsWithGenerated) {
+      for (const g of r.generated) {
+        assert.ok(g.path, "generated entry must have a path");
+        assert.match(g.path, /^\.gen\//, "generated path must point under .gen/");
+      }
+    }
   });
 });
 
