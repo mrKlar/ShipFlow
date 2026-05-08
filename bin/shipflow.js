@@ -59,8 +59,9 @@ Advanced / debug:
   shipflow run                 Legacy alias for shipflow implement
 
 Setup:
-  shipflow init [--claude|--codex|--gemini|--kiro|--all]
-                               Set up shared files plus active or detected platform config
+  shipflow init [--claude|--codex|--gemini|--kiro|--all] [--github-action]
+                               Set up shared files plus active or detected platform config.
+                               --github-action also scaffolds .github/workflows/shipflow.yml.
 
 Flags:
   --verbose, -v        Show detailed output
@@ -201,7 +202,11 @@ Exit codes:
     if (flags.has("--gemini")) platforms.push("gemini");
     if (flags.has("--kiro")) platforms.push("kiro");
     if (platforms.length === 0) platforms.push(...recommendedPlatforms(process.cwd()));
-    init({ cwd: process.cwd(), platforms: [...new Set(platforms)] });
+    init({
+      cwd: process.cwd(),
+      platforms: [...new Set(platforms)],
+      githubAction: flags.has("--github-action"),
+    });
     return;
   }
 

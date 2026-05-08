@@ -1,0 +1,77 @@
+# ShipFlow PR checks — copy this file to .github/workflows/shipflow.yml
+# in your project. It runs the verification-pack quality gates on every
+# pull request and posts (or updates) a trace comment with the audit chain.
+#
+# Required permissions: pull-requests: write (for the trace comment).
+
+name: ShipFlow PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  shipflow:
+    name: ShipFlow verification gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install ShipFlow
+        # Pin to a published version for reproducibility, e.g.
+        #   npm install -g shipflow-framework@0.3.0
+        # Or install from a workflow artifact / fork.
+        run: npm install -g shipflow-framework
+
+      # YAML well-formedness — fast, cheap, fails first.
+      - name: shipflow lint
+        run: shipflow lint
+
+      # Cognitive quality gate. Errors (placeholders, missing asserts) ALWAYS
+      # fail. The threshold catches happy-path-only packs even when no error
+      # is present. Tune the value to your team's bar.
+      - name: shipflow critique --threshold=70
+        run: shipflow critique --threshold=70
+
+      # Optional: enforce the org-level governance policy. Skipped silently
+      # when .shipflow/governance.yml is absent.
+      - name: shipflow governance check
+        if: hashFiles('.shipflow/governance.yml') != ''
+        run: shipflow governance check
+
+      # Render the PR-friendly trace. The marker line on top is what lets
+      # the next run find and replace the prior ShipFlow comment instead
+      # of stacking duplicates.
+      - name: Render trace comment
+        id: trace
+        run: |
+          {
+            echo '<!-- shipflow-trace-marker -->'
+            shipflow trace --pr-comment
+          } > /tmp/shipflow-trace.md
+
+      - name: Find existing ShipFlow comment
+        uses: peter-evans/find-comment@v3
+        id: existing
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- shipflow-trace-marker -->'
+
+      - name: Create or update PR comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          # Empty when no comment was found -> create. Otherwise -> update.
+          comment-id: ${{ steps.existing.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: /tmp/shipflow-trace.md
+          edit-mode: replace

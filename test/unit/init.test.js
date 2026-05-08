@@ -312,6 +312,25 @@ describe("init", () => {
     });
   });
 
+  it("--github-action scaffolds .github/workflows/shipflow.yml", () => {
+    withTmpDir(tmpDir => {
+      init({ cwd: tmpDir, platforms: ["claude"], githubAction: true });
+      const workflowPath = path.join(tmpDir, ".github", "workflows", "shipflow.yml");
+      assert.ok(fs.existsSync(workflowPath));
+      const body = fs.readFileSync(workflowPath, "utf-8");
+      assert.match(body, /shipflow critique --threshold/);
+      assert.match(body, /shipflow trace --pr-comment/);
+      assert.match(body, /shipflow-trace-marker/);
+    });
+  });
+
+  it("init without --github-action does NOT create the workflow file", () => {
+    withTmpDir(tmpDir => {
+      init({ cwd: tmpDir, platforms: ["claude"] });
+      assert.equal(fs.existsSync(path.join(tmpDir, ".github", "workflows", "shipflow.yml")), false);
+    });
+  });
+
   it("templates/codex-rules.rules carries no developer username — uses __SHIPFLOW_HOME__ placeholder only", () => {
     // The template ships in the npm package and gets copied to user
     // machines. Any hardcoded developer home path (e.g. /home/<dev>/...)
