@@ -2,7 +2,7 @@
   "name": "shipflow-framework",
   "private": false,
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "files": [
     ".claude-plugin/",
     "bin/",
@@ -17,6 +17,7 @@
     "templates/",
     "install.sh",
     "uninstall.sh",
+    "CHANGELOG.md",
     "README.md"
   ],
   "bin": {

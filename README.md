@@ -87,6 +87,7 @@ ShipFlow can lock UI rendering + visual baselines, end-to-end behavior, REST/Gra
 - [Verification Pack reference](./docs/VERIFICATION-PACK.md) — pack structure, substrate, generated outputs, execution
 - [Scientific Foundations](./docs/SCIENTIFIC-FOUNDATIONS.md) — the theory behind understanding-to-verification-first
 - [Scaffold Plugins](./docs/SCAFFOLD-PLUGINS.md) — package & contribute deterministic foundations
+- [Changelog](./CHANGELOG.md) — what's new in each release
 
 ## Requirements
 
