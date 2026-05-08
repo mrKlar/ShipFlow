@@ -23,6 +23,204 @@ vp/**/*.yml           →  shipflow critique                     (cognitive qual
 
 The files you define and edit live under `vp/`, `.shipflow/slices/`, and `.shipflow/` (decisions, grill, reviews, governance). Generated artifacts and evidence are reproducible.
 
+## Walkthrough — Understanding-to-Verification in 10 Minutes
+
+This walkthrough produces a real, reviewable verification pack for one feature: **"admin session expires after 30 minutes of inactivity"**. Every block below is the actual command and its actual output. Run it yourself in an empty directory after `shipflow init` to follow along.
+
+### 1. Seed the verifications you want to enforce
+
+Two `vp/` files describe the user-visible behavior:
+
+```yaml
+# vp/security/session-timeout.yml
+id: session-timeout
+title: Admin session rejects stale cookies after 30 minutes
+severity: blocker
+app:
+  kind: security
+  base_url: http://localhost:3000
+request:
+  method: GET
+  path: /api/admin/me
+  headers:
+    Cookie: "session=stale-after-31m"
+assert:
+  - status: 401
+  - body_not_contains: "stack trace"
+```
+
+```yaml
+# vp/ui/session-expired-modal.yml
+id: session-expired-modal
+title: Expired session shows the re-login modal
+severity: blocker
+app:
+  kind: web
+  base_url: http://localhost:3000
+flow:
+  - open: /admin
+assert:
+  - text_equals:
+      testid: session-expired-message
+      equals: "Your session expired. Please sign in again."
+```
+
+These are intentionally narrow contracts. They will be the tests the AI implementation must pass.
+
+### 2. Grill the intent (sensemaking before drafting)
+
+Before approving anything, surface what the team has not yet agreed on. The security lens is the right starting point here:
+
+```
+$ shipflow grill "Admin session expires after 30 minutes of inactivity" --role=security
+Grill session created: admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-...
+  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...md
+  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...json
+  (offline template — re-run with --ai to ask the configured provider)
+
+  5 question(s), 1 finding(s), 0 proposed decision(s)
+```
+
+The markdown file walks the security role's framing questions ("What is the trust boundary?", "What sensitive data flows in/out?", "What is the abuse case?"). Open it with the user and capture answers inline. With `--ai` and a configured provider, the same flow produces concrete proposed decisions.
+
+### 3. Record the durable decision
+
+Once the team agrees, bind the decision to the verifications it enforces:
+
+```
+$ shipflow decision new \
+    --id=session-inactivity-30m \
+    --type=security \
+    --title="30-minute admin session inactivity timeout" \
+    --question="How long should an admin session persist without activity?" \
+    --decision="Expire after 30 minutes." \
+    --rationale="PCI/SOC2 baseline + matches existing finance console policy." \
+    --source=grill \
+    --source-ref=admin-session-expires-after-30-minutes-of-inactivity-... \
+    --impacts=vp/security/session-timeout.yml,vp/ui/session-expired-modal.yml
+Decision recorded: session-inactivity-30m
+  .shipflow/decisions/0001-session-inactivity-30m.yml
+```
+
+The audit trail now walks: grill session → decision → vp file. Future readers can answer "why is this 30 minutes?" without asking anyone.
+
+### 4. Group the work into a vertical slice
+
+A slice ties the user-visible outcome to the substrate (decisions, grill, vp) and later to the evidence:
+
+```
+$ shipflow slice new \
+    --id=session-expiry \
+    --goal="Admin user is safely signed out after 30 idle minutes and shown a clear re-login prompt." \
+    --status=planned \
+    --vp=vp/security/session-timeout.yml,vp/ui/session-expired-modal.yml \
+    --decision=session-inactivity-30m \
+    --grill=admin-session-expires-after-30-minutes-of-inactivity-...
+Slice created: session-expiry
+  .shipflow/slices/session-expiry.yml
+```
+
+`shipflow slice link` validates that referenced decisions and grill sessions actually exist; missing ids fail loudly.
+
+### 5. Critique the cognitive quality
+
+Lint says the YAML is well-formed. Critique says whether the pack could pass green and still ship the wrong outcome. With a CI threshold:
+
+```
+$ shipflow critique --threshold=85
+Verification Pack Critique
+  Score:                100/100 (strong)
+  Checks:               2
+  Negative-case checks: 2
+  Decision-linked:      2/2 (100%)
+  Decisions total:      1
+  Errors / warnings:    0 / 1
+
+Findings:
+  [warn] vp/security/ critique.security_without_policy: Pack has 1 security verification(s) but no vp/policy/*.rego gate. Consider adding a policy gate for sensitive behavior.
+
+Threshold: 85 — PASS (score 100)
+```
+
+`--threshold=85` exits 1 below 85, suitable as a CI gate. Errors (placeholders left in YAML, etc.) always fail regardless of the threshold.
+
+### 6. Approve the pack
+
+A reviewer signs the current pack hash. Approval is sha256-bound: any later change to `vp/**` invalidates it.
+
+```
+$ SHIPFLOW_APPROVER=nic shipflow approve-pack --role=architect --notes="Reviewed with security; 30-min idle is finance-policy default"
+Pack approved: 2026-05-08-...-architect
+  by nic (architect) @ 2026-05-08T...
+  pack sha: 30f0fbbb2abff505...
+  .shipflow/approvals/2026-05-08-...-architect.json
+```
+
+When `shipflow.json` sets `impl.requirePackApproval: true` (or `SHIPFLOW_REQUIRE_APPROVAL=1`), `shipflow implement` refuses to start without an active approval.
+
+### 7. Render the audit trail for a PR
+
+`--pr-comment` produces a compact, action-oriented markdown block ready for `gh pr comment`:
+
+```
+$ shipflow trace --pr-comment
+### ✅ ShipFlow trace
+
+**Pack:** `30f0fbbb2abf…`
+**Approval:** **nic** (architect, 2026-05-08T...)
+
+**VP files:** 2 — 2 linked to a decision, 2 grouped in a slice
+**Open artifact reviews:** 0
+
+✅ **No outstanding actions before merge.**
+
+<details><summary>VP coverage detail</summary>
+
+| VP file | Decisions | Slice | Open reviews |
+| --- | --- | --- | --- |
+| `vp/security/session-timeout.yml` | `session-inactivity-30m` | `session-expiry` | 0 |
+| `vp/ui/session-expired-modal.yml` | `session-inactivity-30m` | `session-expiry` | 0 |
+
+</details>
+```
+
+If anything is missing — pack not approved, vp files without decisions, open reviews, orphans — the `✅` becomes `⚠️` and the action list spells out exactly what to do before merging. Pipe it to `gh pr comment <pr> -F -` from CI.
+
+### 8. (Optional) Lock policy at the org level
+
+When the team is ready, scaffold the governance policy and tighten it incrementally:
+
+```
+$ shipflow governance init
+Wrote .shipflow/governance.yml
+$ shipflow governance check
+Governance check
+  policy: .shipflow/governance.yml
+  status: PASS
+  findings: 0 (0 error, 0 warn)
+```
+
+Edit `.shipflow/governance.yml` to require approver roles, mandate negative cases, forbid orphan decisions, etc. The check is suitable as a CI gate alongside `critique --threshold`.
+
+### Where the substrate lives
+
+After this walkthrough, the project tree contains:
+
+```
+vp/
+├── security/session-timeout.yml
+└── ui/session-expired-modal.yml
+
+.shipflow/
+├── grill/admin-session-...-{md,json}        # grill transcript + structured findings
+├── decisions/0001-session-inactivity-30m.yml # durable decision log
+├── slices/session-expiry.yml                # vertical slice tying it together
+├── approvals/2026-05-08-...-architect.json   # signed pack approval
+└── governance.yml                            # org policy (if you ran `governance init`)
+```
+
+Everything except `.shipflow/runtime/`, `.shipflow/draft-session.json`, and a couple of other runtime files is committed to git by default. The decision log, slices, grill transcripts, approvals, and reviews are part of the durable history of the project — that is what makes them auditable.
+
 ## What ShipFlow Can Lock
 
 ShipFlow is built to define the finished state in executable terms. In practice, that means the pack can lock:
