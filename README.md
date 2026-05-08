@@ -61,11 +61,15 @@ ShipFlow also understands the shape of the product it is drafting for. It can pr
 
 ## How It Works
 
-1. Define what must be true when the work is done.
-2. Turn that into a verification pack under `vp/`.
-3. Let ShipFlow generate real tests and runners.
-4. Let ShipFlow install a deterministic project foundation for the supported stack when the repo is still empty or a preset is declared.
-5. Let ShipFlow drive implementation until verification is green.
+1. **Grill the intent** — `shipflow grill --ai --role=...` runs an AI-augmented Three-Amigos session and produces a transcript of questions, ambiguities, edge cases, and assumptions for the team to walk through.
+2. **Capture the durable decisions** — `shipflow decision new` records each non-obvious call (with question, decision, rationale, source) into `.shipflow/decisions/`.
+3. **Generate the verification pack from the substrate** — `shipflow draft --ai --write` reads the grill transcripts and decisions and produces narrow vp files. **You do not hand-author YAML.** Tightening — not authoring — is the human job.
+4. **Critique + approve** — `shipflow critique` scores cognitive quality (negative cases, decision linkage, vague titles). `shipflow approve-pack` records a sha256-bound human signoff.
+5. **ShipFlow generates real tests and runners** from the approved pack.
+6. **Optional**: ShipFlow can install a deterministic project foundation for the supported stack on a greenfield repo.
+7. **ShipFlow drives implementation** until verification is green.
+
+The verification pack is **never seeded by hand**. It is the executable capture of validated understanding — generated *after* the substrate that justifies it exists.
 
 That orchestration is centralized on purpose. The loop, the managed local runtime, and the acceptance decision all live in ShipFlow itself. Playwright, Cucumber, k6, and the technical/domain backends are execution backends, not the owners of completion.
 
@@ -187,17 +191,17 @@ Initialize ShipFlow in your project:
 shipflow init [--claude|--codex|--gemini|--kiro|--all]
 ```
 
-Then use the normal flow:
+Then use the normal flow. **You never hand-author the verification pack** — it is generated from the grill+decision substrate after the team has aligned.
 
-1. **Grill the intent** — `shipflow grill --ai --role=<product|architecture|qa|security|risk> --intent="…"` exposes ambiguities, edge cases, and assumptions before any YAML is written. Promote outcomes to the decision log with `shipflow grill promote`.
-2. **Capture decisions** — `shipflow decision new` (or `link`) binds each constraint to its question, decision, rationale, and source. The pack drifts the moment a constraint exists without a decision behind it.
-3. **Draft and finalize the verification pack.** Slices group intent + decisions + vp + evidence (`shipflow slice new`).
-4. **Critique** the cognitive quality of the pack — `shipflow critique` flags happy-path-only, missing decision links, vague titles, placeholders.
-5. **Approve** the pack — `shipflow approve-pack` records the human signoff against the current pack hash. Optional gating via `impl.requirePackApproval` makes `implement` refuse to run without it.
-6. **Generate** the runnable artifacts.
-7. Optionally apply or review the deterministic scaffold.
-8. **Implement** with the multi-agent loop.
-9. **Trace** the audit trail — `shipflow trace --markdown` walks intent → grill → decisions → vp → tests → evidence → approval, suitable for PR descriptions.
+1. **Grill the intent** — `shipflow grill --ai --role=<product|architecture|qa|security|risk> --intent="…"` (or `--multi` for all five lenses at once) surfaces ambiguities, edge cases, and assumptions before any YAML exists. Walk the transcript with the user, capture answers, surface findings.
+2. **Capture decisions** — `shipflow decision new` (or `shipflow grill promote` from a session) records each non-obvious call as a durable decision with question/decision/rationale/source.
+3. **Generate the verification pack** — `shipflow draft --ai --write` (or `/shipflow:draft` from your AI CLI) reads the grill transcripts and decisions and proposes narrow `vp/**` files that enforce them. Your job is to **review and tighten**, not to write the YAML.
+4. **Bind decisions to the generated vp files** — `shipflow decision link <id> --vp=<path>`. `shipflow trace` then joins grill → decision → vp automatically.
+5. **Group the work into a slice** — `shipflow slice new` ties intent + decisions + vp + (later) evidence into one user-visible outcome.
+6. **Critique** the cognitive quality of the pack — `shipflow critique --threshold=N` flags happy-path-only, missing decision links, vague titles, placeholders. CI-suitable.
+7. **Approve** the pack — `shipflow approve-pack` records the human signoff against the current pack hash. Optional gating via `impl.requirePackApproval` makes `implement` refuse to run without it.
+8. **Generate, scaffold (optional), implement** — the runnable tests and the deterministic foundation come from the approved pack; `shipflow implement` drives the multi-agent loop until verification is green.
+9. **Trace** the audit trail — `shipflow trace --markdown` (or `--pr-comment`) walks intent → grill → decisions → vp → tests → evidence → approval, suitable for PR descriptions.
 
 Brownfield: `shipflow discover` scans the repo and proposes regression VPs for existing surfaces, so refactors cannot silently change behavior the team relied on.
 

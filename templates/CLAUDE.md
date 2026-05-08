@@ -12,9 +12,12 @@ Before drafting any YAML, run a sensemaking pass:
 - Promote agreed-upon outcomes with `shipflow grill promote <session-id> --decision=<id>`. The decision lands in `.shipflow/decisions/<id>.yml` with `source: grill` and `source_ref: <session-id>`.
 - Use `shipflow decision new` / `shipflow decision link` to bind every non-obvious constraint to its question, decision, rationale, and the vp files it impacts.
 
-Then draft the pack in `vp/` — YAML files describing what the app must do.
-Use `shipflow draft` to propose, refine, and finalize candidates into `vp/`.
-Group user-visible work into slices (`shipflow slice new --id=... --goal="..."`), linking the slice to its decisions, grill sessions, and vp files.
+Then **generate** the pack from that substrate — never hand-author the YAML. Run `shipflow draft --ai --write "<intent>"` (or `/shipflow:draft`) which reads the grill transcripts and decisions and proposes narrow `vp/**/*.yml` files. Your job on the proposed files is **review and tighten**, not author from scratch:
+- read each generated file with the user; if a proposal is wrong, correct it; if it is missing a negative case, add one; if the team disagrees, push back to the grill before the constraint is approved.
+- `shipflow decision link <id> --vp=<generated-path>` binds each new vp file to the decision that justifies it.
+- Group user-visible work into slices (`shipflow slice new --id=... --goal="..."`), linking the slice to its decisions, grill sessions, and the generated vp files.
+
+If the user asks you to write a vp file directly, push back: send them through grill+decision first, then run draft. Hand-authored YAML without the substrate is the failure mode this framework prevents.
 
 For brownfield projects, run `shipflow discover` first; it scans existing UI routes, API endpoints, DB tables, auth/security signals, and technical artifacts and proposes regression VPs that lock current behavior before refactors change it.
 Treat deterministic ShipFlow starters as archetype-level base constraints: base stack, protocol, architecture, security, delivery, and other scaffold-defined boundaries. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.

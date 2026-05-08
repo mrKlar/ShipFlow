@@ -25,14 +25,76 @@ The files you define and edit live under `vp/`, `.shipflow/slices/`, and `.shipf
 
 ## Walkthrough — Understanding-to-Verification in 10 Minutes
 
-This walkthrough produces a real, reviewable verification pack for one feature: **"admin session expires after 30 minutes of inactivity"**. Every block below is the actual command and its actual output. Run it yourself in an empty directory after `shipflow init` to follow along.
+This walkthrough produces a real, reviewable verification pack for one feature: **"admin session expires after 30 minutes of inactivity"**. Run it yourself in an empty directory after `shipflow init` to follow along.
 
-### 1. Seed the verifications you want to enforce
+**You will not write any YAML by hand.** That is the whole point. The verification pack is generated *after* the team's understanding has been captured as grill transcripts and decisions. Hand-authoring a vp file before that substrate exists is the failure mode this framework is built to prevent.
 
-Two `vp/` files describe the user-visible behavior:
+### 1. Grill the intent (sensemaking BEFORE any constraint is written)
+
+```
+$ shipflow grill --ai --role=security --intent="Admin session expires after 30 minutes of inactivity"
+Grill session created: admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-...
+  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...md
+  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...json
+
+  5 question(s), 1 finding(s), 0 proposed decision(s)
+```
+
+The markdown transcript walks the security role's framing questions ("What is the trust boundary?", "What sensitive data flows in/out?", "What is the abuse case?", "What policy regime applies?"). Open it with the user, capture answers inline, surface findings the team did not realize they had assumed.
+
+For triangulation, run the same intent through every specialist lens at once:
+
+```
+$ shipflow grill --multi --ai --intent="Admin session expires after 30 minutes of inactivity"
+Multi-grill: 5 session(s) created across product, architecture, qa, security, risk
+```
+
+### 2. Capture the durable decisions
+
+Each non-obvious call the team makes during the grill becomes a decision in `.shipflow/decisions/`. Promote a proposed decision from a grill session, or record one directly:
+
+```
+$ shipflow decision new \
+    --id=session-inactivity-30m \
+    --type=security \
+    --title="30-minute admin session inactivity timeout" \
+    --question="How long should an admin session persist without activity?" \
+    --decision="Expire after 30 minutes." \
+    --rationale="PCI/SOC2 baseline + matches existing finance console policy." \
+    --source=grill \
+    --source-ref=admin-session-expires-after-30-minutes-of-inactivity-...
+
+Decision recorded: session-inactivity-30m
+  .shipflow/decisions/0001-session-inactivity-30m.yml
+```
+
+The decision is now durable: a future reviewer can answer "why is this 30 minutes?" without asking anyone.
+
+### 3. Generate the verification pack from the substrate
+
+This is the step that materializes YAML. **You do not hand-author it.** `shipflow draft` reads the intent, the grill transcript(s), the decisions you captured, and proposes narrow vp files that enforce them. Run it with `--ai --write`, or invoke `/shipflow:draft` from your AI CLI (Claude Code, Codex, Gemini, Kiro) which wraps the same loop:
+
+```
+$ shipflow draft --ai --write "Admin session expires after 30 minutes of inactivity, with a clear re-login prompt on the expired-session modal"
+
+ShipFlow Draft
+Requested scope: Admin session expires after 30 minutes of inactivity...
+
+Wrote:
+  vp/security/session-timeout.yml
+  vp/ui/session-expired-modal.yml
+
+Proposal validation:
+  Valid: 2
+  Invalid: 0
+```
+
+The agent decides the right verification types, picks stable selectors, names the assertions, references the decision in the file. Open the generated files and review them with the user. **Tightening — not authoring — is your job.** If a proposal is wrong, correct it; if it's missing a negative case, edit it; if the team disagrees, push back to the grill.
+
+For example, the agent will produce something like:
 
 ```yaml
-# vp/security/session-timeout.yml
+# vp/security/session-timeout.yml — generated, not hand-written
 id: session-timeout
 title: Admin session rejects stale cookies after 30 minutes
 severity: blocker
@@ -50,9 +112,9 @@ assert:
 ```
 
 ```yaml
-# vp/ui/session-expired-modal.yml
+# vp/ui/session-expired-modal.yml — generated, not hand-written
 id: session-expired-modal
-title: Expired session shows the re-login modal
+title: Expired session shows the re-login modal on /admin
 severity: blocker
 app:
   kind: web
@@ -65,48 +127,22 @@ assert:
       equals: "Your session expired. Please sign in again."
 ```
 
-These are intentionally narrow contracts. They will be the tests the AI implementation must pass.
+These are narrow contracts the AI implementation will have to pass. They came from the substrate, not from you typing YAML.
 
-### 2. Grill the intent (sensemaking before drafting)
+### 4. Bind the decision to the generated files
 
-Before approving anything, surface what the team has not yet agreed on. The security lens is the right starting point here:
-
-```
-$ shipflow grill "Admin session expires after 30 minutes of inactivity" --role=security
-Grill session created: admin-session-expires-after-30-minutes-of-inactivity-2026-05-08-...
-  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...md
-  .shipflow/grill/admin-session-expires-after-30-minutes-of-inactivity-...json
-  (offline template — re-run with --ai to ask the configured provider)
-
-  5 question(s), 1 finding(s), 0 proposed decision(s)
-```
-
-The markdown file walks the security role's framing questions ("What is the trust boundary?", "What sensitive data flows in/out?", "What is the abuse case?"). Open it with the user and capture answers inline. With `--ai` and a configured provider, the same flow produces concrete proposed decisions.
-
-### 3. Record the durable decision
-
-Once the team agrees, bind the decision to the verifications it enforces:
+Once the agent has written the vp files, link the decision to the surfaces it actually enforces (or use `shipflow grill promote --decision=...` which can do this in one step):
 
 ```
-$ shipflow decision new \
-    --id=session-inactivity-30m \
-    --type=security \
-    --title="30-minute admin session inactivity timeout" \
-    --question="How long should an admin session persist without activity?" \
-    --decision="Expire after 30 minutes." \
-    --rationale="PCI/SOC2 baseline + matches existing finance console policy." \
-    --source=grill \
-    --source-ref=admin-session-expires-after-30-minutes-of-inactivity-... \
-    --impacts=vp/security/session-timeout.yml,vp/ui/session-expired-modal.yml
-Decision recorded: session-inactivity-30m
-  .shipflow/decisions/0001-session-inactivity-30m.yml
+$ shipflow decision link session-inactivity-30m --vp=vp/security/session-timeout.yml
+$ shipflow decision link session-inactivity-30m --vp=vp/ui/session-expired-modal.yml
 ```
 
-The audit trail now walks: grill session → decision → vp file. Future readers can answer "why is this 30 minutes?" without asking anyone.
+Now `shipflow trace` can join the grill transcript → decision → both vp files automatically.
 
-### 4. Group the work into a vertical slice
+### 5. Group the work into a vertical slice
 
-A slice ties the user-visible outcome to the substrate (decisions, grill, vp) and later to the evidence:
+A slice ties the user-visible outcome to the substrate and later to the evidence:
 
 ```
 $ shipflow slice new \
@@ -116,15 +152,16 @@ $ shipflow slice new \
     --vp=vp/security/session-timeout.yml,vp/ui/session-expired-modal.yml \
     --decision=session-inactivity-30m \
     --grill=admin-session-expires-after-30-minutes-of-inactivity-...
+
 Slice created: session-expiry
   .shipflow/slices/session-expiry.yml
 ```
 
-`shipflow slice link` validates that referenced decisions and grill sessions actually exist; missing ids fail loudly.
+`shipflow slice link` validates that referenced decisions and grill sessions actually exist; dangling ids fail loudly.
 
-### 5. Critique the cognitive quality
+### 6. Critique the cognitive quality
 
-Lint says the YAML is well-formed. Critique says whether the pack could pass green and still ship the wrong outcome. With a CI threshold:
+Lint says the YAML is well-formed. Critique says whether the generated pack could pass green and still ship the wrong outcome. With a CI threshold:
 
 ```
 $ shipflow critique --threshold=85
@@ -144,7 +181,7 @@ Threshold: 85 — PASS (score 100)
 
 `--threshold=85` exits 1 below 85, suitable as a CI gate. Errors (placeholders left in YAML, etc.) always fail regardless of the threshold.
 
-### 6. Approve the pack
+### 7. Approve the pack
 
 A reviewer signs the current pack hash. Approval is sha256-bound: any later change to `vp/**` invalidates it.
 
@@ -158,7 +195,7 @@ Pack approved: 2026-05-08-...-architect
 
 When `shipflow.json` sets `impl.requirePackApproval: true` (or `SHIPFLOW_REQUIRE_APPROVAL=1`), `shipflow implement` refuses to start without an active approval.
 
-### 7. Render the audit trail for a PR
+### 8. Render the audit trail for a PR
 
 `--pr-comment` produces a compact, action-oriented markdown block ready for `gh pr comment`:
 
@@ -186,7 +223,7 @@ $ shipflow trace --pr-comment
 
 If anything is missing — pack not approved, vp files without decisions, open reviews, orphans — the `✅` becomes `⚠️` and the action list spells out exactly what to do before merging. Pipe it to `gh pr comment <pr> -F -` from CI.
 
-### 8. (Optional) Lock policy at the org level
+### 9. (Optional) Lock policy at the org level
 
 When the team is ready, scaffold the governance policy and tighten it incrementally:
 

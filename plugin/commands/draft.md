@@ -6,10 +6,11 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 
 # ShipFlow — Verification Collaboration
 
-Use this command when the user wants to define, add, remove, tighten, or finalize ShipFlow verifications.
+Use this command when the user wants to **generate** the verification pack. The pack is generated from the validated substrate (grill transcripts + decisions), not authored by hand.
 
-This phase finalizes the verification pack before implementation. It can be collaborative, or AI-led when the user explicitly wants automatic materialization.
-Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
+**Precondition**: the team has run `shipflow grill` and captured at least one decision (`shipflow decision new`) for any non-obvious aspect of the intent. If the user invokes `/shipflow:draft` with no grill or decision substrate on a non-trivial intent, push them through `/shipflow:grill` first. Hand-authoring vp files without that substrate is the failure mode this framework prevents.
+
+This phase finalizes the verification pack before implementation. It is iterative: the agent proposes narrow vp files, the user reviews and tightens, the agent regenerates. Treat deterministic ShipFlow starters as foundational hints: base stack, protocol, architecture, delivery, or other universal constraints. Keep speculative product-level checks pending until the user clarifies them or explicitly delegates the choice.
 
 ## Context
 

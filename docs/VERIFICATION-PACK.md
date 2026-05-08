@@ -111,13 +111,13 @@ That aggregate `evidence/run.json` is the only acceptance verdict ShipFlow uses 
 5. Leaves `verify` strict: no implicit baseline refresh, no silent self-approval
 
 `shipflow draft`:
-1. Builds a repo coverage map
-2. Folds in the user request when provided
-3. Summarizes gaps and ambiguities
-4. Proposes starter verifications
-   On greenfield repos, these starters can include technical boundary files such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml` so the initial verification runtime, declared stack, and design-system direction become part of the pack immediately.
-   On stateful or integration-heavy repos, these starters can also include `vp/domain/*.yml` so the business-domain objects and required technical data objects are locked before implementation.
-5. Optionally writes starter files to `vp/` with `--write`
+1. Reads the substrate (grill transcripts in `.shipflow/grill/`, decisions in `.shipflow/decisions/`) — this is the *justified intent* the pack is supposed to enforce.
+2. Builds a repo coverage map and folds in any extra user request.
+3. Summarizes gaps and ambiguities; in `--ai` mode, asks the configured provider to propose narrow vp files matching the captured decisions.
+4. Writes proposals to `vp/**/*.yml` when `--write` is passed, or leaves them as a reviewable draft session at `.shipflow/draft-session.json`.
+5. The reviewer **tightens** the proposed files (asserts, selectors, negative cases) — it is never the human's job to author the YAML from scratch. If a proposal is wrong, the loop is "back to grill, re-decide, re-draft", not "type YAML".
+
+On greenfield repos, draft starters can include technical boundary files such as `vp/technical/runtime-environment.yml`, `vp/technical/framework-stack.yml`, and `vp/technical/ui-component-library.yml` so the initial verification runtime, declared stack, and design-system direction become part of the pack immediately. On stateful or integration-heavy repos, drafts can also include `vp/domain/*.yml` so the business-domain objects and required technical data objects are locked before implementation.
 
 The scaffold is a separate concern from the pack itself. `vp/` remains the source of truth for what must be true. The deterministic scaffold is just the scripted implementation foundation ShipFlow can apply before the LLM starts coding.
 
